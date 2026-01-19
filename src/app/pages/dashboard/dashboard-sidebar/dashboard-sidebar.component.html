@@ -1,0 +1,31 @@
+<aside class="dashboard-sidebar" [class.collapsed]="collapsed">
+  <div class="sidebar-header">
+    <div class="sidebar-logo" *ngIf="!collapsed">
+      <img src="/logo.png" alt="TAM Logo">
+    </div>
+    <div class="sidebar-logo-icon" *ngIf="collapsed">
+      <img src="/logo.png" alt="TAM">
+    </div>
+  </div>
+  
+  <nav class="sidebar-nav">
+    <a
+      *ngFor="let item of menuItems"
+      [routerLink]="item.route"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{exact: item.route === '/dashboard'}"
+      class="nav-item"
+      [title]="collapsed ? item.label : ''"
+    >
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path [attr.d]="item.icon"/>
+      </svg>
+      <span class="nav-label" *ngIf="showLabels">{{ item.label }}</span>
+      <span class="nav-badge" *ngIf="showLabels && item.badge">{{ item.badge }}</span>
+    </a>
+  </nav>
+  
+  <div class="sidebar-footer" *ngIf="showLabels">
+    <p class="sidebar-version">الإصدار 1.0.0</p>
+  </div>
+</aside>

@@ -1,0 +1,386 @@
+/* ============================================
+   DASHBOARD SIDEBAR - Complete Redesign
+   ============================================ */
+
+.dashboard-sidebar {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 240px;
+  background: var(--primary-dark);
+  color: #ffffff !important;
+  display: flex;
+  flex-direction: column;
+  z-index: var(--z-fixed);
+  box-shadow: var(--shadow-xl);
+  transition: width var(--transition-base) var(--transition-timing);
+  
+  /* Force all text content to be white - use literal hex, not CSS variable */
+  a,
+  span,
+  p,
+  * {
+    color: #ffffff !important;
+  }
+  
+  /* Specifically override global a tag color - literal hex */
+  a {
+    color: #ffffff !important;
+    
+    &:hover {
+      color: #ffffff !important;
+    }
+  }
+  
+  &.collapsed {
+    width: 80px;
+  }
+}
+
+/* ============================================
+   SIDEBAR HEADER
+   ============================================ */
+
+.sidebar-header {
+  padding: var(--spacing-lg) var(--spacing-md);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 70px;
+  background: rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
+}
+
+.sidebar-logo {
+  img {
+    max-width: 180px;
+    height: auto;
+    display: block;
+  }
+}
+
+.sidebar-logo-icon {
+  img {
+    width: 40px;
+    height: 40px;
+    object-fit: contain;
+    display: block;
+  }
+}
+
+/* ============================================
+   SIDEBAR NAVIGATION
+   ============================================ */
+
+.sidebar-nav {
+  flex: 1;
+  padding: var(--spacing-md) 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: var(--radius-full);
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+}
+
+/* ============================================
+   NAVIGATION ITEMS
+   ============================================ */
+
+.dashboard-sidebar .sidebar-nav a.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md) var(--spacing-lg);
+  margin: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  transition: all var(--transition-base) var(--transition-timing);
+  position: relative;
+  font-size: var(--font-size-base);
+  font-family: var(--font-family-primary);
+  
+  /* CRITICAL: Override global a tag color - use literal hex #ffffff */
+  color: #ffffff !important;
+  
+  /* Force all child text elements to be white - literal hex */
+  span,
+  .nav-label,
+  .nav-badge {
+    color: #ffffff !important;
+  }
+  
+  /* Hover state - literal hex */
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff !important;
+    
+    span,
+    .nav-label,
+    .nav-badge {
+      color: #ffffff !important;
+    }
+  }
+  
+  /* Active state - literal hex */
+  &.active {
+    background: rgba(139, 95, 168, 0.25);
+    color: #ffffff !important;
+    font-weight: var(--font-weight-semibold);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    
+    span,
+    .nav-label,
+    .nav-badge {
+      color: #ffffff !important;
+    }
+    
+    /* Active indicator bar */
+    &::before {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 4px;
+      height: 70%;
+      background: var(--accent-color);
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      box-shadow: 0 0 8px rgba(139, 95, 168, 0.5);
+    }
+  }
+  
+  /* Collapsed state */
+  .dashboard-sidebar.collapsed & {
+    justify-content: center;
+    padding: var(--spacing-md);
+    margin: var(--spacing-xs) var(--spacing-sm);
+  }
+}
+
+/* ============================================
+   NAVIGATION ICONS
+   ============================================ */
+
+.nav-icon {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  color: #ffffff !important; /* Literal hex, not CSS variable */
+  opacity: 0.9;
+  
+  .nav-item.active & {
+    opacity: 1;
+    color: #ffffff !important;
+  }
+  
+  .nav-item:hover & {
+    color: #ffffff !important;
+  }
+}
+
+/* ============================================
+   NAVIGATION LABELS
+   ============================================ */
+
+.nav-label {
+  flex: 1;
+  font-size: var(--font-size-base);
+  font-family: var(--font-family-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: #ffffff !important; /* Literal hex, not CSS variable */
+  font-weight: var(--font-weight-normal);
+}
+
+.nav-badge {
+  background: var(--accent-color);
+  color: #ffffff !important; /* Literal hex, not CSS variable */
+  padding: var(--spacing-xs) var(--spacing-sm);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  min-width: 24px;
+  text-align: center;
+  font-family: var(--font-family-primary);
+}
+
+/* ============================================
+   SIDEBAR FOOTER
+   ============================================ */
+
+.sidebar-footer {
+  padding: var(--spacing-md);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.sidebar-version {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: rgba(255, 255, 255, 0.6) !important;
+  font-family: var(--font-family-primary);
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+/* Tablet and below (≤991px) */
+@media (max-width: 991px) {
+  .dashboard-sidebar {
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 280px;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+    
+    /* Force white color on all elements */
+    * {
+      color: #ffffff !important;
+    }
+    
+    &.collapsed {
+      transform: translateX(0);
+      width: 280px;
+    }
+    
+    /* Navigation items - explicit white color - literal hex */
+    .sidebar-nav a.nav-item {
+      color: #ffffff !important;
+      white-space: nowrap;
+      word-break: keep-all;
+      
+      span,
+      .nav-label,
+      .nav-badge {
+        color: #ffffff !important;
+      }
+      
+      &:hover {
+        color: #ffffff !important;
+        
+        span,
+        .nav-label,
+        .nav-badge {
+          color: #ffffff !important;
+        }
+      }
+      
+      &.active {
+        color: #ffffff !important;
+        
+        span,
+        .nav-label,
+        .nav-badge {
+          color: #ffffff !important;
+        }
+      }
+    }
+    
+    /* Labels - explicit white color - literal hex */
+    .nav-label {
+      white-space: nowrap;
+      overflow: visible;
+      text-overflow: ellipsis;
+      color: #ffffff !important;
+    }
+    
+    /* Icons - explicit white color - literal hex */
+    .nav-icon {
+      color: #ffffff !important;
+    }
+  }
+}
+
+/* Mobile (≤767px) */
+@media (max-width: 767px) {
+  .dashboard-sidebar {
+    width: 100%;
+    max-width: 320px;
+    
+    /* Force white color on all elements - literal hex */
+    * {
+      color: #ffffff !important;
+    }
+    
+    &.collapsed {
+      width: 100%;
+      max-width: 320px;
+    }
+    
+    .sidebar-header {
+      padding: var(--spacing-lg);
+    }
+    
+    /* Navigation items - explicit white color - literal hex */
+    .sidebar-nav a.nav-item {
+      padding: var(--spacing-md) var(--spacing-lg);
+      margin: var(--spacing-xs) var(--spacing-md);
+      font-size: var(--font-size-base);
+      color: #ffffff !important;
+      
+      span,
+      .nav-label,
+      .nav-badge {
+        color: #ffffff !important;
+      }
+      
+      &:hover {
+        color: #ffffff !important;
+        
+        span,
+        .nav-label,
+        .nav-badge {
+          color: #ffffff !important;
+        }
+      }
+      
+      &.active {
+        color: #ffffff !important;
+        
+        span,
+        .nav-label,
+        .nav-badge {
+          color: #ffffff !important;
+        }
+      }
+    }
+    
+    /* Labels - explicit white color - literal hex */
+    .nav-label {
+      font-size: var(--font-size-base);
+      color: #ffffff !important;
+    }
+    
+    /* Icons - explicit white color - literal hex */
+    .nav-icon {
+      color: #ffffff !important;
+    }
+    
+    /* Footer text */
+    .sidebar-version {
+      color: rgba(255, 255, 255, 0.6) !important;
+    }
+  }
+}

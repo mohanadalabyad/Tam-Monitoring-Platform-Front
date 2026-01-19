@@ -1,0 +1,139 @@
+<div class="report-violation">
+      <div class="container">
+        <div class="page-header">
+          <h1>الإبلاغ عن حادثة</h1>
+          <p>ساعدنا في الحفاظ على سلامة المجتمع من خلال الإبلاغ عن الحوادث</p>
+        </div>
+
+        <div class="card">
+          <div *ngIf="submitted && !submitting" class="alert alert-success">
+            <strong>تم الإرسال بنجاح!</strong> تم إرسال تقريرك بنجاح. 
+            سنقوم بمراجعته واتخاذ الإجراءات المناسبة.
+          </div>
+
+          <form [formGroup]="violationForm" (ngSubmit)="onSubmit()" *ngIf="!submitted">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="title">عنوان الحادثة *</label>
+                <input 
+                  type="text" 
+                  id="title" 
+                  formControlName="title"
+                  placeholder="عنوان مختصر يصف الحادثة"
+                  [class.invalid]="isFieldInvalid('title')"
+                />
+                <div class="error-message" *ngIf="isFieldInvalid('title')">
+                  العنوان مطلوب
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="category">الفئة *</label>
+                <select 
+                  id="category" 
+                  formControlName="category"
+                  [class.invalid]="isFieldInvalid('category')"
+                >
+                  <option value="">اختر الفئة</option>
+                  <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+                </select>
+                <div class="error-message" *ngIf="isFieldInvalid('category')">
+                  يرجى اختيار الفئة
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="location">الموقع *</label>
+                <input 
+                  type="text" 
+                  id="location" 
+                  formControlName="location"
+                  placeholder="أين وقعت هذه الحادثة؟"
+                  [class.invalid]="isFieldInvalid('location')"
+                />
+                <div class="error-message" *ngIf="isFieldInvalid('location')">
+                  الموقع مطلوب
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="description">الوصف *</label>
+              <textarea 
+                id="description" 
+                formControlName="description"
+                placeholder="قدم معلومات مفصلة عن الحادثة"
+                [class.invalid]="isFieldInvalid('description')"
+                rows="5"
+              ></textarea>
+              <div class="error-message" *ngIf="isFieldInvalid('description')">
+                الوصف مطلوب
+              </div>
+            </div>
+
+            <div class="section-header">
+              <h3>معلومات المبلغ</h3>
+              <p>سيتم الحفاظ على سرية معلومات الاتصال الخاصة بك</p>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="reporterName">الاسم الكامل *</label>
+                <input 
+                  type="text" 
+                  id="reporterName" 
+                  formControlName="reporterName"
+                  placeholder="الاسم الكامل"
+                  [class.invalid]="isFieldInvalid('reporterName')"
+                />
+                <div class="error-message" *ngIf="isFieldInvalid('reporterName')">
+                  الاسم مطلوب
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="reporterEmail">البريد الإلكتروني *</label>
+                <input 
+                  type="email" 
+                  id="reporterEmail" 
+                  formControlName="reporterEmail"
+                  placeholder="example@email.com"
+                  [class.invalid]="isFieldInvalid('reporterEmail')"
+                />
+                <div class="error-message" *ngIf="isFieldInvalid('reporterEmail')">
+                  بريد إلكتروني صحيح مطلوب
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="reporterPhone">رقم الهاتف (اختياري)</label>
+                <input 
+                  type="tel" 
+                  id="reporterPhone" 
+                  formControlName="reporterPhone"
+                  placeholder="+970-XXX-XXXX"
+                />
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn-primary" [disabled]="submitting">
+                {{ submitting ? 'جاري الإرسال...' : 'إرسال التقرير' }}
+              </button>
+              <button type="button" class="btn-outline" (click)="resetForm()">
+                إعادة تعيين
+              </button>
+            </div>
+          </form>
+
+          <div *ngIf="submitted" class="success-actions">
+            <button class="btn-primary" (click)="resetForm()">إرسال تقرير آخر</button>
+            <button class="btn-outline" routerLink="/violations">عرض جميع التقارير</button>
+          </div>
+        </div>
+      </div>
+    </div>

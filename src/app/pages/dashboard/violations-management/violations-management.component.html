@@ -1,0 +1,157 @@
+<div class="violations-management-page">
+  <div class="page-header">
+    <div>
+      <h1>إدارة الحوادث</h1>
+      <p>إدارة وعرض جميع الحوادث المبلغ عنها</p>
+    </div>
+    <button class="btn-primary" (click)="openAddModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      إضافة حادثة جديدة
+    </button>
+  </div>
+
+  <app-unified-table
+    [columns]="columns"
+    [data]="violations"
+    [loading]="loading"
+    [actions]="actions"
+    [pageSize]="10"
+    emptyMessage="لا توجد حوادث"
+  ></app-unified-table>
+
+  <app-modal
+    [show]="showModal"
+    [title]="modalTitle"
+    size="lg"
+    (close)="closeModal()"
+  >
+    <form [formGroup]="violationForm" (ngSubmit)="saveViolation()">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="title">العنوان *</label>
+          <input
+            type="text"
+            id="title"
+            formControlName="title"
+            [class.invalid]="isFieldInvalid('title')"
+          />
+          <div class="error-message" *ngIf="isFieldInvalid('title')">
+            العنوان مطلوب
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="category">الفئة *</label>
+          <select
+            id="category"
+            formControlName="category"
+            [class.invalid]="isFieldInvalid('category')"
+          >
+            <option value="">اختر الفئة</option>
+            <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+          </select>
+          <div class="error-message" *ngIf="isFieldInvalid('category')">
+            يرجى اختيار الفئة
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="status">الحالة *</label>
+          <select
+            id="status"
+            formControlName="status"
+            [class.invalid]="isFieldInvalid('status')"
+          >
+            <option value="pending">قيد المراجعة</option>
+            <option value="investigating">قيد التحقيق</option>
+            <option value="resolved">تم الحل</option>
+            <option value="rejected">مرفوض</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="location">الموقع *</label>
+          <input
+            type="text"
+            id="location"
+            formControlName="location"
+            [class.invalid]="isFieldInvalid('location')"
+          />
+          <div class="error-message" *ngIf="isFieldInvalid('location')">
+            الموقع مطلوب
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="description">الوصف *</label>
+        <textarea
+          id="description"
+          formControlName="description"
+          rows="4"
+          [class.invalid]="isFieldInvalid('description')"
+        ></textarea>
+        <div class="error-message" *ngIf="isFieldInvalid('description')">
+          الوصف مطلوب
+        </div>
+      </div>
+
+      <div class="form-section-title">معلومات المبلغ</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="reporterName">الاسم الكامل *</label>
+          <input
+            type="text"
+            id="reporterName"
+            formControlName="reporterName"
+            [class.invalid]="isFieldInvalid('reporterName')"
+          />
+          <div class="error-message" *ngIf="isFieldInvalid('reporterName')">
+            الاسم مطلوب
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reporterEmail">البريد الإلكتروني *</label>
+          <input
+            type="email"
+            id="reporterEmail"
+            formControlName="reporterEmail"
+            [class.invalid]="isFieldInvalid('reporterEmail')"
+          />
+          <div class="error-message" *ngIf="isFieldInvalid('reporterEmail')">
+            بريد إلكتروني صحيح مطلوب
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="reporterPhone">رقم الهاتف</label>
+          <input
+            type="tel"
+            id="reporterPhone"
+            formControlName="reporterPhone"
+          />
+        </div>
+      </div>
+
+      <div footer>
+        <button type="button" class="btn-secondary" (click)="closeModal()">
+          إلغاء
+        </button>
+        <button type="submit" class="btn-primary">
+          {{ editingViolation ? 'حفظ التغييرات' : 'إضافة' }}
+        </button>
+      </div>
+    </form>
+  </app-modal>
+</div>

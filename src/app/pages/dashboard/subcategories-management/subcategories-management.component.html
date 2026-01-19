@@ -1,0 +1,110 @@
+<div class="subcategories-management-page">
+  <div class="page-header">
+    <div>
+      <h1>إدارة الفئات الفرعية</h1>
+      <p>إدارة الفئات الفرعية للانتهاكات</p>
+    </div>
+    <button class="btn-primary" (click)="openAddModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      إضافة فئة فرعية جديدة
+    </button>
+  </div>
+
+  <div class="filter-section">
+    <div class="form-group">
+      <label for="categoryFilter">تصفية حسب الفئة:</label>
+      <select id="categoryFilter" [(ngModel)]="selectedCategoryId" (ngModelChange)="onCategoryFilterChange()">
+        <option value="">جميع الفئات</option>
+        <option *ngFor="let category of categories" [value]="category.id">{{ category.nameAr }}</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="subcategories-grid" *ngIf="!loading">
+    <div class="subcategory-card" *ngFor="let subCategory of filteredSubCategories">
+      <div class="subcategory-header">
+        <div class="subcategory-info">
+          <h3>{{ subCategory.nameAr }}</h3>
+          <span class="parent-category">{{ getCategoryName(subCategory.categoryId) }}</span>
+        </div>
+        <div class="subcategory-order">#{{ subCategory.order }}</div>
+      </div>
+      <p class="subcategory-description" *ngIf="subCategory.description">{{ subCategory.description }}</p>
+      <div class="subcategory-actions">
+        <button class="btn-edit" (click)="editSubCategory(subCategory)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          </svg>
+          تعديل
+        </button>
+        <button class="btn-delete" (click)="deleteSubCategory(subCategory)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+          </svg>
+          حذف
+        </button>
+      </div>
+    </div>
+    <div class="empty-state" *ngIf="filteredSubCategories.length === 0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <p>لا توجد فئات فرعية. ابدأ بإضافة فئة فرعية جديدة.</p>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>جاري التحميل...</p>
+  </div>
+
+  <app-modal [show]="isModalOpen" [title]="editMode ? 'تعديل فئة فرعية' : 'إضافة فئة فرعية جديدة'" (close)="closeModal()">
+      <form [formGroup]="subCategoryForm" class="subcategory-form">
+        <div class="form-group">
+          <label for="categoryId">الفئة الرئيسية *</label>
+          <select id="categoryId" formControlName="categoryId"
+                  [class.invalid]="subCategoryForm.get('categoryId')?.invalid && (subCategoryForm.get('categoryId')?.dirty || subCategoryForm.get('categoryId')?.touched)">
+            <option value="">اختر الفئة</option>
+            <option *ngFor="let category of categories" [value]="category.id">{{ category.nameAr }}</option>
+          </select>
+          <div class="error-message" *ngIf="subCategoryForm.get('categoryId')?.invalid && (subCategoryForm.get('categoryId')?.dirty || subCategoryForm.get('categoryId')?.touched)">
+            يرجى اختيار الفئة الرئيسية
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="nameAr">الاسم *</label>
+          <input type="text" id="nameAr" formControlName="nameAr" placeholder="اسم الفئة الفرعية"
+                 [class.invalid]="subCategoryForm.get('nameAr')?.invalid && (subCategoryForm.get('nameAr')?.dirty || subCategoryForm.get('nameAr')?.touched)"/>
+          <div class="error-message" *ngIf="subCategoryForm.get('nameAr')?.invalid && (subCategoryForm.get('nameAr')?.dirty || subCategoryForm.get('nameAr')?.touched)">
+            الاسم مطلوب
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="description">الوصف</label>
+          <textarea id="description" formControlName="description" placeholder="وصف الفئة الفرعية" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="order">الترتيب *</label>
+          <input type="number" id="order" formControlName="order" min="1"
+                 [class.invalid]="subCategoryForm.get('order')?.invalid && (subCategoryForm.get('order')?.dirty || subCategoryForm.get('order')?.touched)"/>
+          <div class="error-message" *ngIf="subCategoryForm.get('order')?.invalid && (subCategoryForm.get('order')?.dirty || subCategoryForm.get('order')?.touched)">
+            الترتيب مطلوب ويجب أن يكون أكبر من 0
+          </div>
+        </div>
+      </form>
+    <div footer>
+      <button type="button" class="btn-secondary" (click)="closeModal()">إلغاء</button>
+      <button type="button" class="btn-primary" (click)="onModalSubmit()">
+        {{ editMode ? 'تحديث' : 'إضافة' }}
+      </button>
+    </div>
+  </app-modal>
+</div>

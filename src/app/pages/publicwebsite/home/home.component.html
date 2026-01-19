@@ -1,0 +1,401 @@
+<div class="home">
+      <!-- Hero Section -->
+      <section class="hero">
+        <div class="hero-overlay"></div>
+        <div class="container">
+          <div class="hero-content">
+            <div class="hero-badge">منصة رصد الانتهاكات</div>
+            <h1 class="hero-title">
+              <span class="title-main">صوت من لا صوت له</span>
+              <span class="title-sub">منصة موثوقة للإبلاغ عن الانتهاكات</span>
+            </h1>
+            <p class="hero-description">
+              نوفر منصة آمنة وشفافة للإبلاغ عن الانتهاكات ومراقبتها، حيث يمكنك المساهمة في حماية حقوق الإنسان وبناء مجتمع أكثر عدالة وشفافية
+            </p>
+            <div class="hero-actions">
+              <button class="btn-report" routerLink="/report">
+                <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                </svg>
+                ابدأ بالإبلاغ الآن
+              </button>
+              <button class="btn-explore" routerLink="/violations">
+                عرض الحوادث المنشورة
+                <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="hero-shapes">
+          <div class="shape shape-1"></div>
+          <div class="shape shape-2"></div>
+          <div class="shape shape-3"></div>
+        </div>
+      </section>
+
+      <!-- Live Statistics Section -->
+      <section class="stats-section">
+        <div class="container">
+          <div class="section-header-center">
+            <span class="section-label">الأرقام تتحدث</span>
+            <h2 class="section-title-main">إحصائيات المنصة</h2>
+          </div>
+          <div class="stats-container">
+            <div class="stat-item">
+              <div class="stat-icon-wrapper purple">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 11l3 3L22 4M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-number">{{ totalReports }}</div>
+                <div class="stat-label">إجمالي البلاغات</div>
+              </div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-icon-wrapper green">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-number">{{ publishedReports }}</div>
+                <div class="stat-label">الحوادث المنشورة</div>
+              </div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-icon-wrapper orange">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-number">{{ pendingReports }}</div>
+                <div class="stat-label">قيد المراجعة</div>
+              </div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-icon-wrapper blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                </svg>
+              </div>
+              <div class="stat-content">
+                <div class="stat-number">{{ totalUsers }}</div>
+                <div class="stat-label">المستخدمون النشطون</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Features Section -->
+      <section class="features-section">
+        <div class="container">
+          <div class="section-header-center">
+            <span class="section-label">لماذا منصة تام</span>
+            <h2 class="section-title-main">نوفر لك بيئة آمنة وموثوقة</h2>
+          </div>
+          <div class="features-grid">
+            <div class="feature-box">
+              <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+              </div>
+              <h3>الخصوصية والأمان</h3>
+              <p>نحمي هويتك ونضمن سرية بياناتك مع إمكانية الإبلاغ المجهول</p>
+            </div>
+            <div class="feature-box">
+              <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+              </div>
+              <h3>مراجعة دقيقة</h3>
+              <p>فريق متخصص يراجع كل بلاغ بعناية قبل النشر لضمان الجودة والمصداقية</p>
+            </div>
+            <div class="feature-box">
+              <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              </div>
+              <h3>الشفافية الكاملة</h3>
+              <p>نشر علني للحوادث المثبتة مع متابعة مستمرة لحالة كل بلاغ</p>
+            </div>
+            <div class="feature-box">
+              <div class="feature-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+              </div>
+              <h3>استجابة سريعة</h3>
+              <p>معالجة فورية للبلاغات مع إشعارات تلقائية بتحديثات حالة البلاغ</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Latest Incidents Section -->
+      <section class="incidents-section">
+        <div class="container">
+          <div class="section-header-flex">
+            <div>
+              <span class="section-label">آخر التحديثات</span>
+              <h2 class="section-title-main">الحوادث المنشورة مؤخراً</h2>
+            </div>
+            <button class="btn-view-all" routerLink="/violations">
+              عرض جميع الحوادث
+              <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
+          <div class="incidents-container">
+            <div class="incident-item" *ngFor="let incident of latestIncidents">
+              <div class="incident-badge">{{ incident.type }}</div>
+              <h3 class="incident-title">{{ incident.title }}</h3>
+              <p class="incident-desc">{{ incident.description }}</p>
+              <div class="incident-meta">
+                <span class="meta-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                    <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  </svg>
+                  {{ incident.location }}
+                </span>
+                <span class="meta-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                  {{ incident.date }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- How It Works Section -->
+      <section class="process-section">
+        <div class="container">
+          <div class="section-header-center">
+            <span class="section-label">كيف نعمل</span>
+            <h2 class="section-title-main">خطوات بسيطة للإبلاغ</h2>
+          </div>
+          <div class="process-timeline">
+            <div class="timeline-item">
+              <div class="timeline-marker">
+                <span class="marker-number">01</span>
+              </div>
+              <div class="timeline-content">
+                <h3>الإبلاغ عن الحادثة</h3>
+                <p>قم بتعبئة نموذج الإبلاغ بتفاصيل الحادثة وأرفق الصور أو المستندات الداعمة</p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-marker">
+                <span class="marker-number">02</span>
+              </div>
+              <div class="timeline-content">
+                <h3>المراجعة والتحقق</h3>
+                <p>يراجع فريقنا المتخصص البلاغ ويتحقق من صحة المعلومات</p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-marker">
+                <span class="marker-number">03</span>
+              </div>
+              <div class="timeline-content">
+                <h3>النشر والتوثيق</h3>
+                <p>يتم نشر الحادثة على المنصة مع حماية هوية المبلغ</p>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-marker">
+                <span class="marker-number">04</span>
+              </div>
+              <div class="timeline-content">
+                <h3>المتابعة المستمرة</h3>
+                <p>تابع حالة البلاغ واستلم إشعارات بأي تحديثات</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- About TAM Section -->
+      <section class="about-section">
+        <div class="container">
+          <div class="about-layout">
+            <div class="about-image-side">
+              <div class="about-logo-box">
+                <img src="/logo.png" alt="TAM Organization" class="about-logo">
+              </div>
+            </div>
+            <div class="about-content-side">
+              <span class="section-label">من نحن</span>
+              <h2 class="section-title-main">منظمة تام للتنمية وإعلام المرأة</h2>
+              <p class="about-description">
+                منظمة تام هي مؤسسة مستقلة تعمل على تعزيز الشفافية والمساءلة في المجتمع من خلال توفير منصة آمنة وفعالة للإبلاغ عن الانتهاكات ومتابعتها.
+              </p>
+              <div class="about-values">
+                <div class="value-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>مجتمع شفاف خالٍ من الانتهاكات</span>
+                </div>
+                <div class="value-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>تمكين المواطنين من التبليغ والمتابعة</span>
+                </div>
+                <div class="value-item">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                  <span>الشفافية، المصداقية، والعدالة</span>
+                </div>
+              </div>
+              <button class="btn-learn-more" routerLink="/about">
+                تعرف على المزيد
+                <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Interactive Map Section -->
+      <section class="map-section">
+        <div class="container">
+          <div class="section-header-center">
+            <span class="section-label">الانتشار الجغرافي</span>
+            <h2 class="section-title-main">خريطة الحوادث</h2>
+            <p class="section-description">تصفح الحوادث المبلغ عنها حسب الموقع الجغرافي</p>
+          </div>
+          <div class="map-container">
+            <div class="palestine-map">
+              <!-- خريطة فلسطين بخلفية CSS -->
+              <div class="map-background"></div>
+              
+              <div class="map-overlay-content">
+                <!-- النقاط التفاعلية على الخريطة -->
+                
+                <div class="city-dot" style="top: 45%; left: 48%;" data-city="القدس" title="القدس - {{jerusalemIncidents}} حادثة">
+                  <span class="dot dot-high"></span>
+                  <span class="city-name">القدس</span>
+                </div>
+                
+                <div class="city-dot" style="top: 40%; left: 45%;" data-city="رام الله" title="رام الله - {{ramallahIncidents}} حادثة">
+                  <span class="dot dot-medium"></span>
+                  <span class="city-name">رام الله</span>
+                </div>
+                
+                <div class="city-dot" style="top: 32%; left: 47%;" data-city="نابلس" title="نابلس - {{nablusIncidents}} حادثة">
+                  <span class="dot dot-medium"></span>
+                  <span class="city-name">نابلس</span>
+                </div>
+                
+                <div class="city-dot" style="top: 50%; left: 48%;" data-city="بيت لحم" title="بيت لحم - {{bethlehemIncidents}} حادثة">
+                  <span class="dot dot-low"></span>
+                  <span class="city-name">بيت لحم</span>
+                </div>
+                
+                <div class="city-dot" style="top: 58%; left: 46%;" data-city="الخليل" title="الخليل - {{hebronIncidents}} حادثة">
+                  <span class="dot dot-medium"></span>
+                  <span class="city-name">الخليل</span>
+                </div>
+                
+                <div class="city-dot" style="top: 25%; left: 47%;" data-city="جنين" title="جنين - {{jeninIncidents}} حادثة">
+                  <span class="dot dot-low"></span>
+                  <span class="city-name">جنين</span>
+                </div>
+                
+                <div class="city-dot" style="top: 75%; left: 25%;" data-city="غزة" title="غزة - {{gazaIncidents}} حادثة">
+                  <span class="dot dot-high"></span>
+                  <span class="city-name">غزة</span>
+                </div>
+                
+                <div class="city-dot" style="top: 42%; left: 22%;" data-city="يافا" title="يافا - {{jaffaIncidents}} حادثة">
+                  <span class="dot dot-low"></span>
+                  <span class="city-name">يافا</span>
+                </div>
+                
+                <div class="city-dot" style="top: 18%; left: 28%;" data-city="حيفا" title="حيفا - {{haifaIncidents}} حادثة">
+                  <span class="dot dot-medium"></span>
+                  <span class="city-name">حيفا</span>
+                </div>
+              </div>
+              
+              <div class="map-legend">
+                <div class="legend-title">كثافة الحوادث</div>
+                <div class="legend-items">
+                  <div class="legend-item">
+                    <div class="legend-color high"></div>
+                    <span>عالية جداً</span>
+                  </div>
+                  <div class="legend-item">
+                    <div class="legend-color medium"></div>
+                    <span>متوسطة</span>
+                  </div>
+                  <div class="legend-item">
+                    <div class="legend-color low"></div>
+                    <span>منخفضة</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="map-stats-summary">
+              <div class="map-stat-card">
+                <div class="stat-icon-map">📊</div>
+                <div class="stat-info">
+                  <div class="stat-number-large">{{ totalMapIncidents }}</div>
+                  <div class="stat-label-map">إجمالي الحوادث المسجلة</div>
+                </div>
+              </div>
+              <div class="map-stat-card">
+                <div class="stat-icon-map">🏙️</div>
+                <div class="stat-info">
+                  <div class="stat-number-large">26</div>
+                  <div class="stat-label-map">مدينة على الخريطة</div>
+                </div>
+              </div>
+              <div class="map-stat-card">
+                <div class="stat-icon-map">📍</div>
+                <div class="stat-info">
+                  <div class="stat-number-large">{{ publishedReports }}</div>
+                  <div class="stat-label-map">حوادث منشورة ومحدثة</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Call to Action Section -->
+      <section class="cta-section">
+        <div class="container">
+          <div class="cta-wrapper">
+            <div class="cta-content">
+              <h2>كن جزءاً من التغيير</h2>
+              <p>صوتك يهم. ساعدنا في بناء مجتمع أكثر شفافية وعدالة</p>
+            </div>
+            <button class="btn-cta-large" routerLink="/report">
+              ابدأ بالإبلاغ عن حادثة
+              <svg class="arrow-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>

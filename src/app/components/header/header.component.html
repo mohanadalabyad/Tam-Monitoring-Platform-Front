@@ -1,0 +1,40 @@
+<header class="header">
+  <div class="container">
+    <nav class="navbar">
+      <div class="logo">
+        <a routerLink="/">
+          <div class="logo-icon">
+            <img src="/logo.png" alt="TAM Logo">
+          </div>
+        </a>
+      </div>
+      <ul class="nav-menu" [class.active]="menuActive" id="nav-menu">
+        <li><a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">الرئيسية</a></li>
+        <li><a routerLink="/violations" routerLinkActive="active">الحوادث المنشورة</a></li>
+        <li><a routerLink="/about" routerLinkActive="active">عن المنصة</a></li>
+        <li class="report-btn-nav"><a routerLink="/report" class="btn-report" routerLinkActive="active">الإبلاغ عن حادثة</a></li>
+        <li *ngIf="!isAuthenticated" class="login-btn-nav">
+          <button class="btn-login-header" (click)="goToLogin()">تسجيل الدخول</button>
+        </li>
+        <li *ngIf="isAuthenticated" class="dashboard-btn-nav">
+          <button class="btn-dashboard-header" (click)="goToDashboard()">
+            لوحة التحكم
+            <span class="user-badge" *ngIf="currentUser">{{ currentUser.name }}</span>
+          </button>
+        </li>
+      </ul>
+      <button 
+        type="button"
+        class="hamburger" 
+        [class.active]="menuActive"
+        (click)="toggleMenu()"
+        [attr.aria-expanded]="menuActive"
+        aria-label="قائمة التنقل"
+        aria-controls="nav-menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </nav>
+  </div>
+</header>

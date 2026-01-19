@@ -1,0 +1,75 @@
+<div class="login-page">
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="logo">
+          <img src="/logo.png" alt="TAM Logo">
+        </div>
+        <h1>تسجيل الدخول</h1>
+        <p>مرحباً بك في لوحة التحكم</p>
+      </div>
+
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
+        <div *ngIf="errorMessage" class="alert alert-error">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          {{ errorMessage }}
+        </div>
+
+        <div class="form-group">
+          <label for="email">البريد الإلكتروني</label>
+          <input
+            type="email"
+            id="email"
+            formControlName="email"
+            placeholder="example@tam.ps"
+            [class.invalid]="isFieldInvalid('email')"
+            autocomplete="email"
+          />
+          <div class="error-message" *ngIf="isFieldInvalid('email')">
+            {{ getFieldError('email') }}
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="password">كلمة المرور</label>
+          <input
+            type="password"
+            id="password"
+            formControlName="password"
+            placeholder="••••••••"
+            [class.invalid]="isFieldInvalid('password')"
+            autocomplete="current-password"
+          />
+          <div class="error-message" *ngIf="isFieldInvalid('password')">
+            {{ getFieldError('password') }}
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          class="btn-login"
+          [disabled]="loading"
+        >
+          <span *ngIf="!loading">تسجيل الدخول</span>
+          <span *ngIf="loading" class="loading-spinner">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </button>
+      </form>
+
+      <div class="login-footer">
+        <p class="demo-info">
+          <strong>بيانات تجريبية:</strong><br>
+          البريد: admin&#64;tam.ps<br>
+          كلمة المرور: password123
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,18 @@
+<div class="dashboard-layout">
+  <div class="sidebar-overlay" *ngIf="isMobile && sidebarCollapsed" (click)="closeSidebar()"></div>
+  <app-dashboard-sidebar [collapsed]="sidebarCollapsed"></app-dashboard-sidebar>
+  
+  <div class="dashboard-main" [class.sidebar-collapsed]="sidebarCollapsed">
+    <app-dashboard-header (toggleSidebar)="toggleSidebar()"></app-dashboard-header>
+    
+    <main class="dashboard-content">
+      <router-outlet></router-outlet>
+    </main>
+    
+    <footer class="dashboard-footer">
+      <div class="container">
+        <p>&copy; {{ currentYear }} منظمة تام - TAM Organization</p>
+      </div>
+    </footer>
+  </div>
+</div>

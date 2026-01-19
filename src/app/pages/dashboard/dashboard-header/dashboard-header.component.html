@@ -1,0 +1,76 @@
+<header class="dashboard-header">
+  <div class="header-section header-left">
+    <button
+      type="button"
+      class="sidebar-toggle"
+      (click)="toggleSidebar.emit()"
+      aria-label="تبديل القائمة الجانبية"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="12" x2="21" y2="12"/>
+        <line x1="3" y1="6" x2="21" y2="6"/>
+        <line x1="3" y1="18" x2="21" y2="18"/>
+      </svg>
+    </button>
+    
+    <div class="dashboard-title">
+      <svg class="dashboard-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7"/>
+        <rect x="14" y="3" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/>
+        <rect x="14" y="14" width="7" height="7"/>
+      </svg>
+      <span class="title-text">لوحة التحكم</span>
+    </div>
+  </div>
+  
+  <div class="header-section header-right">
+    <div class="user-menu-wrapper">
+      <button
+        type="button"
+        class="user-menu-button"
+        (click)="toggleUserMenu()"
+      >
+        <div class="user-avatar">
+          <span>{{ currentUser?.name?.charAt(0) || 'U' }}</span>
+        </div>
+        <div class="user-info" *ngIf="currentUser">
+          <span class="user-name">{{ currentUser.name }}</span>
+          <span class="user-role">{{ getRoleLabel(currentUser.role) }}</span>
+        </div>
+        <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      
+      <div class="user-dropdown" *ngIf="showUserMenu">
+        <div class="dropdown-header">
+          <div class="dropdown-user-name">{{ currentUser?.name }}</div>
+          <div class="dropdown-user-email">{{ currentUser?.email }}</div>
+        </div>
+        <div class="dropdown-divider"></div>
+        <a routerLink="/dashboard/profile" class="dropdown-item" (click)="closeUserMenu()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span>الملف الشخصي</span>
+        </a>
+        <a routerLink="/dashboard/settings" class="dropdown-item" (click)="closeUserMenu()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v6m0 6v6M5.64 5.64l4.24 4.24m4.24 4.24l4.24 4.24M1 12h6m6 0h6M5.64 18.36l4.24-4.24m4.24-4.24l4.24-4.24"/>
+          </svg>
+          <span>الإعدادات</span>
+        </a>
+        <div class="dropdown-divider"></div>
+        <button type="button" class="dropdown-item logout-item" (click)="onLogout()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
+          </svg>
+          <span>تسجيل الخروج</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>

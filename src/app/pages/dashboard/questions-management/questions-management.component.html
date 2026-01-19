@@ -1,0 +1,250 @@
+<div class="questions-management-page">
+  <div class="page-header">
+    <div>
+      <h1>إدارة الأسئلة</h1>
+      <p>إدارة الأسئلة الديناميكية للنماذج</p>
+    </div>
+    <button class="btn-primary" (click)="openAddModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      إضافة سؤال جديد
+    </button>
+  </div>
+
+  <div class="filter-section">
+    <div class="filter-row">
+      <div class="form-group">
+        <label for="categoryFilter">تصفية حسب الفئة:</label>
+        <select id="categoryFilter" [(ngModel)]="selectedCategoryId" (ngModelChange)="onCategoryFilterChange()">
+          <option value="">جميع الفئات</option>
+          <option *ngFor="let category of categories" [value]="category.id">{{ category.nameAr }}</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="questions-list" *ngIf="!loading">
+    <div class="question-item" *ngFor="let question of filteredQuestions">
+      <div class="question-header">
+        <div class="question-info">
+          <div class="question-type-badge" [attr.data-type]="question.type">
+            {{ getQuestionTypeLabel(question.type) }}
+          </div>
+          <h3>{{ question.labelAr }}</h3>
+          <p class="question-label-en">{{ question.labelEn }}</p>
+          <div class="question-meta">
+            <span class="meta-item" *ngIf="question.categoryId">
+              الفئة: {{ getCategoryName(question.categoryId) }}
+            </span>
+            <span class="meta-item" *ngIf="question.section">
+              القسم: {{ question.section }}
+            </span>
+            <span class="meta-item">
+              الترتيب: #{{ question.order }}
+            </span>
+            <span class="meta-item required-badge" *ngIf="question.required">
+              مطلوب
+            </span>
+          </div>
+        </div>
+        <div class="question-actions">
+          <button class="btn-edit" (click)="editQuestion(question)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+            تعديل
+          </button>
+          <button class="btn-delete" (click)="deleteQuestion(question)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+            </svg>
+            حذف
+          </button>
+        </div>
+      </div>
+      <p class="question-description" *ngIf="question.description">{{ question.description }}</p>
+      <div class="question-options" *ngIf="question.options && question.options.length > 0">
+        <strong>الخيارات:</strong>
+        <div class="options-list">
+          <span class="option-tag" *ngFor="let option of question.options">
+            {{ option.labelAr }}
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="empty-state" *ngIf="filteredQuestions.length === 0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/>
+        <line x1="12" y1="8" x2="12" y2="12"/>
+        <line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <p>لا توجد أسئلة. ابدأ بإضافة سؤال جديد.</p>
+    </div>
+  </div>
+
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>جاري التحميل...</p>
+  </div>
+
+  <app-modal [show]="isModalOpen" [title]="editMode ? 'تعديل سؤال' : 'إضافة سؤال جديد'" size="lg" (close)="closeModal()">
+    <form [formGroup]="questionForm" class="question-form">
+      <div class="form-section">
+        <h4>المعلومات الأساسية</h4>
+        
+        <div class="form-group">
+          <label for="categoryId">الفئة *</label>
+          <select id="categoryId" formControlName="categoryId"
+                  [class.invalid]="questionForm.get('categoryId')?.invalid && (questionForm.get('categoryId')?.dirty || questionForm.get('categoryId')?.touched)">
+            <option value="">اختر الفئة</option>
+            <option *ngFor="let category of categories" [value]="category.id">{{ category.nameAr }}</option>
+          </select>
+          <div class="error-message" *ngIf="questionForm.get('categoryId')?.invalid && (questionForm.get('categoryId')?.dirty || questionForm.get('categoryId')?.touched)">
+            يرجى اختيار الفئة
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="type">نوع السؤال *</label>
+          <select id="type" formControlName="type"
+                  [class.invalid]="questionForm.get('type')?.invalid && (questionForm.get('type')?.dirty || questionForm.get('type')?.touched)">
+            <option value="">اختر نوع السؤال</option>
+            <option *ngFor="let qType of questionTypes" [value]="qType.value">{{ qType.labelAr }}</option>
+          </select>
+          <div class="error-message" *ngIf="questionForm.get('type')?.invalid && (questionForm.get('type')?.dirty || questionForm.get('type')?.touched)">
+            نوع السؤال مطلوب
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="labelAr">نص السؤال بالعربية *</label>
+          <input type="text" id="labelAr" formControlName="labelAr" placeholder="نص السؤال بالعربية"
+                 [class.invalid]="questionForm.get('labelAr')?.invalid && (questionForm.get('labelAr')?.dirty || questionForm.get('labelAr')?.touched)"/>
+          <div class="error-message" *ngIf="questionForm.get('labelAr')?.invalid && (questionForm.get('labelAr')?.dirty || questionForm.get('labelAr')?.touched)">
+            نص السؤال بالعربية مطلوب
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="labelEn">نص السؤال بالإنجليزية *</label>
+          <input type="text" id="labelEn" formControlName="labelEn" placeholder="Question Text in English"
+                 [class.invalid]="questionForm.get('labelEn')?.invalid && (questionForm.get('labelEn')?.dirty || questionForm.get('labelEn')?.touched)"/>
+          <div class="error-message" *ngIf="questionForm.get('labelEn')?.invalid && (questionForm.get('labelEn')?.dirty || questionForm.get('labelEn')?.touched)">
+            نص السؤال بالإنجليزية مطلوب
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="description">الوصف</label>
+          <textarea id="description" formControlName="description" placeholder="وصف السؤال (اختياري)" rows="2"></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="section">القسم</label>
+            <input type="text" id="section" formControlName="section" placeholder="اسم القسم (للتجميع)"/>
+          </div>
+
+          <div class="form-group">
+            <label for="order">الترتيب *</label>
+            <input type="number" id="order" formControlName="order" min="1"
+                   [class.invalid]="questionForm.get('order')?.invalid && (questionForm.get('order')?.dirty || questionForm.get('order')?.touched)"/>
+            <div class="error-message" *ngIf="questionForm.get('order')?.invalid && (questionForm.get('order')?.dirty || questionForm.get('order')?.touched)">
+              الترتيب مطلوب
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="required"/>
+            <span>السؤال مطلوب</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-section" *ngIf="needsOptions(questionForm.get('type')?.value)">
+        <h4>خيارات السؤال</h4>
+        <div formArrayName="options">
+          <div *ngFor="let option of optionsArray.controls; let i = index" [formGroupName]="i" class="option-item">
+            <div class="option-row">
+              <div class="form-group">
+                <label>النص بالعربية *</label>
+                <input type="text" formControlName="labelAr" placeholder="النص بالعربية"
+                       [class.invalid]="option.get('labelAr')?.invalid && option.get('labelAr')?.touched"/>
+              </div>
+              <div class="form-group">
+                <label>النص بالإنجليزية *</label>
+                <input type="text" formControlName="labelEn" placeholder="Text in English"
+                       [class.invalid]="option.get('labelEn')?.invalid && option.get('labelEn')?.touched"/>
+              </div>
+              <div class="form-group">
+                <label>القيمة *</label>
+                <input type="text" formControlName="value" placeholder="value"
+                       [class.invalid]="option.get('value')?.invalid && option.get('value')?.touched"/>
+              </div>
+              <button type="button" class="btn-remove-option" (click)="removeOption(i)" *ngIf="optionsArray.length > 1">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn-add-option" (click)="addOption()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          إضافة خيار
+        </button>
+      </div>
+
+      <div class="form-section">
+        <h4>التحقق (اختياري)</h4>
+        <div formGroupName="validation">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="validationMin">الحد الأدنى</label>
+              <input type="number" id="validationMin" formControlName="min" placeholder="الحد الأدنى"/>
+            </div>
+            <div class="form-group">
+              <label for="validationMax">الحد الأقصى</label>
+              <input type="number" id="validationMax" formControlName="max" placeholder="الحد الأقصى"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="validationPattern">النمط (Pattern)</label>
+            <input type="text" id="validationPattern" formControlName="pattern" placeholder="regex pattern"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h4>الشرطية (اختياري)</h4>
+        <div formGroupName="conditional">
+          <div class="form-group">
+            <label for="dependsOn">يعتمد على السؤال</label>
+            <select id="dependsOn" formControlName="dependsOn">
+              <option value="">اختر السؤال</option>
+              <option *ngFor="let q of availableQuestions" [value]="q.id">{{ q.labelAr }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="showIf">يظهر إذا كانت القيمة</label>
+            <input type="text" id="showIf" formControlName="showIf" placeholder="القيمة المطلوبة"/>
+          </div>
+        </div>
+      </div>
+    </form>
+    <div footer>
+      <button type="button" class="btn-secondary" (click)="closeModal()">إلغاء</button>
+      <button type="button" class="btn-primary" (click)="onModalSubmit()">
+        {{ editMode ? 'تحديث' : 'إضافة' }}
+      </button>
+    </div>
+  </app-modal>
+</div>

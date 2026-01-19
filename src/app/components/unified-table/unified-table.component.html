@@ -1,0 +1,213 @@
+<div class="unified-table-wrapper">
+  <!-- Search and Filters -->
+  <div class="table-controls" *ngIf="showSearch || hasFilterableColumns()">
+    <div class="search-box" *ngIf="showSearch">
+      <input
+        type="text"
+        [value]="searchTerm"
+        (input)="onSearch($any($event.target).value)"
+        placeholder="بحث..."
+        class="search-input"
+      />
+      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8"/>
+        <path d="M21 21l-4.35-4.35"/>
+      </svg>
+    </div>
+
+    <div class="column-filters" *ngIf="hasFilterableColumns()">
+      <div class="filter-item" *ngFor="let col of columns">
+        <input
+          *ngIf="col.filterable"
+          type="text"
+          [value]="columnFilters[col.key] || ''"
+          (input)="onFilterChange(col.key, $any($event.target).value)"
+          [placeholder]="'تصفية ' + col.label"
+          class="filter-input"
+        />
+      </div>
+    </div>
+  </div>
+
+  <!-- Desktop Table -->
+  <div class="table-container desktop-table">
+    <table class="unified-table">
+      <thead>
+        <tr>
+          <th
+            *ngFor="let col of columns"
+            [style.width]="col.width"
+            [class.sortable]="col.sortable"
+            [class.sorted]="sortColumn === col.key"
+            [class.sort-asc]="sortColumn === col.key && sortDirection === 'asc'"
+            [class.sort-desc]="sortColumn === col.key && sortDirection === 'desc'"
+            (click)="col.sortable && onSort(col)"
+          >
+            <div class="th-content">
+              <span>{{ col.label }}</span>
+              <svg
+                *ngIf="col.sortable"
+                class="sort-icon"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path *ngIf="getSortIcon(col) === 'sort'" d="M3 6h18M3 12h18M3 18h18"/>
+                <path *ngIf="getSortIcon(col) === 'sort-up'" d="M3 6l9 9 9-9"/>
+                <path *ngIf="getSortIcon(col) === 'sort-down'" d="M3 18l9-9 9 9"/>
+              </svg>
+            </div>
+          </th>
+          <th *ngIf="actions.length > 0" class="actions-header">الإجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="loading">
+          <td [attr.colspan]="columns.length + (actions.length > 0 ? 1 : 0)" class="loading-cell">
+            <div class="loading-spinner">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <span>جاري التحميل...</span>
+          </td>
+        </tr>
+        <tr *ngIf="!loading && paginatedData.length === 0">
+          <td [attr.colspan]="columns.length + (actions.length > 0 ? 1 : 0)" class="empty-cell">
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <p>{{ emptyMessage }}</p>
+            </div>
+          </td>
+        </tr>
+        <tr
+          *ngFor="let row of paginatedData"
+          class="table-row"
+          (click)="onRowClick(row)"
+        >
+          <td *ngFor="let col of columns" [class]="'cell-' + (col.type || 'text')">
+            <span *ngIf="col.type === 'badge'" class="badge" [ngClass]="'badge-' + getCellValue(row, col.key)">
+              {{ getCellDisplay(row, col) }}
+            </span>
+            <span *ngIf="col.type === 'date'">{{ getCellValue(row, col.key) | date:'short' }}</span>
+            <span *ngIf="col.type !== 'badge' && col.type !== 'date'">{{ getCellDisplay(row, col) }}</span>
+          </td>
+          <td *ngIf="actions.length > 0" class="actions-cell" (click)="$event.stopPropagation()">
+            <div class="action-buttons">
+              <button
+                *ngFor="let action of actions"
+                type="button"
+                class="action-btn"
+                [ngClass]="action.class"
+                (click)="onActionClick(action, row, $event)"
+                [title]="action.label"
+              >
+                <span>{{ action.label }}</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Mobile Cards -->
+  <div class="mobile-cards">
+    <div *ngIf="loading" class="card-loading">
+      <div class="loading-spinner">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <span>جاري التحميل...</span>
+    </div>
+    
+    <div *ngIf="!loading && paginatedData.length === 0" class="card-empty">
+      <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <p>{{ emptyMessage }}</p>
+      </div>
+    </div>
+    
+    <div
+      *ngFor="let row of paginatedData"
+      class="mobile-card"
+      (click)="onRowClick(row)"
+    >
+      <div class="card-content">
+        <div *ngFor="let col of columns" class="card-field">
+          <div class="card-label">{{ col.label }}</div>
+          <div class="card-value" [class]="'value-' + (col.type || 'text')">
+            <span *ngIf="col.type === 'badge'" class="badge" [ngClass]="'badge-' + getCellValue(row, col.key)">
+              {{ getCellDisplay(row, col) }}
+            </span>
+            <span *ngIf="col.type === 'date'">{{ getCellValue(row, col.key) | date:'short' }}</span>
+            <span *ngIf="col.type !== 'badge' && col.type !== 'date'">{{ getCellDisplay(row, col) }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="card-actions" *ngIf="actions.length > 0" (click)="$event.stopPropagation()">
+        <button
+          *ngFor="let action of actions"
+          type="button"
+          class="card-action-btn"
+          [ngClass]="action.class"
+          (click)="onActionClick(action, row, $event)"
+        >
+          {{ action.label }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="table-pagination" *ngIf="showPagination && totalPages > 1">
+    <div class="pagination-info">
+      <span>عرض {{ getStartIndex() }} - {{ getEndIndex() }} من {{ filteredData.length }}</span>
+    </div>
+    <div class="pagination-controls">
+      <button
+        type="button"
+        class="page-btn"
+        [disabled]="currentPage === 1"
+        (click)="goToPage(currentPage - 1)"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        السابق
+      </button>
+      <div class="page-numbers">
+        <button
+          *ngFor="let page of getPageNumbers()"
+          type="button"
+          class="page-number"
+          [class.active]="page === currentPage"
+          (click)="goToPage(page)"
+        >
+          {{ page }}
+        </button>
+      </div>
+      <button
+        type="button"
+        class="page-btn"
+        [disabled]="currentPage === totalPages"
+        (click)="goToPage(currentPage + 1)"
+      >
+        التالي
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>

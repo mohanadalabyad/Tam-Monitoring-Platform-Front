@@ -1,0 +1,33 @@
+<div
+  class="unified-card"
+  [class.clickable]="clickable"
+  (click)="onCardClick()"
+>
+  <div class="card-image" *ngIf="image">
+    <img [src]="image" [alt]="title">
+  </div>
+  
+  <div class="card-badge" *ngIf="badge" [ngClass]="'badge-' + (badgeColor || 'primary')">
+    {{ badge }}
+  </div>
+  
+  <div class="card-content">
+    <h3 class="card-title" *ngIf="title">{{ title }}</h3>
+    <p class="card-subtitle" *ngIf="subtitle">{{ subtitle }}</p>
+    <ng-content></ng-content>
+  </div>
+  
+  <div class="card-actions" *ngIf="actions.length > 0" (click)="$event.stopPropagation()">
+    <button
+      *ngFor="let action of actions"
+      type="button"
+      class="action-btn"
+      [ngClass]="action.class"
+      (click)="onActionClick(action, $event)"
+      [title]="action.label"
+    >
+      <svg *ngIf="action.icon" [innerHTML]="action.icon"></svg>
+      <span>{{ action.label }}</span>
+    </button>
+  </div>
+</div>

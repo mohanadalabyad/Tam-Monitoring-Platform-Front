@@ -1,0 +1,98 @@
+<div class="users-management-page">
+  <div class="page-header">
+    <div>
+      <h1>إدارة المستخدمين</h1>
+      <p>إدارة وعرض جميع المستخدمين</p>
+    </div>
+    <button class="btn-primary" (click)="openAddModal()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      إضافة مستخدم جديد
+    </button>
+  </div>
+
+  <app-unified-table
+    [columns]="columns"
+    [data]="users"
+    [loading]="loading"
+    [actions]="actions"
+    [pageSize]="10"
+    emptyMessage="لا يوجد مستخدمون"
+  ></app-unified-table>
+
+  <app-modal
+    [show]="showModal"
+    [title]="modalTitle"
+    size="md"
+    (close)="closeModal()"
+  >
+    <form [formGroup]="userForm" (ngSubmit)="saveUser()">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="name">الاسم الكامل *</label>
+          <input
+            type="text"
+            id="name"
+            formControlName="name"
+            [class.invalid]="isFieldInvalid('name')"
+          />
+          <div class="error-message" *ngIf="isFieldInvalid('name')">
+            الاسم مطلوب
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="email">البريد الإلكتروني *</label>
+          <input
+            type="email"
+            id="email"
+            formControlName="email"
+            [class.invalid]="isFieldInvalid('email')"
+          />
+          <div class="error-message" *ngIf="isFieldInvalid('email')">
+            بريد إلكتروني صحيح مطلوب
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="role">الدور *</label>
+          <select
+            id="role"
+            formControlName="role"
+            [class.invalid]="isFieldInvalid('role')"
+          >
+            <option value="viewer">مشاهد</option>
+            <option value="moderator">مشرف</option>
+            <option value="admin">مدير</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="status">الحالة *</label>
+          <select
+            id="status"
+            formControlName="status"
+            [class.invalid]="isFieldInvalid('status')"
+          >
+            <option value="active">نشط</option>
+            <option value="inactive">غير نشط</option>
+            <option value="suspended">معلق</option>
+          </select>
+        </div>
+      </div>
+
+      <div footer>
+        <button type="button" class="btn-secondary" (click)="closeModal()">
+          إلغاء
+        </button>
+        <button type="submit" class="btn-primary">
+          {{ editingUser ? 'حفظ التغييرات' : 'إضافة' }}
+        </button>
+      </div>
+    </form>
+  </app-modal>
+</div>

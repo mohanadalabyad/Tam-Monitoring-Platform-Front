@@ -1,0 +1,135 @@
+.toaster-container {
+  position: fixed;
+  top: var(--spacing-xl);
+  left: var(--spacing-xl);
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  max-width: 400px;
+  width: calc(100% - var(--spacing-2xl));
+  pointer-events: none;
+}
+
+.toast {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  padding: var(--spacing-lg);
+  border: 3px solid;
+  pointer-events: all;
+  animation: slideInRight 0.3s var(--transition-timing);
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.toast-success {
+  border-color: var(--success-color);
+  
+  .toast-icon {
+    color: var(--success-color);
+  }
+}
+
+.toast-warning {
+  border-color: var(--warning-color);
+  
+  .toast-icon {
+    color: var(--warning-color);
+  }
+}
+
+.toast-error {
+  border-color: var(--danger-color);
+  
+  .toast-icon {
+    color: var(--danger-color);
+  }
+}
+
+.toast-content {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-md);
+}
+
+.toast-icon {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  
+  svg {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.toast-message {
+  flex: 1;
+  min-width: 0;
+}
+
+.toast-title {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-base);
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-xs);
+}
+
+.toast-text {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.toast-close {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  padding: var(--spacing-xs);
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: color var(--transition-base) var(--transition-timing);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  
+  &:hover {
+    color: var(--text-primary);
+    background: var(--light-bg);
+  }
+  
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+/* Responsive */
+@media (max-width: 767px) {
+  .toaster-container {
+    left: var(--spacing-md);
+    right: var(--spacing-md);
+    width: auto;
+    max-width: none;
+  }
+  
+  .toast {
+    padding: var(--spacing-md);
+  }
+}

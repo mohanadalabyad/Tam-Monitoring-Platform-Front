@@ -1,0 +1,35 @@
+<div
+  *ngIf="show"
+  class="modal-backdrop"
+  [@backdropAnimation]
+  (click)="onBackdropClick($event)"
+>
+  <div
+    class="modal-container"
+    [ngClass]="'modal-' + size"
+    [@modalAnimation]
+    (click)="$event.stopPropagation()"
+  >
+    <div class="modal-header" *ngIf="title || showCloseButton">
+      <h3 class="modal-title" *ngIf="title">{{ title }}</h3>
+      <button
+        *ngIf="showCloseButton"
+        type="button"
+        class="modal-close"
+        (click)="onClose()"
+        aria-label="إغلاق"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <ng-content></ng-content>
+    </div>
+    <div class="modal-footer">
+      <ng-content select="[footer]"></ng-content>
+    </div>
+  </div>
+</div>
