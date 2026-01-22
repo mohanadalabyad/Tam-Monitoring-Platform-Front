@@ -32,21 +32,24 @@
         (click)="toggleUserMenu()"
       >
         <div class="user-avatar">
-          <span>{{ currentUser?.name?.charAt(0) || 'U' }}</span>
+          <span>{{ getUserInitials() }}</span>
         </div>
         <div class="user-info" *ngIf="currentUser">
-          <span class="user-name">{{ currentUser.name }}</span>
-          <span class="user-role">{{ getRoleLabel(currentUser.role) }}</span>
+          <span class="user-name">{{ currentUser.fullName }}</span>
+          <span class="user-role">{{ getRolesLabel(currentUser.roles || []) }}</span>
         </div>
         <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polyline points="6 9 12 15 18 9"/>
         </svg>
       </button>
       
-      <div class="user-dropdown" *ngIf="showUserMenu">
+      <div class="user-dropdown" *ngIf="showUserMenu && currentUser">
         <div class="dropdown-header">
-          <div class="dropdown-user-name">{{ currentUser?.name }}</div>
-          <div class="dropdown-user-email">{{ currentUser?.email }}</div>
+          <div class="dropdown-user-name">{{ currentUser.fullName }}</div>
+          <div class="dropdown-user-email">{{ currentUser.email }}</div>
+          <div class="dropdown-user-roles" *ngIf="currentUser && currentUser.roles && currentUser.roles.length > 0">
+            <span>الأدوار: {{ getRolesLabel(currentUser.roles || []) }}</span>
+          </div>
         </div>
         <div class="dropdown-divider"></div>
         <a routerLink="/dashboard/profile" class="dropdown-item" (click)="closeUserMenu()">
