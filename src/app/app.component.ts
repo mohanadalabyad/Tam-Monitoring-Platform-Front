@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { Router, NavigationEnd, Event } from '@angular/router';
 import { filter } from 'rxjs/operators';
+import { ConfirmationDialogService } from './services/confirmation-dialog.service';
+import { ConfirmationConfig } from './components/confirmation-dialog/confirmation-dialog.component';
 
 @Component({
   selector: 'app-root',
@@ -10,8 +12,12 @@ import { filter } from 'rxjs/operators';
 export class AppComponent implements OnInit {
   title = 'TAM Monitoring Platform';
   isDashboardRoute = false;
+  confirmationState: { show: boolean; config: ConfirmationConfig } | null = null;
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private confirmationService: ConfirmationDialogService
+  ) {}
 
   ngOnInit(): void {
     // Check initial route
@@ -23,5 +29,25 @@ export class AppComponent implements OnInit {
       .subscribe((event: NavigationEnd) => {
         this.isDashboardRoute = event.url.startsWith('/dashboard') || event.url.startsWith('/login');
       });
+
+    // Subscribe to confirmation dialog service
+    this.confirmationService.getConfirmation().subscribe(state => {
+      if (state) {
+        this.confirmationState = {
+          show: state.show,
+          config: state.config
+        };
+      } else {
+        this.confirmationState = null;
+      }
+    });
+  }
+
+  onConfirmationConfirmed(): void {
+    this.confirmationService.confirm();
+  }
+
+  onConfirmationCancelled(): void {
+    this.confirmationService.cancel();
   }
 }

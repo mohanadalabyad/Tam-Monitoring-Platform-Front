@@ -4,7 +4,7 @@
       <h1>إدارة الأسئلة</h1>
       <p>إدارة الأسئلة الديناميكية للنماذج</p>
     </div>
-    <button class="btn-primary" (click)="openAddModal()">
+    <button class="btn-primary" (click)="openAddModal()" *hasPermission="'Question.Create'">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <line x1="12" y1="5" x2="12" y2="19"/>
         <line x1="5" y1="12" x2="19" y2="12"/>
@@ -17,9 +17,9 @@
     <div class="filter-row">
       <div class="form-group">
         <label for="categoryFilter">تصفية حسب الفئة:</label>
-        <select id="categoryFilter" [(ngModel)]="selectedCategoryId" (ngModelChange)="onCategoryFilterChange()">
-          <option value="">جميع الفئات</option>
-          <option *ngFor="let category of categories" [value]="category.id">{{ category.nameAr }}</option>
+        <select id="categoryFilter" [ngModel]="selectedCategoryId" (ngModelChange)="selectedCategoryId = $event ? +$event : null; onCategoryFilterChange()">
+          <option [value]="null">جميع الفئات</option>
+          <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
         </select>
       </div>
     </div>
@@ -50,13 +50,21 @@
           </div>
         </div>
         <div class="question-actions">
-          <button class="btn-edit" (click)="editQuestion(question)">
+          <button 
+            *hasPermission="'Question.Update'"
+            class="btn-edit" 
+            (click)="editQuestion(question)"
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
             </svg>
             تعديل
           </button>
-          <button class="btn-delete" (click)="deleteQuestion(question)">
+          <button 
+            *hasPermission="'Question.Delete'"
+            class="btn-delete" 
+            (click)="deleteQuestion(question)"
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
             </svg>
@@ -99,7 +107,7 @@
           <select id="categoryId" formControlName="categoryId"
                   [class.invalid]="questionForm.get('categoryId')?.invalid && (questionForm.get('categoryId')?.dirty || questionForm.get('categoryId')?.touched)">
             <option value="">اختر الفئة</option>
-            <option *ngFor="let category of categories" [value]="category.id">{{ category.nameAr }}</option>
+            <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
           </select>
           <div class="error-message" *ngIf="questionForm.get('categoryId')?.invalid && (questionForm.get('categoryId')?.dirty || questionForm.get('categoryId')?.touched)">
             يرجى اختيار الفئة

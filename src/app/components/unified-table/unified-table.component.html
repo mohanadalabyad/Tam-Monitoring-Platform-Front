@@ -9,10 +9,7 @@
         placeholder="بحث..."
         class="search-input"
       />
-      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="11" cy="11" r="8"/>
-        <path d="M21 21l-4.35-4.35"/>
-      </svg>
+      <lucide-icon [img]="Search" [size]="20" class="search-icon"></lucide-icon>
     </div>
 
     <div class="column-filters" *ngIf="hasFilterableColumns()">
@@ -45,21 +42,20 @@
           >
             <div class="th-content">
               <span>{{ col.label }}</span>
-              <svg
-                *ngIf="col.sortable"
+              <lucide-icon
+                *ngIf="col.sortable && getSortIcon(col)"
                 class="sort-icon"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <path *ngIf="getSortIcon(col) === 'sort'" d="M3 6h18M3 12h18M3 18h18"/>
-                <path *ngIf="getSortIcon(col) === 'sort-up'" d="M3 6l9 9 9-9"/>
-                <path *ngIf="getSortIcon(col) === 'sort-down'" d="M3 18l9-9 9 9"/>
-              </svg>
+                [img]="getSortIcon(col)"
+                [size]="16"
+              ></lucide-icon>
+              <span *ngIf="col.sortable && !getSortIcon(col)" class="sort-placeholder"></span>
             </div>
           </th>
-          <th *ngIf="actions.length > 0" class="actions-header">الإجراءات</th>
+          <th *ngIf="actions.length > 0" class="actions-header">
+            <div class="th-content">
+              <span>الإجراءات</span>
+            </div>
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -90,25 +86,65 @@
           class="table-row"
           (click)="onRowClick(row)"
         >
-          <td *ngFor="let col of columns" [class]="'cell-' + (col.type || 'text')">
+          <td *ngFor="let col of columns" [class]="'cell-' + (col.type || 'text')" [class.has-code-chip]="col.key === 'name'" [class.has-group-chip]="col.key === 'type'">
             <span *ngIf="col.type === 'badge'" class="badge" [ngClass]="'badge-' + getCellValue(row, col.key)">
               {{ getCellDisplay(row, col) }}
             </span>
             <span *ngIf="col.type === 'date'">{{ getCellValue(row, col.key) | date:'short' }}</span>
-            <span *ngIf="col.type !== 'badge' && col.type !== 'date'">{{ getCellDisplay(row, col) }}</span>
+            <span *ngIf="col.type === 'chip'" class="chip">{{ getCellDisplay(row, col) }}</span>
+            <div *ngIf="col.type === 'icon' && getCellValue(row, col.key)" class="icon-cell">
+              <lucide-icon 
+                *ngIf="col.iconRenderer"
+                [img]="col.iconRenderer(getCellValue(row, col.key), row)" 
+                [size]="20"
+                [title]="col.label"
+              ></lucide-icon>
+            </div>
+            <button 
+              *ngIf="col.type === 'toggle' && col.toggleAction" 
+              type="button"
+              class="toggle-btn"
+              [class.active]="getCellValue(row, col.key)"
+              [class.toggling]="col.isToggling && col.isToggling(row)"
+              [disabled]="col.isToggling && col.isToggling(row)"
+              (click)="col.toggleAction(row, $event)"
+              [title]="getCellValue(row, col.key) ? 'إلغاء التفعيل' : 'تفعيل'"
+            >
+              <lucide-icon 
+                [img]="getCellValue(row, col.key) ? Power : PowerOff" 
+                [size]="18"
+              ></lucide-icon>
+            </button>
+            <span 
+              *ngIf="col.type === 'toggle' && !col.toggleAction"
+              class="toggle-readonly"
+              [class.active]="getCellValue(row, col.key)"
+            >
+              <lucide-icon 
+                [img]="getCellValue(row, col.key) ? Power : PowerOff" 
+                [size]="18"
+              ></lucide-icon>
+              <span>{{ getCellValue(row, col.key) ? 'نشط' : 'غير نشط' }}</span>
+            </span>
+            <span *ngIf="col.type !== 'badge' && col.type !== 'date' && col.type !== 'chip' && col.type !== 'toggle' && col.type !== 'icon'" [class.code-chip]="col.key === 'name'" [class.group-chip]="col.key === 'type'">
+              {{ getCellDisplay(row, col) }}
+            </span>
           </td>
           <td *ngIf="actions.length > 0" class="actions-cell" (click)="$event.stopPropagation()">
             <div class="action-buttons">
-              <button
-                *ngFor="let action of actions"
-                type="button"
-                class="action-btn"
-                [ngClass]="action.class"
-                (click)="onActionClick(action, row, $event)"
-                [title]="action.label"
-              >
-                <span>{{ action.label }}</span>
-              </button>
+              <ng-container *ngFor="let action of actions">
+                <button
+                  *ngIf="!action.condition || action.condition(row)"
+                  type="button"
+                  class="action-btn"
+                  [ngClass]="[action.class, 'btn-' + (action.variant || 'default')]"
+                  (click)="onActionClick(action, row, $event)"
+                  [title]="action.label"
+                >
+                  <lucide-icon [img]="getDefaultIcon(action)" [size]="18"></lucide-icon>
+                  <span *ngIf="action.showLabel !== false">{{ action.label }}</span>
+                </button>
+              </ng-container>
             </div>
           </td>
         </tr>
@@ -172,7 +208,7 @@
   <!-- Pagination -->
   <div class="table-pagination" *ngIf="showPagination && totalPages > 1">
     <div class="pagination-info">
-      <span>عرض {{ getStartIndex() }} - {{ getEndIndex() }} من {{ filteredData.length }}</span>
+      <span>عرض {{ getStartIndex() }} - {{ getEndIndex() }} من {{ getTotalCount() }}</span>
     </div>
     <div class="pagination-controls">
       <button
@@ -181,9 +217,7 @@
         [disabled]="currentPage === 1"
         (click)="goToPage(currentPage - 1)"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="15 18 9 12 15 6"/>
-        </svg>
+        <lucide-icon [img]="ChevronRight" [size]="18"></lucide-icon>
         السابق
       </button>
       <div class="page-numbers">
@@ -204,9 +238,7 @@
         (click)="goToPage(currentPage + 1)"
       >
         التالي
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="9 18 15 12 9 6"/>
-        </svg>
+        <lucide-icon [img]="ChevronLeft" [size]="18"></lucide-icon>
       </button>
     </div>
   </div>

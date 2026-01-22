@@ -1,98 +1,139 @@
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
-import { Category } from '../models/category.model';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
+import { ApiResponse } from '../models/api-response.model';
+import { PaginationResponse } from '../models/pagination.model';
+import { CategoryDto, AddCategoryDto, UpdateCategoryDto, CategoryFilter } from '../models/category.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class CategoryService {
-  private categories: Category[] = [
-    {
-      id: '1',
-      nameAr: 'التعليم',
-      description: 'انتهاكات متعلقة بالتعليم',
-      icon: 'book',
-      order: 1,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: '2',
-      nameAr: 'المشاركة السياسية',
-      description: 'انتهاكات متعلقة بالمشاركة السياسية',
-      icon: 'users',
-      order: 2,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: '3',
-      nameAr: 'القضايا البيئية',
-      description: 'انتهاكات بيئية',
-      icon: 'leaf',
-      order: 3,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: '4',
-      nameAr: 'الشباب',
-      description: 'قضايا الشباب',
-      icon: 'user',
-      order: 4,
-      createdAt: new Date(),
-      updatedAt: new Date()
+  private apiUrl = `${environment.apiUrl}/category`;
+
+  constructor(private http: HttpClient) {}
+
+  /**
+   * Get all categories with optional pagination
+   * For main management pages: pass isActive as undefined to get ALL categories
+   * For assignment contexts: pass isActive: true to get only active categories
+   */
+  getAllCategories(
+    isActive?: boolean,
+    pageNumber?: number,
+    pageSize?: number
+  ): Observable<ApiResponse<PaginationResponse<CategoryDto> | CategoryDto[]>> {
+    let params = new HttpParams();
+    if (isActive !== undefined) {
+      params = params.set('isActive', isActive.toString());
     }
-  ];
-
-  constructor() { }
-
-  getCategories(): Observable<Category[]> {
-    return of([...this.categories].sort((a, b) => a.order - b.order));
-  }
-
-  getCategoryById(id: string): Observable<Category | undefined> {
-    return of(this.categories.find(cat => cat.id === id));
-  }
-
-  createCategory(category: Omit<Category, 'id' | 'createdAt' | 'updatedAt'>): Observable<Category> {
-    const newCategory: Category = {
-      ...category,
-      id: (this.categories.length + 1).toString(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    this.categories.push(newCategory);
-    return of(newCategory);
-  }
-
-  updateCategory(id: string, category: Partial<Category>): Observable<Category | undefined> {
-    const index = this.categories.findIndex(cat => cat.id === id);
-    if (index > -1) {
-      this.categories[index] = {
-        ...this.categories[index],
-        ...category,
-        updatedAt: new Date()
-      };
-      return of(this.categories[index]);
+    if (pageNumber !== undefined) {
+      params = params.set('pageNumber', pageNumber.toString());
     }
-    return of(undefined);
+    if (pageSize !== undefined) {
+      params = params.set('pageSize', pageSize.toString());
+    }
+
+    return this.http.get<ApiResponse<PaginationResponse<CategoryDto> | CategoryDto[]>>(
+      this.apiUrl,
+      { params }
+    );
   }
 
-  deleteCategory(id: string): Observable<boolean> {
-    const initialLength = this.categories.length;
-    this.categories = this.categories.filter(cat => cat.id !== id);
-    return of(this.categories.length < initialLength);
+  /**
+   * Get all categories with filter
+   */
+  getAllCategoriesWithFilter(
+    filter: CategoryFilter,
+    pageNumber?: number,
+    pageSize?: number,
+    isActive?: boolean
+  ): Observable<ApiResponse<PaginationResponse<CategoryDto> | CategoryDto[]>> {
+    let params = new HttpParams();
+    if (pageNumber !== undefined) params = params.set('pageNumber', pageNumber.toString());
+    if (pageSize !== undefined) params = params.set('pageSize', pageSize.toString());
+    if (isActive !== undefined) params = params.set('isActive', isActive.toString());
+
+    return this.http.post<ApiResponse<PaginationResponse<CategoryDto> | CategoryDto[]>>(
+      `${this.apiUrl}/filter`,
+      filter,
+      { params }
+    );
   }
 
-  reorderCategories(categoryIds: string[]): Observable<boolean> {
-    categoryIds.forEach((id, index) => {
-      const category = this.categories.find(cat => cat.id === id);
-      if (category) {
-        category.order = index + 1;
-        category.updatedAt = new Date();
-      }
-    });
-    return of(true);
+  /**
+   * Get category by ID
+   */
+  getCategoryById(id: number): Observable<CategoryDto> {
+    return this.http.get<ApiResponse<CategoryDto>>(`${this.apiUrl}/${id}`)
+      .pipe(
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          return response.data;
+        })
+      );
+  }
+
+  /**
+   * Create a new category
+   */
+  createCategory(categoryData: AddCategoryDto): Observable<CategoryDto> {
+    return this.http.post<ApiResponse<CategoryDto>>(this.apiUrl, categoryData)
+      .pipe(
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          return response.data;
+        })
+      );
+  }
+
+  /**
+   * Update category
+   */
+  updateCategory(categoryData: UpdateCategoryDto): Observable<CategoryDto> {
+    return this.http.put<ApiResponse<CategoryDto>>(this.apiUrl, categoryData)
+      .pipe(
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          return response.data;
+        })
+      );
+  }
+
+  /**
+   * Delete a category
+   */
+  deleteCategory(id: number): Observable<void> {
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${id}`)
+      .pipe(
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+        })
+      );
+  }
+
+  /**
+   * Toggle category activity
+   */
+  toggleCategoryActivity(id: number): Observable<CategoryDto> {
+    return this.http.post<ApiResponse<CategoryDto>>(`${this.apiUrl}/${id}/toggle-activity`, {})
+      .pipe(
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          return response.data;
+        })
+      );
   }
 }

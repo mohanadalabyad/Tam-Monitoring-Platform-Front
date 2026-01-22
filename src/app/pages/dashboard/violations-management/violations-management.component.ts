@@ -4,6 +4,7 @@ import { ViolationService } from '../../../services/violation.service';
 import { ToasterService } from '../../../services/toaster.service';
 import { Violation } from '../../../models/violation.model';
 import { TableColumn, TableAction } from '../../../components/unified-table/unified-table.component';
+import { PermissionCheckService } from '../../../services/permission-check.service';
 
 @Component({
   selector: 'app-violations-management',
@@ -27,31 +28,46 @@ export class ViolationsManagementComponent implements OnInit {
     { key: 'reportedDate', label: 'تاريخ الإبلاغ', sortable: true, type: 'date' }
   ];
 
-  actions: TableAction[] = [
-    {
-      label: 'تعديل',
-      action: (row) => this.editViolation(row),
-      class: 'btn-edit'
-    },
-    {
-      label: 'حذف',
-      action: (row) => this.deleteViolation(row),
-      class: 'btn-delete'
-    }
-  ];
+  actions: TableAction[] = [];
 
   categories: string[] = [];
 
   constructor(
     private violationService: ViolationService,
     private toasterService: ToasterService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    public permissionService: PermissionCheckService
   ) {}
 
   ngOnInit(): void {
     this.categories = this.violationService.getCategories();
     this.initForm();
     this.loadViolations();
+    this.setupActions();
+  }
+
+  setupActions(): void {
+    this.actions = [];
+    
+    if (this.permissionService.hasPermission('Violation', 'Update') || this.permissionService.isSuperAdmin()) {
+      this.actions.push({
+        label: 'تعديل',
+        action: (row) => this.editViolation(row),
+        class: 'btn-edit',
+        variant: 'warning',
+        showLabel: false
+      });
+    }
+    
+    if (this.permissionService.hasPermission('Violation', 'Delete') || this.permissionService.isSuperAdmin()) {
+      this.actions.push({
+        label: 'حذف',
+        action: (row) => this.deleteViolation(row),
+        class: 'btn-delete',
+        variant: 'danger',
+        showLabel: false
+      });
+    }
   }
 
   initForm(): void {

@@ -2,109 +2,186 @@
   <div class="page-header">
     <div>
       <h1>إدارة الفئات الفرعية</h1>
-      <p>إدارة الفئات الفرعية للانتهاكات</p>
+      <p>إدارة وعرض جميع الفئات الفرعية</p>
     </div>
-    <button class="btn-primary" (click)="openAddModal()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="12" y1="5" x2="12" y2="19"/>
-        <line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
-      إضافة فئة فرعية جديدة
-    </button>
-  </div>
-
-  <div class="filter-section">
-    <div class="form-group">
-      <label for="categoryFilter">تصفية حسب الفئة:</label>
-      <select id="categoryFilter" [(ngModel)]="selectedCategoryId" (ngModelChange)="onCategoryFilterChange()">
-        <option value="">جميع الفئات</option>
-        <option *ngFor="let category of categories" [value]="category.id">{{ category.nameAr }}</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="subcategories-grid" *ngIf="!loading">
-    <div class="subcategory-card" *ngFor="let subCategory of filteredSubCategories">
-      <div class="subcategory-header">
-        <div class="subcategory-info">
-          <h3>{{ subCategory.nameAr }}</h3>
-          <span class="parent-category">{{ getCategoryName(subCategory.categoryId) }}</span>
-        </div>
-        <div class="subcategory-order">#{{ subCategory.order }}</div>
-      </div>
-      <p class="subcategory-description" *ngIf="subCategory.description">{{ subCategory.description }}</p>
-      <div class="subcategory-actions">
-        <button class="btn-edit" (click)="editSubCategory(subCategory)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
-          </svg>
-          تعديل
-        </button>
-        <button class="btn-delete" (click)="deleteSubCategory(subCategory)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-          </svg>
-          حذف
-        </button>
-      </div>
-    </div>
-    <div class="empty-state" *ngIf="filteredSubCategories.length === 0">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="8" x2="12" y2="12"/>
-        <line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      <p>لا توجد فئات فرعية. ابدأ بإضافة فئة فرعية جديدة.</p>
-    </div>
-  </div>
-
-  <div class="loading-state" *ngIf="loading">
-    <div class="spinner"></div>
-    <p>جاري التحميل...</p>
-  </div>
-
-  <app-modal [show]="isModalOpen" [title]="editMode ? 'تعديل فئة فرعية' : 'إضافة فئة فرعية جديدة'" (close)="closeModal()">
-      <form [formGroup]="subCategoryForm" class="subcategory-form">
-        <div class="form-group">
-          <label for="categoryId">الفئة الرئيسية *</label>
-          <select id="categoryId" formControlName="categoryId"
-                  [class.invalid]="subCategoryForm.get('categoryId')?.invalid && (subCategoryForm.get('categoryId')?.dirty || subCategoryForm.get('categoryId')?.touched)">
-            <option value="">اختر الفئة</option>
-            <option *ngFor="let category of categories" [value]="category.id">{{ category.nameAr }}</option>
-          </select>
-          <div class="error-message" *ngIf="subCategoryForm.get('categoryId')?.invalid && (subCategoryForm.get('categoryId')?.dirty || subCategoryForm.get('categoryId')?.touched)">
-            يرجى اختيار الفئة الرئيسية
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="nameAr">الاسم *</label>
-          <input type="text" id="nameAr" formControlName="nameAr" placeholder="اسم الفئة الفرعية"
-                 [class.invalid]="subCategoryForm.get('nameAr')?.invalid && (subCategoryForm.get('nameAr')?.dirty || subCategoryForm.get('nameAr')?.touched)"/>
-          <div class="error-message" *ngIf="subCategoryForm.get('nameAr')?.invalid && (subCategoryForm.get('nameAr')?.dirty || subCategoryForm.get('nameAr')?.touched)">
-            الاسم مطلوب
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="description">الوصف</label>
-          <textarea id="description" formControlName="description" placeholder="وصف الفئة الفرعية" rows="3"></textarea>
-        </div>
-
-        <div class="form-group">
-          <label for="order">الترتيب *</label>
-          <input type="number" id="order" formControlName="order" min="1"
-                 [class.invalid]="subCategoryForm.get('order')?.invalid && (subCategoryForm.get('order')?.dirty || subCategoryForm.get('order')?.touched)"/>
-          <div class="error-message" *ngIf="subCategoryForm.get('order')?.invalid && (subCategoryForm.get('order')?.dirty || subCategoryForm.get('order')?.touched)">
-            الترتيب مطلوب ويجب أن يكون أكبر من 0
-          </div>
-        </div>
-      </form>
-    <div footer>
-      <button type="button" class="btn-secondary" (click)="closeModal()">إلغاء</button>
-      <button type="button" class="btn-primary" (click)="onModalSubmit()">
-        {{ editMode ? 'تحديث' : 'إضافة' }}
+    <div class="header-actions">
+      <app-view-toggle
+        [storageKey]="'subcategories-view-mode'"
+        [defaultView]="'table'"
+        (viewChange)="onViewChange($event)"
+      ></app-view-toggle>
+      <button class="btn-primary" (click)="openAddModal()" *hasPermission="'SubCategory.Create'">
+        <lucide-icon [img]="FolderTree" [size]="18"></lucide-icon>
+        إضافة فئة فرعية جديدة
       </button>
     </div>
+  </div>
+
+  <!-- Toolbar with Results Counter -->
+  <div class="toolbar" *ngIf="!loading">
+    <div class="toolbar-left">
+      <div class="results-info">
+        <span class="results-count">
+          <strong>{{ subCategories.length }}</strong> فئة فرعية
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table View -->
+  <div *ngIf="viewMode === 'table'">
+    <app-unified-table
+      [columns]="columns"
+      [data]="subCategories"
+      [loading]="loading"
+      [actions]="actions"
+      [pageSize]="10"
+      emptyMessage="لا توجد فئات فرعية"
+      (rowClick)="editSubCategory($event)"
+    ></app-unified-table>
+  </div>
+
+  <!-- Cards View -->
+  <div *ngIf="viewMode === 'cards'" class="subcategories-cards-view">
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>جاري تحميل الفئات الفرعية...</p>
+    </div>
+    <div *ngIf="!loading && subCategories.length === 0" class="empty-state">
+      <p>لا توجد فئات فرعية</p>
+    </div>
+    <div *ngIf="!loading && subCategories.length > 0" class="subcategories-grid">
+      <div *ngFor="let subCategory of subCategories" class="subcategory-card">
+        <div class="card-header">
+          <div class="card-title-section">
+            <h3 class="card-title">{{ subCategory.name }}</h3>
+            <span class="card-badge" *ngIf="subCategory.categoryName">
+              {{ subCategory.categoryName }}
+            </span>
+          </div>
+          <div class="card-actions-header" (click)="$event.stopPropagation()">
+            <button
+              *ngIf="permissionService.hasPermission('SubCategory.Update') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-edit"
+              (click)="editSubCategory(subCategory); $event.stopPropagation()"
+              title="تعديل"
+            >
+              <lucide-icon [img]="Pencil" [size]="16"></lucide-icon>
+            </button>
+            <button
+              *ngIf="permissionService.hasPermission('SubCategory.Delete') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-delete"
+              (click)="deleteSubCategory(subCategory); $event.stopPropagation()"
+              title="حذف"
+            >
+              <lucide-icon [img]="Trash2" [size]="16"></lucide-icon>
+            </button>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="card-field">
+            <span class="field-label">الفئة الرئيسية:</span>
+            <span class="field-value">{{ subCategory.categoryName || getCategoryName(subCategory.categoryId) }}</span>
+          </div>
+          <div class="card-field">
+            <span class="field-label">الوصف:</span>
+            <span class="field-value">{{ subCategory.description || 'لا يوجد وصف' }}</span>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="status-toggle">
+            <span class="status-label">الحالة:</span>
+            <button
+              *ngIf="permissionService.hasPermission('SubCategory.ToggleActivity') || permissionService.isSuperAdmin()"
+              type="button"
+              class="toggle-btn-card"
+              [class.active]="subCategory.isActive"
+              [class.toggling]="isToggling(subCategory.id)"
+              [disabled]="isToggling(subCategory.id)"
+              (click)="toggleSubCategoryActivity(subCategory, $event)"
+              [title]="subCategory.isActive ? 'إلغاء التفعيل' : 'تفعيل'"
+            >
+              <lucide-icon 
+                [img]="subCategory.isActive ? Power : PowerOff" 
+                [size]="16"
+              ></lucide-icon>
+              <span>{{ subCategory.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </button>
+            <span
+              *ngIf="!(permissionService.hasPermission('SubCategory.ToggleActivity') || permissionService.isSuperAdmin())"
+              class="status-readonly"
+              [class.active]="subCategory.isActive"
+            >
+              <lucide-icon 
+                [img]="subCategory.isActive ? Power : PowerOff" 
+                [size]="16"
+              ></lucide-icon>
+              <span>{{ subCategory.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-modal
+    [show]="showModal"
+    [title]="modalTitle"
+    size="md"
+    (close)="closeModal()"
+  >
+    <form [formGroup]="subCategoryForm" (ngSubmit)="saveSubCategory()">
+      <div class="form-group">
+        <label for="categoryId">الفئة الرئيسية *</label>
+        <select
+          id="categoryId"
+          formControlName="categoryId"
+          [class.invalid]="isFieldInvalid('categoryId')"
+        >
+          <option value="">اختر الفئة</option>
+          <option *ngFor="let category of categories" [value]="category.id">
+            {{ category.name }}
+          </option>
+        </select>
+        <div class="error-message" *ngIf="isFieldInvalid('categoryId')">
+          الفئة الرئيسية مطلوبة
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="name">اسم الفئة الفرعية *</label>
+        <input
+          type="text"
+          id="name"
+          formControlName="name"
+          [class.invalid]="isFieldInvalid('name')"
+          placeholder="أدخل اسم الفئة الفرعية"
+        />
+        <div class="error-message" *ngIf="isFieldInvalid('name')">
+          اسم الفئة الفرعية مطلوب
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="description">الوصف</label>
+        <textarea
+          id="description"
+          formControlName="description"
+          placeholder="أدخل وصف الفئة الفرعية (اختياري)"
+          rows="3"
+        ></textarea>
+      </div>
+
+      <div footer>
+        <button type="button" class="btn-secondary" (click)="closeModal()">
+          إلغاء
+        </button>
+        <button type="submit" class="btn-primary">
+          {{ editingSubCategory ? 'حفظ التغييرات' : 'إضافة' }}
+        </button>
+      </div>
+    </form>
   </app-modal>
 </div>

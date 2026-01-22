@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ViolationService } from '../../../services/violation.service';
 import { UserService } from '../../../services/user.service';
 import { Violation } from '../../../models/violation.model';
+import { UserDto } from '../../../models/user-management.model';
 
 @Component({
   selector: 'app-statistics',
@@ -42,14 +43,26 @@ export class StatisticsComponent implements OnInit {
     });
 
     // Load users
-    this.userService.getUsers().subscribe({
-      next: (users) => {
-        this.totalUsers = users.length;
+    this.userService.getAllUsers().subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          // Handle both array and paginated response
+          if (Array.isArray(response.data)) {
+            this.totalUsers = response.data.length;
+          } else if (response.data && 'items' in response.data) {
+            this.totalUsers = response.data.items?.length || 0;
+          } else {
+            this.totalUsers = 0;
+          }
+        } else {
+          this.totalUsers = 0;
+        }
         this.loading = false;
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Error loading users:', error);
         this.loading = false;
+        this.totalUsers = 0;
       }
     });
   }

@@ -36,7 +36,7 @@ export class LoginComponent implements OnInit {
 
   initForm(): void {
     this.loginForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
+      userName: ['', [Validators.required]],
       password: ['', [Validators.required, Validators.minLength(6)]]
     });
   }
@@ -46,9 +46,14 @@ export class LoginComponent implements OnInit {
       this.loading = true;
       this.errorMessage = '';
 
-      const credentials = this.loginForm.value;
+      const credentials = {
+        userName: this.loginForm.value.userName,
+        password: this.loginForm.value.password
+      };
+      
       this.authService.login(credentials).subscribe({
         next: () => {
+          this.loading = false;
           this.router.navigate([this.returnUrl]);
         },
         error: (error) => {
@@ -73,9 +78,6 @@ export class LoginComponent implements OnInit {
     const field = this.loginForm.get(fieldName);
     if (field?.hasError('required')) {
       return 'هذا الحقل مطلوب';
-    }
-    if (field?.hasError('email')) {
-      return 'البريد الإلكتروني غير صحيح';
     }
     if (field?.hasError('minlength')) {
       return 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';

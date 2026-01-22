@@ -1,24 +1,35 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { LucideAngularModule, Pencil, Trash2, MoreVertical, UserPlus, ChevronUp, ChevronDown, Search, ChevronLeft, ChevronRight, Power, PowerOff } from 'lucide-angular';
+import { PaginationResponse } from '../../models/pagination.model';
 
 export interface TableColumn {
   key: string;
   label: string;
   sortable?: boolean;
   filterable?: boolean;
-  type?: 'text' | 'number' | 'date' | 'badge' | 'actions';
+  type?: 'text' | 'number' | 'date' | 'badge' | 'actions' | 'toggle' | 'chip' | 'icon';
   width?: string;
   render?: (value: any, row: any) => string;
+  toggleAction?: (row: any, event: Event) => void; // Custom toggle action
+  isToggling?: (row: any) => boolean; // Check if toggling
+  iconRenderer?: (value: any, row: any) => any; // Custom icon renderer
 }
 
 export interface TableAction {
   label: string;
-  icon?: string;
+  icon?: any; // Lucide icon component
   action: (row: any) => void;
   class?: string;
+  variant?: 'primary' | 'danger' | 'warning' | 'info' | 'success';
+  showLabel?: boolean; // Whether to show label or just icon
+  condition?: (row: any) => boolean; // Condition to show/hide action
 }
 
 @Component({
   selector: 'app-unified-table',
+  standalone: true,
+  imports: [CommonModule, LucideAngularModule],
   templateUrl: './unified-table.component.html',
   styleUrls: ['./unified-table.component.scss']
 })
@@ -31,9 +42,17 @@ export class UnifiedTableComponent implements OnInit, OnChanges {
   @Input() showPagination: boolean = true;
   @Input() showSearch: boolean = true;
   @Input() emptyMessage: string = 'لا توجد بيانات';
+  
+  // Server-side pagination inputs
+  @Input() serverSidePagination: boolean = false;
+  @Input() totalCount: number = 0;
+  @Input() currentPageNumber: number = 1;
+  @Input() totalPagesCount: number = 1;
 
   @Output() rowClick = new EventEmitter<any>();
   @Output() pageChange = new EventEmitter<number>();
+  @Output() sortChange = new EventEmitter<{ column: string; direction: 'asc' | 'desc' }>();
+  @Output() searchChange = new EventEmitter<string>();
 
   filteredData: any[] = [];
   sortedData: any[] = [];
@@ -45,21 +64,56 @@ export class UnifiedTableComponent implements OnInit, OnChanges {
   sortColumn: string = '';
   sortDirection: 'asc' | 'desc' = 'asc';
   columnFilters: { [key: string]: string } = {};
+  
+  // Lucide icons
+  Pencil = Pencil;
+  Trash2 = Trash2;
+  MoreVertical = MoreVertical;
+  UserPlus = UserPlus;
+  ChevronUp = ChevronUp;
+  ChevronDown = ChevronDown;
+  Search = Search;
+  ChevronLeft = ChevronLeft;
+  ChevronRight = ChevronRight;
+  Power = Power;
+  PowerOff = PowerOff;
 
   ngOnInit(): void {
-    this.applyFilters();
+    if (this.serverSidePagination) {
+      this.currentPage = this.currentPageNumber;
+      this.totalPages = this.totalPagesCount;
+      this.paginatedData = [...this.data];
+    } else {
+      this.applyFilters();
+    }
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['data'] || changes['pageSize']) {
-      this.applyFilters();
+    if (this.serverSidePagination) {
+      if (changes['data']) {
+        this.paginatedData = [...this.data];
+      }
+      if (changes['currentPageNumber']) {
+        this.currentPage = this.currentPageNumber;
+      }
+      if (changes['totalPagesCount']) {
+        this.totalPages = this.totalPagesCount;
+      }
+    } else {
+      if (changes['data'] || changes['pageSize']) {
+        this.applyFilters();
+      }
     }
   }
 
   onSearch(term: string): void {
     this.searchTerm = term;
     this.currentPage = 1;
-    this.applyFilters();
+    if (this.serverSidePagination) {
+      this.searchChange.emit(term);
+    } else {
+      this.applyFilters();
+    }
   }
 
   onSort(column: TableColumn): void {
@@ -72,7 +126,11 @@ export class UnifiedTableComponent implements OnInit, OnChanges {
       this.sortDirection = 'asc';
     }
 
-    this.applyFilters();
+    if (this.serverSidePagination) {
+      this.sortChange.emit({ column: this.sortColumn, direction: this.sortDirection });
+    } else {
+      this.applyFilters();
+    }
   }
 
   onFilterChange(columnKey: string, value: string): void {
@@ -139,7 +197,9 @@ export class UnifiedTableComponent implements OnInit, OnChanges {
   goToPage(page: number): void {
     if (page >= 1 && page <= this.totalPages) {
       this.currentPage = page;
-      this.updatePagination();
+      if (!this.serverSidePagination) {
+        this.updatePagination();
+      }
       this.pageChange.emit(page);
     }
   }
@@ -165,11 +225,11 @@ export class UnifiedTableComponent implements OnInit, OnChanges {
     action.action(row);
   }
 
-  getSortIcon(column: TableColumn): string {
+  getSortIcon(column: TableColumn): any {
     if (this.sortColumn !== column.key) {
-      return 'sort';
+      return null; // No icon when not sorted
     }
-    return this.sortDirection === 'asc' ? 'sort-up' : 'sort-down';
+    return this.sortDirection === 'asc' ? ChevronUp : ChevronDown;
   }
 
   getPageNumbers(): number[] {
@@ -197,10 +257,34 @@ export class UnifiedTableComponent implements OnInit, OnChanges {
   }
 
   getStartIndex(): number {
+    if (this.serverSidePagination) {
+      return (this.currentPage - 1) * this.pageSize + 1;
+    }
     return (this.currentPage - 1) * this.pageSize + 1;
   }
 
   getEndIndex(): number {
+    if (this.serverSidePagination) {
+      return Math.min(this.currentPage * this.pageSize, this.totalCount);
+    }
     return Math.min(this.currentPage * this.pageSize, this.filteredData.length);
+  }
+  
+  getTotalCount(): number {
+    return this.serverSidePagination ? this.totalCount : this.filteredData.length;
+  }
+  
+  getDefaultIcon(action: TableAction): any {
+    if (action.icon) {
+      return action.icon;
+    }
+    // Default icons based on action class
+    if (action.class?.includes('edit') || action.class?.includes('btn-edit')) {
+      return Pencil;
+    }
+    if (action.class?.includes('delete') || action.class?.includes('btn-delete')) {
+      return Trash2;
+    }
+    return MoreVertical;
   }
 }

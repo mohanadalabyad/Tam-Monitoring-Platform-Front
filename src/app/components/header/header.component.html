@@ -19,7 +19,7 @@
         <li *ngIf="isAuthenticated" class="dashboard-btn-nav">
           <button class="btn-dashboard-header" (click)="goToDashboard()">
             لوحة التحكم
-            <span class="user-badge" *ngIf="currentUser">{{ currentUser.name }}</span>
+            <span class="user-badge" *ngIf="currentUser">{{ currentUser.fullName }}</span>
           </button>
         </li>
       </ul>

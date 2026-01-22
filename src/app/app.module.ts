@@ -2,9 +2,11 @@ import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { HttpClientModule } from '@angular/common/http';
+import { CommonModule } from '@angular/common';
+import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 
 import { AppRoutingModule } from './app-routing.module';
+import { RouterModule } from '@angular/router';
 import { AppComponent } from './app.component';
 import { HeaderComponent } from './components/header/header.component';
 import { FooterComponent } from './components/footer/footer.component';
@@ -27,6 +29,8 @@ import { CardsViewComponent } from './pages/dashboard/cards-view/cards-view.comp
 import { CategoriesManagementComponent } from './pages/dashboard/categories-management/categories-management.component';
 import { SubCategoriesManagementComponent } from './pages/dashboard/subcategories-management/subcategories-management.component';
 import { QuestionsManagementComponent } from './pages/dashboard/questions-management/questions-management.component';
+import { RolesManagementComponent } from './pages/dashboard/roles-management/roles-management.component';
+import { PermissionsManagementComponent } from './pages/dashboard/permissions-management/permissions-management.component';
 
 // Shared components
 import { UnifiedTableComponent } from './components/unified-table/unified-table.component';
@@ -35,6 +39,17 @@ import { ModalComponent } from './components/modal/modal.component';
 import { ToasterComponent } from './components/toaster/toaster.component';
 import { DynamicFormComponent } from './components/dynamic-form/dynamic-form.component';
 import { DynamicQuestionComponent } from './components/dynamic-form/dynamic-question.component';
+import { ViewToggleComponent } from './components/view-toggle/view-toggle.component';
+import { ConfirmationDialogComponent } from './components/confirmation-dialog/confirmation-dialog.component';
+import { RoleAssignmentModalComponent } from './pages/dashboard/users-management/role-assignment-modal/role-assignment-modal.component';
+import { LucideAngularModule } from 'lucide-angular';
+
+// Interceptors
+import { AuthInterceptor } from './interceptors/auth.interceptor';
+import { ErrorInterceptor } from './interceptors/error.interceptor';
+
+// Directives
+import { HasPermissionDirective } from './directives/has-permission.directive';
 
 @NgModule({
   declarations: [
@@ -56,22 +71,44 @@ import { DynamicQuestionComponent } from './components/dynamic-form/dynamic-ques
     CategoriesManagementComponent,
     SubCategoriesManagementComponent,
     QuestionsManagementComponent,
-    UnifiedTableComponent,
+    RolesManagementComponent,
+    PermissionsManagementComponent,
     UnifiedCardComponent,
     ModalComponent,
     ToasterComponent,
     DynamicFormComponent,
-    DynamicQuestionComponent
+    DynamicQuestionComponent,
+    HasPermissionDirective
   ],
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
     AppRoutingModule,
+    RouterModule,
     FormsModule,
     ReactiveFormsModule,
-    HttpClientModule
+    HttpClientModule,
+    CommonModule,
+    // Standalone components
+    UnifiedTableComponent,
+    ViewToggleComponent,
+    ConfirmationDialogComponent,
+    RoleAssignmentModalComponent,
+    // Lucide icons
+    LucideAngularModule
   ],
-  providers: [],
+  providers: [
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: AuthInterceptor,
+      multi: true
+    },
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: ErrorInterceptor,
+      multi: true
+    }
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule { }

@@ -1,4 +1,6 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://api.tam.ps'
+  apiUrl: 'https://tam-api.wave-pal.net/api',
+  tokenKey: 'tam_auth_token',
+  userKey: 'tam_auth_user'
 };

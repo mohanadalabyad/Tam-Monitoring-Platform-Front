@@ -4,23 +4,135 @@
       <h1>إدارة المستخدمين</h1>
       <p>إدارة وعرض جميع المستخدمين</p>
     </div>
-    <button class="btn-primary" (click)="openAddModal()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="12" y1="5" x2="12" y2="19"/>
-        <line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
-      إضافة مستخدم جديد
-    </button>
+    <div class="header-actions">
+      <app-view-toggle
+        [storageKey]="'users-view-mode'"
+        [defaultView]="'table'"
+        (viewChange)="onViewChange($event)"
+      ></app-view-toggle>
+      <button class="btn-primary" (click)="openAddModal()" *hasPermission="'User.Create'">
+        <lucide-icon [img]="UserPlus" [size]="18"></lucide-icon>
+        إضافة مستخدم جديد
+      </button>
+    </div>
   </div>
 
-  <app-unified-table
-    [columns]="columns"
-    [data]="users"
-    [loading]="loading"
-    [actions]="actions"
-    [pageSize]="10"
-    emptyMessage="لا يوجد مستخدمون"
-  ></app-unified-table>
+  <!-- Table View -->
+  <div *ngIf="viewMode === 'table'">
+    <app-unified-table
+      [columns]="columns"
+      [data]="users"
+      [loading]="loading"
+      [actions]="actions"
+      [pageSize]="10"
+      emptyMessage="لا يوجد مستخدمون"
+      (rowClick)="editUser($event)"
+    ></app-unified-table>
+  </div>
+
+  <!-- Cards View -->
+  <div *ngIf="viewMode === 'cards'" class="users-cards-view">
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>جاري تحميل المستخدمين...</p>
+    </div>
+    <div *ngIf="!loading && users.length === 0" class="empty-state">
+      <p>لا يوجد مستخدمون</p>
+    </div>
+    <div *ngIf="!loading && users.length > 0" class="users-grid">
+      <div *ngFor="let user of users" class="user-card">
+        <div class="card-header">
+          <div class="card-title-section">
+            <h3 class="card-title">{{ user.fullName }}</h3>
+            <span class="card-badge" *ngIf="user.isSuperAdmin" [class.badge-primary]="user.isSuperAdmin">
+              مدير عام
+            </span>
+          </div>
+          <div class="card-actions-header">
+            <button
+              *ngIf="permissionService.hasPermission('User.Update') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-edit"
+              (click)="editUser(user); $event.stopPropagation()"
+              title="تعديل"
+            >
+              <lucide-icon [img]="Pencil" [size]="16"></lucide-icon>
+            </button>
+            <button
+              *ngIf="(permissionService.hasPermission('User.AssignRole') || permissionService.isSuperAdmin()) && !user.isSuperAdmin"
+              type="button"
+              class="card-action-icon btn-assign"
+              (click)="openRoleAssignmentModal(user); $event.stopPropagation()"
+              title="تعيين الأدوار"
+            >
+              <lucide-icon [img]="UserPlus" [size]="16"></lucide-icon>
+            </button>
+            <button
+              *ngIf="permissionService.hasPermission('User.Delete') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-delete"
+              (click)="deleteUser(user); $event.stopPropagation()"
+              title="حذف"
+            >
+              <lucide-icon [img]="Trash2" [size]="16"></lucide-icon>
+            </button>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="card-field">
+            <span class="field-label">اسم المستخدم:</span>
+            <span class="field-value">{{ user.userName }}</span>
+          </div>
+          <div class="card-field">
+            <span class="field-label">البريد الإلكتروني:</span>
+            <span class="field-value">{{ user.email }}</span>
+          </div>
+          <div class="card-field" *ngIf="user.roles && user.roles.length > 0">
+            <span class="field-label">الأدوار:</span>
+            <div class="roles-list">
+              <span *ngFor="let role of user.roles" class="role-chip">{{ role }}</span>
+            </div>
+          </div>
+          <div class="card-field" *ngIf="(!user.roles || user.roles.length === 0)">
+            <span class="field-label">الأدوار:</span>
+            <span class="field-value no-roles">لا يوجد أدوار</span>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="status-toggle">
+            <span class="status-label">الحالة:</span>
+            <button
+              *ngIf="permissionService.hasPermission('User.ToggleActivity') || permissionService.isSuperAdmin()"
+              type="button"
+              class="toggle-btn-card"
+              [class.active]="user.isActive"
+              [class.toggling]="isToggling(user.id)"
+              [disabled]="isToggling(user.id)"
+              (click)="toggleUserActivity(user, $event)"
+              [title]="user.isActive ? 'إلغاء التفعيل' : 'تفعيل'"
+            >
+              <lucide-icon 
+                [img]="user.isActive ? Power : PowerOff" 
+                [size]="16"
+              ></lucide-icon>
+              <span>{{ user.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </button>
+            <span
+              *ngIf="!(permissionService.hasPermission('User.ToggleActivity') || permissionService.isSuperAdmin())"
+              class="status-readonly"
+              [class.active]="user.isActive"
+            >
+              <lucide-icon 
+                [img]="user.isActive ? Power : PowerOff" 
+                [size]="16"
+              ></lucide-icon>
+              <span>{{ user.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <app-modal
     [show]="showModal"
@@ -29,59 +141,78 @@
     (close)="closeModal()"
   >
     <form [formGroup]="userForm" (ngSubmit)="saveUser()">
-      <div class="form-row">
-        <div class="form-group">
-          <label for="name">الاسم الكامل *</label>
-          <input
-            type="text"
-            id="name"
-            formControlName="name"
-            [class.invalid]="isFieldInvalid('name')"
-          />
-          <div class="error-message" *ngIf="isFieldInvalid('name')">
-            الاسم مطلوب
+      <div class="form-section">
+        <h3 class="section-title">المعلومات الأساسية</h3>
+        <div class="form-row">
+          <div class="form-group col-6">
+            <label for="userName">اسم المستخدم *</label>
+            <input
+              type="text"
+              id="userName"
+              formControlName="userName"
+              [class.invalid]="isFieldInvalid('userName')"
+              placeholder="أدخل اسم المستخدم"
+            />
+            <div class="error-message" *ngIf="isFieldInvalid('userName')">
+              اسم المستخدم مطلوب
+            </div>
+          </div>
+
+          <div class="form-group col-6">
+            <label for="email">البريد الإلكتروني *</label>
+            <input
+              type="email"
+              id="email"
+              formControlName="email"
+              [class.invalid]="isFieldInvalid('email')"
+              placeholder="example@domain.com"
+            />
+            <div class="error-message" *ngIf="isFieldInvalid('email')">
+              بريد إلكتروني صحيح مطلوب
+            </div>
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="email">البريد الإلكتروني *</label>
-          <input
-            type="email"
-            id="email"
-            formControlName="email"
-            [class.invalid]="isFieldInvalid('email')"
-          />
-          <div class="error-message" *ngIf="isFieldInvalid('email')">
-            بريد إلكتروني صحيح مطلوب
+        <div class="form-row">
+          <div class="form-group col-6">
+            <label for="fullName">الاسم الكامل *</label>
+            <input
+              type="text"
+              id="fullName"
+              formControlName="fullName"
+              [class.invalid]="isFieldInvalid('fullName')"
+              placeholder="أدخل الاسم الكامل"
+            />
+            <div class="error-message" *ngIf="isFieldInvalid('fullName')">
+              الاسم الكامل مطلوب
+            </div>
+          </div>
+
+          <div class="form-group col-6">
+            <label for="password">كلمة المرور {{ editingUser ? '(اختياري)' : '*' }}</label>
+            <input
+              type="password"
+              id="password"
+              formControlName="password"
+              [class.invalid]="isFieldInvalid('password')"
+              [placeholder]="editingUser ? 'اتركه فارغاً للحفاظ على كلمة المرور الحالية' : 'أدخل كلمة المرور (6 أحرف على الأقل)'"
+            />
+            <div class="error-message" *ngIf="isFieldInvalid('password')">
+              كلمة المرور يجب أن تكون 6 أحرف على الأقل
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label for="role">الدور *</label>
-          <select
-            id="role"
-            formControlName="role"
-            [class.invalid]="isFieldInvalid('role')"
-          >
-            <option value="viewer">مشاهد</option>
-            <option value="moderator">مشرف</option>
-            <option value="admin">مدير</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="status">الحالة *</label>
-          <select
-            id="status"
-            formControlName="status"
-            [class.invalid]="isFieldInvalid('status')"
-          >
-            <option value="active">نشط</option>
-            <option value="inactive">غير نشط</option>
-            <option value="suspended">معلق</option>
-          </select>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="checkbox-wrapper">
+              <input
+                type="checkbox"
+                formControlName="isSuperAdmin"
+              />
+              <span>مدير عام (Super Admin)</span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -95,4 +226,12 @@
       </div>
     </form>
   </app-modal>
+
+  <!-- Role Assignment Modal -->
+  <app-role-assignment-modal
+    [show]="showRoleAssignmentModal"
+    [user]="selectedUserForRoleAssignment"
+    (closed)="closeRoleAssignmentModal()"
+    (updated)="onRoleAssignmentUpdated()"
+  ></app-role-assignment-modal>
 </div>

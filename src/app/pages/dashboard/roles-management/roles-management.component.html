@@ -1,0 +1,225 @@
+<div class="roles-management-page">
+  <div class="page-header">
+    <div>
+      <h1>إدارة الأدوار</h1>
+      <p>إدارة وعرض جميع الأدوار</p>
+    </div>
+    <div class="header-actions">
+      <button 
+        id="add-role-button"
+        class="btn-primary" 
+        (click)="openAddModal()" 
+        *hasPermission="'Role.Create'"
+        type="button"
+      >
+        <lucide-icon [img]="Shield" [size]="18"></lucide-icon>
+        <span>إضافة دور جديد</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Toolbar with Results Counter -->
+  <div class="toolbar" *ngIf="!loading">
+    <div class="toolbar-left">
+      <div class="results-info">
+        <span class="results-count">
+          <strong>{{ roles.length }}</strong> دور
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cards View -->
+  <div class="roles-cards-view">
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>جاري تحميل الأدوار...</p>
+    </div>
+    <div *ngIf="!loading && roles.length === 0" class="empty-state">
+      <p>لا يوجد أدوار</p>
+    </div>
+    <div *ngIf="!loading && roles.length > 0" class="roles-grid">
+      <div
+        *ngFor="let role of roles"
+        class="role-card"
+        [class.selected]="selectedRole?.id === role.id"
+        (click)="selectRole(role)"
+      >
+        <div class="card-header">
+          <div class="card-title-section">
+            <h3 class="card-title">{{ role.name }}</h3>
+            <span class="card-badge" *ngIf="role.isSuperAdminRole" [class.badge-primary]="role.isSuperAdminRole">
+              مدير عام
+            </span>
+          </div>
+          <div class="card-actions-header" (click)="$event.stopPropagation()">
+            <button
+              *ngIf="permissionService.hasPermission('Role.Update') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-edit"
+              (click)="editRole(role); $event.stopPropagation()"
+              title="تعديل"
+            >
+              <lucide-icon [img]="Pencil" [size]="16"></lucide-icon>
+            </button>
+            <button
+              *ngIf="permissionService.hasPermission('Role.Delete') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-delete"
+              (click)="deleteRole(role); $event.stopPropagation()"
+              title="حذف"
+            >
+              <lucide-icon [img]="Trash2" [size]="16"></lucide-icon>
+            </button>
+          </div>
+        </div>
+        
+        <div class="card-content">
+          <div class="card-field">
+            <span class="field-label">عدد الصلاحيات:</span>
+            <span class="field-value">{{ getRolePermissions(role).length }}</span>
+          </div>
+          <div class="card-field" *ngIf="getRolePermissions(role).length > 0">
+            <span class="field-label">الصلاحيات:</span>
+            <div class="permissions-list">
+              <span *ngFor="let perm of getRolePermissions(role).slice(0, 3)" class="permission-chip">{{ perm }}</span>
+              <span *ngIf="getRolePermissions(role).length > 3" class="permission-chip more">
+                +{{ getRolePermissions(role).length - 3 }}
+              </span>
+            </div>
+          </div>
+          <div class="card-field" *ngIf="getRolePermissions(role).length === 0">
+            <span class="field-label">الصلاحيات:</span>
+            <span class="field-value no-permissions">لا توجد صلاحيات</span>
+          </div>
+        </div>
+        
+        <div class="card-footer">
+          <div class="status-toggle">
+            <span class="status-label">الحالة:</span>
+            <button
+              *ngIf="permissionService.hasPermission('Role.ToggleActivity') || permissionService.isSuperAdmin()"
+              type="button"
+              class="toggle-btn-card"
+              [class.active]="role.isActive"
+              [class.toggling]="isToggling(role.id)"
+              [disabled]="isToggling(role.id)"
+              (click)="toggleRoleActivity(role, $event)"
+              [title]="role.isActive ? 'إلغاء التفعيل' : 'تفعيل'"
+            >
+              <lucide-icon 
+                [img]="role.isActive ? Power : PowerOff" 
+                [size]="16"
+              ></lucide-icon>
+              <span>{{ role.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </button>
+            <span
+              *ngIf="!(permissionService.hasPermission('Role.ToggleActivity') || permissionService.isSuperAdmin())"
+              class="status-readonly"
+              [class.active]="role.isActive"
+            >
+              <lucide-icon 
+                [img]="role.isActive ? Power : PowerOff" 
+                [size]="16"
+              ></lucide-icon>
+              <span>{{ role.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Separate Details Section Below Grid -->
+    <div class="details" *ngIf="selectedRole">
+      <h2>تفاصيل الدور: {{ selectedRole.name }}</h2>
+      
+      <div class="permissions-section">
+        <div class="permissions-header">
+          <h3>الأذونات ({{ permissions.length }})</h3>
+          <div class="group-controls">
+            <button type="button" class="btn btn-sm btn-outline" (click)="expandAllGroups()">
+              <lucide-icon [img]="ChevronDown" [size]="14"></lucide-icon>
+              <span>توسيع الكل</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline" (click)="collapseAllGroups()">
+              <lucide-icon [img]="ChevronRight" [size]="14"></lucide-icon>
+              <span>طي الكل</span>
+            </button>
+          </div>
+        </div>
+        
+        <div class="permissions-groups" *ngIf="!loading && permissions.length > 0">
+          <div
+            *ngFor="let group of getPermissionGroupsForRole(selectedRole.id)"
+            class="permission-group"
+          >
+            <div class="group-header" (click)="togglePermissionGroup(group)">
+              <button type="button" class="group-toggle">
+                <lucide-icon 
+                  [img]="isGroupExpanded(group.type) ? ChevronDown : ChevronRight" 
+                  [size]="16">
+                </lucide-icon>
+              </button>
+              <span class="group-title">{{ group.type }}</span>
+              <div class="group-counts">
+                <span class="assigned-count">{{ getAssignedCount(group) }}/{{ group.count }}</span>
+                <span class="total-count">({{ group.count }})</span>
+              </div>
+            </div>
+            
+            <div class="group-permissions" *ngIf="isGroupExpanded(group.type)">
+              <label
+                *ngFor="let permission of group.permissions"
+                class="permission-checkbox"
+                [class.disabled]="!(permissionService.hasPermission('Role.Update') || permissionService.isSuperAdmin())"
+              >
+                <input 
+                  type="checkbox"
+                  [checked]="isPermissionAssignedToRole(selectedRole.id, permission.id)"
+                  [disabled]="!(permissionService.hasPermission('Role.Update') || permissionService.isSuperAdmin())"
+                  (change)="togglePermissionAssignment(selectedRole.id, permission.id, $event)"
+                />
+                <div class="perm-info">
+                  <span class="perm-name">{{ permission.name || 'اسم غير محدد' }}</span>
+                  <span class="perm-desc" *ngIf="permission.value">{{ permission.value }}</span>
+                </div>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-modal
+    [show]="showModal"
+    [title]="modalTitle"
+    size="lg"
+    (close)="closeModal()"
+  >
+    <form [formGroup]="roleForm" (ngSubmit)="saveRole()">
+      <div class="form-group">
+        <label for="name">اسم الدور *</label>
+        <input
+          type="text"
+          id="name"
+          formControlName="name"
+          [class.invalid]="isFieldInvalid('name')"
+        />
+        <div class="error-message" *ngIf="isFieldInvalid('name')">
+          اسم الدور مطلوب
+        </div>
+      </div>
+
+
+      <div footer>
+        <button type="button" class="btn-secondary" (click)="closeModal()">
+          إلغاء
+        </button>
+        <button type="submit" class="btn-primary">
+          {{ editingRole ? 'حفظ التغييرات' : 'إضافة' }}
+        </button>
+      </div>
+    </form>
+  </app-modal>
+</div>

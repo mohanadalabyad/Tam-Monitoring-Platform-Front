@@ -56,12 +56,17 @@ export class DashboardHeaderComponent implements OnInit {
     this.closeUserMenu();
   }
 
-  getRoleLabel(role: string): string {
-    const roles: { [key: string]: string } = {
-      'admin': 'مدير',
-      'moderator': 'مشرف',
-      'viewer': 'مشاهد'
-    };
-    return roles[role] || role;
+  getRolesLabel(roles: string[]): string {
+    if (!roles || roles.length === 0) {
+      return 'لا يوجد أدوار';
+    }
+    return roles.join(', ');
+  }
+
+  getUserInitials(): string {
+    if (this.currentUser?.fullName) {
+      return this.currentUser.fullName.charAt(0).toUpperCase();
+    }
+    return 'U';
   }
 }

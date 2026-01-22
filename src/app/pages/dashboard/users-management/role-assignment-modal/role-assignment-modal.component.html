@@ -1,0 +1,91 @@
+<div *ngIf="show" class="modal-backdrop" (click)="onBackdropClick($event)">
+  <div class="role-assignment-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3 class="modal-title">تعيين الأدوار للمستخدم: {{ user?.fullName }}</h3>
+      <button type="button" class="close-btn" (click)="close()" aria-label="إغلاق">
+        <lucide-icon [img]="X" [size]="20"></lucide-icon>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div class="two-panel-layout">
+        <!-- Available Roles Panel -->
+        <div class="panel available-panel">
+          <div class="panel-header">
+            <h4>الأدوار المتاحة</h4>
+            <div class="search-box">
+              <lucide-icon [img]="Search" [size]="18" class="search-icon"></lucide-icon>
+              <input
+                type="text"
+                [(ngModel)]="searchTerm"
+                placeholder="بحث عن دور..."
+                class="search-input"
+              />
+            </div>
+          </div>
+          <div class="panel-content">
+            <div *ngIf="loading" class="loading-state">
+              جاري التحميل...
+            </div>
+            <div *ngIf="!loading && filteredAvailableRoles.length === 0" class="empty-state">
+              <p>لا توجد أدوار متاحة</p>
+            </div>
+            <div *ngIf="!loading && filteredAvailableRoles.length > 0" class="roles-list">
+              <div
+                *ngFor="let role of filteredAvailableRoles"
+                class="role-item"
+              >
+                <span class="role-name">{{ role.name }}</span>
+                <button
+                  type="button"
+                  class="btn-assign"
+                  (click)="assignRole(role)"
+                  [disabled]="!canAssignRole()"
+                  title="تعيين الدور"
+                >
+                  <lucide-icon [img]="ArrowRight" [size]="16"></lucide-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Assigned Roles Panel -->
+        <div class="panel assigned-panel">
+          <div class="panel-header">
+            <h4>الأدوار المعينة</h4>
+            <span class="badge">{{ assignedRoles.length }}</span>
+          </div>
+          <div class="panel-content">
+            <div *ngIf="assignedRoles.length === 0" class="empty-state">
+              <p>لا توجد أدوار معينة</p>
+            </div>
+            <div *ngIf="assignedRoles.length > 0" class="roles-list">
+              <div
+                *ngFor="let role of assignedRoles"
+                class="role-item assigned"
+              >
+                <button
+                  type="button"
+                  class="btn-remove"
+                  (click)="removeRole(role)"
+                  [disabled]="!canAssignRole()"
+                  title="إلغاء تعيين الدور"
+                >
+                  <lucide-icon [img]="ArrowLeft" [size]="16"></lucide-icon>
+                </button>
+                <span class="role-name">{{ role.name }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn-close" (click)="close()">
+        إغلاق
+      </button>
+    </div>
+  </div>
+</div>

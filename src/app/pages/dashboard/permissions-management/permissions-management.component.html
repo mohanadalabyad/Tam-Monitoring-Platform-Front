@@ -1,0 +1,186 @@
+<div class="permissions-management-page">
+  <div class="page-header">
+    <div>
+      <h1>إدارة الصلاحيات</h1>
+      <p>عرض وإدارة جميع الصلاحيات</p>
+    </div>
+    <div class="header-actions">
+      <app-view-toggle
+        [storageKey]="'permissions-view-mode'"
+        [defaultView]="'cards'"
+        (viewChange)="onViewChange($event)"
+      ></app-view-toggle>
+    </div>
+  </div>
+
+  <!-- Toolbar with Results Counter -->
+  <div class="toolbar" *ngIf="!loading">
+    <div class="toolbar-left">
+      <div class="results-info">
+        <span class="results-count">
+          <strong>{{ getFilteredPermissions().length }}</strong> صلاحية
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-section">
+    <div class="search-box">
+      <lucide-icon [img]="Search" [size]="18" class="search-icon"></lucide-icon>
+      <input
+        type="text"
+        [(ngModel)]="searchTerm"
+        placeholder="بحث في الصلاحيات..."
+        class="search-input"
+      />
+      <button
+        *ngIf="searchTerm"
+        type="button"
+        class="clear-search"
+        (click)="searchTerm = ''"
+        title="مسح البحث"
+      >
+        <lucide-icon [img]="XCircle" [size]="16"></lucide-icon>
+      </button>
+    </div>
+    <div class="filter-group">
+      <lucide-icon [img]="Filter" [size]="18"></lucide-icon>
+      <label for="typeFilter">تصفية حسب النوع:</label>
+      <select id="typeFilter" [(ngModel)]="filterType">
+        <option value="">الكل</option>
+        <option *ngFor="let type of getPermissionTypes()" [value]="type">{{ type }}</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Cards View -->
+  <div *ngIf="viewMode === 'cards'" class="permissions-cards-view">
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>جاري تحميل الصلاحيات...</p>
+    </div>
+
+    <div *ngIf="!loading && getFilteredPermissions().length === 0" class="empty-state">
+      <lucide-icon [img]="Shield" [size]="48" class="empty-icon"></lucide-icon>
+      <p>لا توجد صلاحيات</p>
+    </div>
+
+    <div *ngIf="!loading && getFilteredPermissions().length > 0" class="permissions-grid">
+      <div
+        *ngFor="let permission of getFilteredPermissions()"
+        class="permission-card"
+      >
+        <div class="card-header">
+          <div class="card-title-section">
+            <h3 class="card-title">{{ permission.name }}</h3>
+            <span class="card-badge" [style.background-color]="getGroupColor(permission.type) + '20'" [style.color]="getGroupColor(permission.type)">
+              {{ permission.type }}
+            </span>
+          </div>
+          <div class="card-actions-header" (click)="$event.stopPropagation()">
+            <button
+              *ngIf="permissionService.hasPermission('Permission.Update') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-edit"
+              (click)="editPermission(permission); $event.stopPropagation()"
+              title="تعديل"
+            >
+              <lucide-icon [img]="Pencil" [size]="16"></lucide-icon>
+            </button>
+            <!-- Note: Delete functionality is not available for permissions -->
+          </div>
+        </div>
+        
+        <div class="card-content">
+          <div class="card-field">
+            <span class="field-label">النوع:</span>
+            <span class="field-value">{{ permission.type }}</span>
+          </div>
+          <div class="card-field">
+            <span class="field-label">القيمة:</span>
+            <span class="field-value code-chip">{{ permission.value }}</span>
+          </div>
+        </div>
+        
+        <div class="card-footer">
+          <div class="status-toggle">
+            <span class="status-label">الحالة:</span>
+            <button
+              *ngIf="permissionService.hasPermission('Permission.ToggleActivity') || permissionService.isSuperAdmin()"
+              type="button"
+              class="toggle-btn-card"
+              [class.active]="permission.isActive"
+              [class.toggling]="isToggling(permission.id)"
+              [disabled]="isToggling(permission.id)"
+              (click)="togglePermissionActivity(permission, $event)"
+              [title]="permission.isActive ? 'إلغاء التفعيل' : 'تفعيل'"
+            >
+              <lucide-icon 
+                [img]="permission.isActive ? Power : PowerOff" 
+                [size]="16"
+              ></lucide-icon>
+              <span>{{ permission.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </button>
+            <span
+              *ngIf="!(permissionService.hasPermission('Permission.ToggleActivity') || permissionService.isSuperAdmin())"
+              class="status-readonly"
+              [class.active]="permission.isActive"
+            >
+              <lucide-icon 
+                [img]="permission.isActive ? Power : PowerOff" 
+                [size]="16"
+              ></lucide-icon>
+              <span>{{ permission.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table View -->
+  <div *ngIf="viewMode === 'table'" class="permissions-table-view">
+    <app-unified-table
+      [columns]="columns"
+      [data]="getFilteredPermissions()"
+      [actions]="actions"
+      [loading]="loading"
+      [pageSize]="20"
+      emptyMessage="لا توجد صلاحيات"
+    ></app-unified-table>
+  </div>
+
+  <!-- Edit Modal -->
+  <app-modal
+    [show]="showModal"
+    [title]="modalTitle"
+    size="md"
+    (close)="closeModal()"
+  >
+    <form [formGroup]="permissionForm" (ngSubmit)="savePermission()">
+      <div class="form-group">
+        <label for="name">اسم الصلاحية *</label>
+        <input
+          type="text"
+          id="name"
+          formControlName="name"
+          [class.invalid]="isFieldInvalid('name')"
+          placeholder="أدخل اسم الصلاحية"
+        />
+        <div class="error-message" *ngIf="isFieldInvalid('name')">
+          اسم الصلاحية مطلوب
+        </div>
+      </div>
+
+      <div footer>
+        <button type="button" class="btn-secondary" (click)="closeModal()">
+          إلغاء
+        </button>
+        <button type="submit" class="btn-primary">
+          {{ editingPermission ? 'حفظ التغييرات' : 'إضافة' }}
+        </button>
+      </div>
+    </form>
+  </app-modal>
+</div>

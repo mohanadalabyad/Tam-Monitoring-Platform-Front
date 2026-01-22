@@ -5,6 +5,7 @@ import { CategoryService } from '../../../services/category.service';
 import { Question, QuestionType, QuestionOption } from '../../../models/question.model';
 import { Category } from '../../../models/category.model';
 import { ToasterService } from '../../../services/toaster.service';
+import { PermissionCheckService } from '../../../services/permission-check.service';
 
 @Component({
   selector: 'app-questions-management',
@@ -20,7 +21,7 @@ export class QuestionsManagementComponent implements OnInit {
   questionForm!: FormGroup;
   editMode = false;
   currentQuestionId: string | null = null;
-  selectedCategoryId: string = '';
+  selectedCategoryId: number | null = null;
   questionTypes: { value: QuestionType; labelAr: string; labelEn: string; icon: string }[] = [];
   availableQuestions: Question[] = [];
 
@@ -28,7 +29,8 @@ export class QuestionsManagementComponent implements OnInit {
     private questionService: QuestionService,
     private categoryService: CategoryService,
     private fb: FormBuilder,
-    private toaster: ToasterService
+    private toaster: ToasterService,
+    public permissionService: PermissionCheckService
   ) { }
 
   ngOnInit(): void {
@@ -39,11 +41,13 @@ export class QuestionsManagementComponent implements OnInit {
   }
 
   loadCategories(): void {
-    this.categoryService.getCategories().subscribe({
-      next: (data) => {
-        this.categories = data;
+    this.categoryService.getAllCategories(true).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.categories = Array.isArray(response.data) ? response.data : response.data.items || [];
+        }
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Error loading categories:', error);
       }
     });
@@ -70,8 +74,8 @@ export class QuestionsManagementComponent implements OnInit {
   filterQuestions(): void {
     let filtered = [...this.questions];
 
-    if (this.selectedCategoryId) {
-      filtered = filtered.filter(q => q.categoryId === this.selectedCategoryId);
+    if (this.selectedCategoryId !== null) {
+      filtered = filtered.filter(q => q.categoryId === this.selectedCategoryId?.toString());
     }
 
     this.filteredQuestions = filtered.sort((a, b) => a.order - b.order);
@@ -150,8 +154,8 @@ export class QuestionsManagementComponent implements OnInit {
     this.editMode = false;
     this.currentQuestionId = null;
     this.initForm();
-    if (this.selectedCategoryId) {
-      this.questionForm.patchValue({ categoryId: this.selectedCategoryId });
+    if (this.selectedCategoryId !== null) {
+      this.questionForm.patchValue({ categoryId: this.selectedCategoryId.toString() });
     }
     this.isModalOpen = true;
   }
@@ -305,10 +309,11 @@ export class QuestionsManagementComponent implements OnInit {
     }
   }
 
-  getCategoryName(categoryId: string): string {
+  getCategoryName(categoryId: number | string): string {
     if (!categoryId) return '';
-    const category = this.categories.find(c => c.id === categoryId);
-    return category ? category.nameAr : categoryId;
+    const id = typeof categoryId === 'string' ? parseInt(categoryId, 10) : categoryId;
+    const category = this.categories.find(c => c.id === id);
+    return category ? category.name : categoryId.toString();
   }
 
   getQuestionTypeLabel(type: QuestionType): string {

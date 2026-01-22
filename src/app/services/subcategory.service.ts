@@ -1,106 +1,139 @@
 import { Injectable } from '@angular/core';
-import { Observable, of } from 'rxjs';
-import { SubCategory } from '../models/subcategory.model';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
+import { ApiResponse } from '../models/api-response.model';
+import { PaginationResponse } from '../models/pagination.model';
+import { SubCategoryDto, AddSubCategoryDto, UpdateSubCategoryDto, SubCategoryFilter } from '../models/subcategory.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class SubCategoryService {
-  private subCategories: SubCategory[] = [
-    {
-      id: '1',
-      categoryId: '1',
-      nameAr: 'الوصول للمؤسسة التعليمية',
-      description: 'انتهاكات متعلقة بالوصول للمؤسسات التعليمية',
-      order: 1,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: '2',
-      categoryId: '1',
-      nameAr: 'جودة التعليم',
-      description: 'انتهاكات متعلقة بجودة التعليم',
-      order: 2,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: '3',
-      categoryId: '3',
-      nameAr: 'تلوث المياه',
-      description: 'انتهاكات متعلقة بتلوث المياه',
-      order: 1,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: '4',
-      categoryId: '3',
-      nameAr: 'تلوث الهواء',
-      description: 'انتهاكات متعلقة بتلوث الهواء',
-      order: 2,
-      createdAt: new Date(),
-      updatedAt: new Date()
+  private apiUrl = `${environment.apiUrl}/subcategory`;
+
+  constructor(private http: HttpClient) {}
+
+  /**
+   * Get all subcategories with optional pagination
+   * For main management pages: pass isActive as undefined to get ALL subcategories
+   * For assignment contexts: pass isActive: true to get only active subcategories
+   */
+  getAllSubCategories(
+    isActive?: boolean,
+    pageNumber?: number,
+    pageSize?: number
+  ): Observable<ApiResponse<PaginationResponse<SubCategoryDto> | SubCategoryDto[]>> {
+    let params = new HttpParams();
+    if (isActive !== undefined) {
+      params = params.set('isActive', isActive.toString());
     }
-  ];
+    if (pageNumber !== undefined) {
+      params = params.set('pageNumber', pageNumber.toString());
+    }
+    if (pageSize !== undefined) {
+      params = params.set('pageSize', pageSize.toString());
+    }
 
-  constructor() { }
-
-  getSubCategories(): Observable<SubCategory[]> {
-    return of([...this.subCategories]);
-  }
-
-  getSubCategoriesByCategory(categoryId: string): Observable<SubCategory[]> {
-    return of(
-      [...this.subCategories]
-        .filter(sub => sub.categoryId === categoryId)
-        .sort((a, b) => a.order - b.order)
+    return this.http.get<ApiResponse<PaginationResponse<SubCategoryDto> | SubCategoryDto[]>>(
+      this.apiUrl,
+      { params }
     );
   }
 
-  getSubCategoryById(id: string): Observable<SubCategory | undefined> {
-    return of(this.subCategories.find(sub => sub.id === id));
+  /**
+   * Get all subcategories with filter
+   */
+  getAllSubCategoriesWithFilter(
+    filter: SubCategoryFilter,
+    pageNumber?: number,
+    pageSize?: number,
+    isActive?: boolean
+  ): Observable<ApiResponse<PaginationResponse<SubCategoryDto> | SubCategoryDto[]>> {
+    let params = new HttpParams();
+    if (pageNumber !== undefined) params = params.set('pageNumber', pageNumber.toString());
+    if (pageSize !== undefined) params = params.set('pageSize', pageSize.toString());
+    if (isActive !== undefined) params = params.set('isActive', isActive.toString());
+
+    return this.http.post<ApiResponse<PaginationResponse<SubCategoryDto> | SubCategoryDto[]>>(
+      `${this.apiUrl}/filter`,
+      filter,
+      { params }
+    );
   }
 
-  createSubCategory(subCategory: Omit<SubCategory, 'id' | 'createdAt' | 'updatedAt'>): Observable<SubCategory> {
-    const newSubCategory: SubCategory = {
-      ...subCategory,
-      id: (this.subCategories.length + 1).toString(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-    this.subCategories.push(newSubCategory);
-    return of(newSubCategory);
+  /**
+   * Get subcategory by ID
+   */
+  getSubCategoryById(id: number): Observable<SubCategoryDto> {
+    return this.http.get<ApiResponse<SubCategoryDto>>(`${this.apiUrl}/${id}`)
+      .pipe(
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          return response.data;
+        })
+      );
   }
 
-  updateSubCategory(id: string, subCategory: Partial<SubCategory>): Observable<SubCategory | undefined> {
-    const index = this.subCategories.findIndex(sub => sub.id === id);
-    if (index > -1) {
-      this.subCategories[index] = {
-        ...this.subCategories[index],
-        ...subCategory,
-        updatedAt: new Date()
-      };
-      return of(this.subCategories[index]);
-    }
-    return of(undefined);
+  /**
+   * Create a new subcategory
+   */
+  createSubCategory(subCategoryData: AddSubCategoryDto): Observable<SubCategoryDto> {
+    return this.http.post<ApiResponse<SubCategoryDto>>(this.apiUrl, subCategoryData)
+      .pipe(
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          return response.data;
+        })
+      );
   }
 
-  deleteSubCategory(id: string): Observable<boolean> {
-    const initialLength = this.subCategories.length;
-    this.subCategories = this.subCategories.filter(sub => sub.id !== id);
-    return of(this.subCategories.length < initialLength);
+  /**
+   * Update subcategory
+   */
+  updateSubCategory(subCategoryData: UpdateSubCategoryDto): Observable<SubCategoryDto> {
+    return this.http.put<ApiResponse<SubCategoryDto>>(this.apiUrl, subCategoryData)
+      .pipe(
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          return response.data;
+        })
+      );
   }
 
-  reorderSubCategories(subCategoryIds: string[]): Observable<boolean> {
-    subCategoryIds.forEach((id, index) => {
-      const subCategory = this.subCategories.find(sub => sub.id === id);
-      if (subCategory) {
-        subCategory.order = index + 1;
-        subCategory.updatedAt = new Date();
-      }
-    });
-    return of(true);
+  /**
+   * Delete a subcategory
+   */
+  deleteSubCategory(id: number): Observable<void> {
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${id}`)
+      .pipe(
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+        })
+      );
+  }
+
+  /**
+   * Toggle subcategory activity
+   */
+  toggleSubCategoryActivity(id: number): Observable<SubCategoryDto> {
+    return this.http.post<ApiResponse<SubCategoryDto>>(`${this.apiUrl}/${id}/toggle-activity`, {})
+      .pipe(
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          return response.data;
+        })
+      );
   }
 }

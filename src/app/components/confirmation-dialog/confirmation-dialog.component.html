@@ -1,0 +1,33 @@
+<div *ngIf="show" class="confirmation-backdrop" (click)="onBackdropClick($event)">
+  <div class="confirmation-dialog" (click)="$event.stopPropagation()">
+    <div class="dialog-header">
+      <div class="icon-wrapper" [style.background-color]="getIconColor() + '15'" [style.color]="getIconColor()">
+        <lucide-icon [img]="getIcon()" [size]="24"></lucide-icon>
+      </div>
+      <h3 class="dialog-title">{{ config.title }}</h3>
+      <button type="button" class="close-btn" (click)="close()" aria-label="إغلاق">
+        <lucide-icon [img]="X" [size]="20"></lucide-icon>
+      </button>
+    </div>
+    
+    <div class="dialog-body">
+      <p class="dialog-message">{{ config.message }}</p>
+    </div>
+    
+    <div class="dialog-footer">
+      <button type="button" class="btn btn-cancel" (click)="onCancel()">
+        {{ config.cancelText || 'إلغاء' }}
+      </button>
+      <button 
+        type="button" 
+        class="btn btn-confirm" 
+        [class.btn-danger]="config.type === 'danger'"
+        [class.btn-warning]="config.type === 'warning'"
+        [class.btn-info]="config.type === 'info'"
+        (click)="onConfirm()"
+      >
+        {{ config.confirmText || 'تأكيد' }}
+      </button>
+    </div>
+  </div>
+</div>

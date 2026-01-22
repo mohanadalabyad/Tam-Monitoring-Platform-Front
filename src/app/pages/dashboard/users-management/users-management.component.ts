@@ -2,8 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { UserService } from '../../../services/user.service';
 import { ToasterService } from '../../../services/toaster.service';
-import { User } from '../../../auth/user.model';
+import { PermissionCheckService } from '../../../services/permission-check.service';
+import { ConfirmationDialogService } from '../../../services/confirmation-dialog.service';
+import { UserDto, AddUserDto, UpdateUserDto } from '../../../models/user-management.model';
 import { TableColumn, TableAction } from '../../../components/unified-table/unified-table.component';
+import { ViewMode } from '../../../components/view-toggle/view-toggle.component';
+import { Pencil, Trash2, UserPlus, Power, PowerOff, Shield } from 'lucide-angular';
 
 @Component({
   selector: 'app-users-management',
@@ -11,63 +15,163 @@ import { TableColumn, TableAction } from '../../../components/unified-table/unif
   styleUrls: ['./users-management.component.scss']
 })
 export class UsersManagementComponent implements OnInit {
-  users: User[] = [];
+  users: UserDto[] = [];
   loading = false;
   showModal = false;
   modalTitle = '';
   userForm!: FormGroup;
-  editingUser: User | null = null;
+  editingUser: UserDto | null = null;
+  viewMode: ViewMode = 'table';
 
   columns: TableColumn[] = [
-    { key: 'name', label: 'الاسم', sortable: true, filterable: true },
-    { key: 'email', label: 'البريد الإلكتروني', sortable: true, filterable: true },
-    { key: 'role', label: 'الدور', sortable: true, filterable: true, type: 'badge', render: (value) => this.getRoleLabel(value) },
-    { key: 'status', label: 'الحالة', sortable: true, type: 'badge', render: (value) => this.getStatusLabel(value) },
-    { key: 'createdAt', label: 'تاريخ الإنشاء', sortable: true, type: 'date' },
-    { key: 'lastLogin', label: 'آخر تسجيل دخول', sortable: true, type: 'date' }
-  ];
-
-  actions: TableAction[] = [
-    {
-      label: 'تعديل',
-      action: (row) => this.editUser(row),
-      class: 'btn-edit'
+    { key: 'fullName', label: 'الاسم الكامل', sortable: true, filterable: false },
+    { key: 'userName', label: 'اسم المستخدم', sortable: true, filterable: false },
+    { key: 'email', label: 'البريد الإلكتروني', sortable: true, filterable: false },
+    { key: 'roles', label: 'الأدوار', sortable: false, filterable: false, render: (value) => this.formatRoles(value) },
+    { 
+      key: 'isSuperAdmin', 
+      label: 'مدير عام', 
+      sortable: true, 
+      filterable: false, 
+      type: 'icon',
+      iconRenderer: (value) => value ? Shield : null
     },
-    {
-      label: 'حذف',
-      action: (row) => this.deleteUser(row),
-      class: 'btn-delete'
+    { 
+      key: 'isActive', 
+      label: 'الحالة', 
+      sortable: true, 
+      filterable: false,
+      type: 'toggle',
+      toggleAction: (this.permissionService.hasPermission('User', 'ToggleActivity') || this.permissionService.isSuperAdmin()) 
+        ? (row, event) => this.toggleUserActivity(row, event)
+        : undefined,
+      isToggling: (row) => this.isToggling(row.id)
     }
   ];
 
-  roles = ['admin', 'moderator', 'viewer'];
-  statuses = ['active', 'inactive', 'suspended'];
+  actions: TableAction[] = [];
+  
+  // Lucide icons
+  Pencil = Pencil;
+  Trash2 = Trash2;
+  UserPlus = UserPlus;
+  Power = Power;
+  PowerOff = PowerOff;
+  Shield = Shield;
+  
+  // Track toggling users
+  togglingUsers: Set<string> = new Set();
 
   constructor(
     private userService: UserService,
     private toasterService: ToasterService,
+    public permissionService: PermissionCheckService,
+    private confirmationService: ConfirmationDialogService,
     private fb: FormBuilder
   ) {}
 
   ngOnInit(): void {
+    // Load view preference
+    const savedView = localStorage.getItem('users-view-mode');
+    if (savedView === 'table' || savedView === 'cards') {
+      this.viewMode = savedView;
+    }
     this.initForm();
     this.loadUsers();
+    this.setupActions();
+  }
+
+  onViewChange(view: ViewMode): void {
+    this.viewMode = view;
+    localStorage.setItem('users-view-mode', view);
+  }
+
+  onUserClick(user: UserDto): void {
+    // Handle card click if needed
+  }
+
+  setupActions(): void {
+    this.actions = [];
+    
+    if (this.permissionService.hasPermission('User', 'Update') || this.permissionService.isSuperAdmin()) {
+      this.actions.push({
+        label: 'تعديل',
+        icon: Pencil,
+        action: (row) => this.editUser(row),
+        class: 'btn-edit',
+        variant: 'warning',
+        showLabel: false
+      });
+    }
+    
+    // Only show role assignment if user is not super admin
+    if ((this.permissionService.hasPermission('User.AssignRole') || this.permissionService.isSuperAdmin())) {
+      // Note: We'll filter this in the template based on row.isSuperAdmin
+      this.actions.push({
+        label: 'تعيين الأدوار',
+        icon: UserPlus,
+        action: (row) => this.openRoleAssignmentModal(row),
+        class: 'btn-assign',
+        variant: 'primary',
+        showLabel: false,
+        condition: (row: UserDto) => !row.isSuperAdmin // Only show if not super admin
+      });
+    }
+    
+    if (this.permissionService.hasPermission('User', 'Delete') || this.permissionService.isSuperAdmin()) {
+      this.actions.push({
+        label: 'حذف',
+        icon: Trash2,
+        action: (row) => this.deleteUser(row),
+        class: 'btn-delete',
+        variant: 'danger',
+        showLabel: false
+      });
+    }
+  }
+  
+  showRoleAssignmentModal = false;
+  selectedUserForRoleAssignment: UserDto | null = null;
+
+  openRoleAssignmentModal(user: UserDto): void {
+    this.selectedUserForRoleAssignment = user;
+    this.showRoleAssignmentModal = true;
+  }
+
+  onRoleAssignmentUpdated(): void {
+    this.loadUsers(); // Reload users to get updated roles
+  }
+
+  closeRoleAssignmentModal(): void {
+    this.showRoleAssignmentModal = false;
+    this.selectedUserForRoleAssignment = null;
   }
 
   initForm(): void {
     this.userForm = this.fb.group({
-      name: ['', Validators.required],
+      userName: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
-      role: ['viewer', Validators.required],
-      status: ['active', Validators.required]
+      fullName: ['', Validators.required],
+      password: ['', [Validators.minLength(6)]],
+      isSuperAdmin: [false]
     });
   }
 
   loadUsers(): void {
     this.loading = true;
-    this.userService.getUsers().subscribe({
-      next: (data) => {
-        this.users = data;
+    // Main management page: get ALL users (active and inactive) - pass undefined for isActive
+    this.userService.getAllUsers(undefined, undefined, undefined).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          // Handle both array and paginated response
+          if (Array.isArray(response.data)) {
+            this.users = response.data;
+          } else {
+            this.users = response.data.items || [];
+          }
+        } else {
+          this.toasterService.showError(response.message || 'حدث خطأ أثناء تحميل المستخدمين');
+        }
         this.loading = false;
       },
       error: (error) => {
@@ -82,37 +186,62 @@ export class UsersManagementComponent implements OnInit {
     this.modalTitle = 'إضافة مستخدم جديد';
     this.editingUser = null;
     this.userForm.reset({
-      role: 'viewer',
-      status: 'active'
+      userName: '',
+      email: '',
+      fullName: '',
+      password: '',
+      isSuperAdmin: false
     });
+    // Password is required for new users
+    this.userForm.get('password')?.setValidators([Validators.required, Validators.minLength(6)]);
+    this.userForm.get('password')?.updateValueAndValidity();
     this.showModal = true;
   }
 
-  editUser(user: User): void {
+  editUser(user: UserDto): void {
+    // Check permission before opening edit modal
+    if (!this.permissionService.hasPermission('User', 'Update') && !this.permissionService.isSuperAdmin()) {
+      this.toasterService.showWarning('ليس لديك صلاحية لتعديل المستخدمين', 'صلاحية مرفوضة');
+      return;
+    }
+    
     this.modalTitle = 'تعديل مستخدم';
     this.editingUser = user;
     this.userForm.patchValue({
-      name: user.name,
+      userName: user.userName,
       email: user.email,
-      role: user.role,
-      status: user.status
+      fullName: user.fullName,
+      password: '', // Don't populate password
+      isSuperAdmin: user.isSuperAdmin
     });
+    // Password is optional for updates
+    this.userForm.get('password')?.clearValidators();
+    this.userForm.get('password')?.setValidators([Validators.minLength(6)]);
+    this.userForm.get('password')?.updateValueAndValidity();
     this.showModal = true;
   }
 
-  deleteUser(user: User): void {
-    if (confirm(`هل أنت متأكد من حذف المستخدم "${user.name}"؟`)) {
-      this.userService.deleteUser(user.id).subscribe({
-        next: () => {
-          this.users = this.users.filter(u => u.id !== user.id);
-          this.toasterService.showSuccess('تم حذف المستخدم بنجاح');
-        },
-        error: (error) => {
-          console.error('Error deleting user:', error);
-          this.toasterService.showError('حدث خطأ أثناء حذف المستخدم');
-        }
-      });
-    }
+  deleteUser(user: UserDto): void {
+    this.confirmationService.show({
+      title: 'تأكيد الحذف',
+      message: `هل أنت متأكد من حذف المستخدم "${user.fullName}"؟`,
+      confirmText: 'حذف',
+      cancelText: 'إلغاء',
+      type: 'danger'
+    }).then(confirmed => {
+      if (confirmed) {
+        this.userService.deleteUser(user.id).subscribe({
+          next: () => {
+            this.toasterService.showSuccess('تم حذف المستخدم بنجاح');
+            this.loadUsers(); // Reload users after delete
+          },
+          error: (error) => {
+            console.error('Error deleting user:', error);
+            this.toasterService.showError('حدث خطأ أثناء حذف المستخدم');
+          }
+        });
+      }
+    });
   }
 
   saveUser(): void {
@@ -121,31 +250,48 @@ export class UsersManagementComponent implements OnInit {
       
       if (this.editingUser) {
         // Update existing
-        this.userService.updateUser(this.editingUser.id, formValue).subscribe({
+        const updateDto: UpdateUserDto = {
+          id: this.editingUser.id,
+          userName: formValue.userName,
+          email: formValue.email,
+          fullName: formValue.fullName,
+          password: formValue.password || undefined, // Only include if provided
+          isSuperAdmin: formValue.isSuperAdmin,
+          roleNames: [] // Roles are managed through role assignment modal
+        };
+        
+        this.userService.updateUser(updateDto).subscribe({
           next: (updatedUser) => {
-            const index = this.users.findIndex(u => u.id === this.editingUser!.id);
-            if (index !== -1) {
-              this.users[index] = updatedUser;
-            }
             this.toasterService.showSuccess('تم تحديث المستخدم بنجاح');
             this.closeModal();
+            this.loadUsers(); // Reload users after edit
           },
           error: (error) => {
             console.error('Error updating user:', error);
-            this.toasterService.showError('حدث خطأ أثناء تحديث المستخدم');
+            this.toasterService.showError(error.message || 'حدث خطأ أثناء تحديث المستخدم');
           }
         });
       } else {
-        // Add new
-        this.userService.createUser(formValue).subscribe({
+        // Add new - generate GUID for id
+        const addDto: AddUserDto = {
+          id: this.generateGuid(),
+          userName: formValue.userName,
+          email: formValue.email,
+          fullName: formValue.fullName,
+          password: formValue.password,
+          isSuperAdmin: formValue.isSuperAdmin,
+          roleNames: [] // Roles are managed through role assignment modal
+        };
+        
+        this.userService.createUser(addDto).subscribe({
           next: (newUser) => {
-            this.users.unshift(newUser);
             this.toasterService.showSuccess('تم إضافة المستخدم بنجاح');
             this.closeModal();
+            this.loadUsers(); // Reload users after add
           },
           error: (error) => {
             console.error('Error creating user:', error);
-            this.toasterService.showError('حدث خطأ أثناء إضافة المستخدم');
+            this.toasterService.showError(error.message || 'حدث خطأ أثناء إضافة المستخدم');
           }
         });
       }
@@ -168,21 +314,52 @@ export class UsersManagementComponent implements OnInit {
     return !!(field && field.invalid && (field.dirty || field.touched));
   }
 
-  getRoleLabel(role: string): string {
-    const labels: { [key: string]: string } = {
-      'admin': 'مدير',
-      'moderator': 'مشرف',
-      'viewer': 'مشاهد'
-    };
-    return labels[role] || role;
+  formatRoles(roles: string[]): string {
+    if (!roles || roles.length === 0) {
+      return 'لا يوجد';
+    }
+    return roles.join(', ');
   }
 
-  getStatusLabel(status: string): string {
-    const labels: { [key: string]: string } = {
-      'active': 'نشط',
-      'inactive': 'غير نشط',
-      'suspended': 'معلق'
-    };
-    return labels[status] || status;
+
+
+  toggleUserActivity(user: UserDto, event: Event): void {
+    event.stopPropagation();
+    
+    if (this.togglingUsers.has(user.id)) {
+      return; // Already toggling
+    }
+
+    this.togglingUsers.add(user.id);
+    
+    this.userService.toggleUserActivity(user.id).subscribe({
+      next: (updatedUser) => {
+        this.toasterService.showSuccess(`تم ${updatedUser.isActive ? 'تفعيل' : 'إلغاء تفعيل'} المستخدم بنجاح`);
+        this.togglingUsers.delete(user.id);
+        this.loadUsers(); // Reload users after toggle
+      },
+      error: (error) => {
+        console.error('Error toggling user activity:', error);
+        this.toasterService.showError(error.message || 'حدث خطأ أثناء تغيير حالة المستخدم');
+        this.togglingUsers.delete(user.id);
+      }
+    });
+  }
+
+  isToggling(userId: string): boolean {
+    return this.togglingUsers.has(userId);
+  }
+
+  generateGuid(): string {
+    // Use crypto.randomUUID() if available (modern browsers), otherwise generate manually
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+      return crypto.randomUUID();
+    }
+    // Fallback: Generate a GUID/UUID v4 manually
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
   }
 }
