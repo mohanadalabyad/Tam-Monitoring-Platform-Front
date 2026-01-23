@@ -58,6 +58,15 @@
           </div>
           <div class="card-actions-header" (click)="$event.stopPropagation()">
             <button
+              *ngIf="permissionService.hasPermission('Question.Read') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-view-questions"
+              (click)="viewCategoryQuestions(category); $event.stopPropagation()"
+              title="عرض الأسئلة"
+            >
+              <lucide-icon [img]="FileText" [size]="16"></lucide-icon>
+            </button>
+            <button
               *ngIf="permissionService.hasPermission('Category.Update') || permissionService.isSuperAdmin()"
               type="button"
               class="card-action-icon btn-edit"
@@ -159,5 +168,209 @@
         </button>
       </div>
     </form>
+  </app-modal>
+
+  <!-- Questions Document View Modal -->
+  <app-modal
+    [show]="showQuestionsDocument"
+    [title]="'أسئلة الفئة'"
+    size="xl"
+    (close)="closeQuestionsDocument()"
+  >
+    <div class="questions-document-container">
+      <div class="document-actions" *ngIf="!loadingQuestions">
+        <button class="btn-secondary" (click)="closeQuestionsDocument()">
+          إغلاق
+        </button>
+      </div>
+      
+      <div class="document-loading" *ngIf="loadingQuestions">
+        <div class="spinner"></div>
+        <p>جاري تحميل الأسئلة...</p>
+      </div>
+      
+      <div id="questions-document-content" class="questions-document-content" *ngIf="!loadingQuestions && selectedCategoryForQuestions">
+        <!-- Header Section -->
+        <div class="document-header">
+          <h2 class="document-title">{{ selectedCategoryForQuestions.name }}</h2>
+          <p class="document-description" *ngIf="selectedCategoryForQuestions.description">
+            {{ selectedCategoryForQuestions.description }}
+          </p>
+          <p class="document-date">
+            تاريخ الإنشاء: {{ getCurrentDate() }} - {{ getCurrentTime() }}
+          </p>
+        </div>
+
+        <!-- Base Violation Fields Section -->
+        <div class="document-section">
+          <h3 class="section-title">الحقول الأساسية للتقرير</h3>
+          <form [formGroup]="documentForm" class="base-fields-form">
+            <div class="base-fields-grid">
+              <div class="field-item">
+                <label class="field-label">المدينة *</label>
+                <div class="field-value-placeholder">
+                  <select class="field-select" formControlName="cityId">
+                    <option value="">اختر المدينة</option>
+                    <option *ngFor="let city of cities" [value]="city.id">{{ city.name }}</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">الموقع *</label>
+                <div class="field-value-placeholder">
+                  <input type="text" class="field-input" formControlName="location" />
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">تاريخ الحادثة *</label>
+                <div class="field-value-placeholder">
+                  <input type="date" class="field-input" formControlName="violationDate" />
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">الوصف *</label>
+                <div class="field-value-placeholder">
+                  <textarea class="field-textarea" rows="3" formControlName="description"></textarea>
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">هل أنت شاهد على الحادثة؟</label>
+                <div class="field-value-placeholder">
+                  <div class="yesno-group">
+                    <label class="yesno-option">
+                      <input type="radio" name="isWitness" formControlName="isWitness" [value]="true" />
+                      <span>نعم</span>
+                    </label>
+                    <label class="yesno-option">
+                      <input type="radio" name="isWitness" formControlName="isWitness" [value]="false" />
+                      <span>لا</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">تفضيل الاتصال</label>
+                <div class="field-value-placeholder">
+                  <select class="field-select" formControlName="contactPreference">
+                    <option value="">اختر طريقة الاتصال</option>
+                    <option value="email">البريد الإلكتروني</option>
+                    <option value="phone">الهاتف</option>
+                    <option value="both">كلاهما</option>
+                    <option value="none">لا شيء</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">البريد الإلكتروني</label>
+                <div class="field-value-placeholder">
+                  <input type="email" class="field-input" formControlName="email" />
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">رقم الهاتف</label>
+                <div class="field-value-placeholder">
+                  <input type="tel" class="field-input" formControlName="phone" />
+                </div>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Questions Section -->
+        <div class="document-section">
+          <h3 class="section-title">الأسئلة المخصصة للفئة ({{ categoryQuestions.length }})</h3>
+          <div class="questions-list" *ngIf="categoryQuestions.length > 0">
+            <div *ngFor="let question of categoryQuestions; let i = index" class="question-item">
+              <div class="question-header">
+                <span class="question-number">{{ i + 1 }}</span>
+                <span class="question-type-badge">{{ getQuestionTypeLabel(question.questionType) }}</span>
+                <span class="question-required-badge" *ngIf="question.isRequired">مطلوب</span>
+              </div>
+              <div class="question-text">{{ question.text }}</div>
+              
+              <!-- Input fields based on question type (disabled for printing) -->
+              <div class="question-input-container">
+                <!-- Text Input (Type 1) -->
+                <input
+                  *ngIf="question.questionType === QuestionType.Text"
+                  type="text"
+                  disabled
+                  class="question-input question-input-text"
+                  placeholder="اكتب إجابتك هنا..."
+                />
+
+                <!-- Yes/No (Type 2) -->
+                <div *ngIf="question.questionType === QuestionType.YesNo" class="question-yesno-group">
+                  <label class="question-yesno-option">
+                    <input type="radio" disabled name="yesno-{{ question.id }}" value="نعم" />
+                    <span>نعم</span>
+                  </label>
+                  <label class="question-yesno-option">
+                    <input type="radio" disabled name="yesno-{{ question.id }}" value="لا" />
+                    <span>لا</span>
+                  </label>
+                </div>
+
+                <!-- Rating (Type 3) - 1-5 scale -->
+                <div *ngIf="question.questionType === QuestionType.Rating" class="question-rating-group">
+                  <div class="question-rating-options">
+                    <label *ngFor="let num of [1,2,3,4,5]" class="question-rating-option">
+                      <input type="radio" disabled [name]="'rating-' + question.id" [value]="num" />
+                      <span class="question-rating-number">{{ num }}</span>
+                    </label>
+                  </div>
+                  <div class="question-rating-labels">
+                    <span>منخفض</span>
+                    <span>عالٍ</span>
+                  </div>
+                </div>
+
+                <!-- MultipleChoice (Type 4) - Checkboxes -->
+                <div *ngIf="question.questionType === QuestionType.MultipleChoice" class="question-checkbox-group">
+                  <label *ngFor="let option of getQuestionOptions(question)" class="question-checkbox-option">
+                    <input type="checkbox" disabled [name]="'checkbox-' + question.id" [value]="option" />
+                    <span>{{ option }}</span>
+                  </label>
+                </div>
+
+                <!-- Date (Type 5) -->
+                <input
+                  *ngIf="question.questionType === QuestionType.Date"
+                  type="date"
+                  disabled
+                  class="question-input question-input-date"
+                />
+
+                <!-- Number (Type 6) -->
+                <input
+                  *ngIf="question.questionType === QuestionType.Number"
+                  type="number"
+                  disabled
+                  class="question-input question-input-number"
+                  placeholder="أدخل رقماً..."
+                />
+              </div>
+
+              <div class="question-meta">
+                <span class="question-order">الترتيب: {{ question.order }}</span>
+                <span class="question-status" [class.active]="question.isActive">
+                  {{ question.isActive ? 'نشط' : 'غير نشط' }}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="no-questions-message" *ngIf="categoryQuestions.length === 0">
+            <p>لا توجد أسئلة مخصصة لهذه الفئة</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </app-modal>
 </div>

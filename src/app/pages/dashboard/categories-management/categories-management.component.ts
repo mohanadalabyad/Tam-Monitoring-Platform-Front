@@ -1,13 +1,17 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CategoryService } from '../../../services/category.service';
+import { QuestionService } from '../../../services/question.service';
+import { CityService } from '../../../services/city.service';
 import { ToasterService } from '../../../services/toaster.service';
 import { PermissionCheckService } from '../../../services/permission-check.service';
 import { ConfirmationDialogService } from '../../../services/confirmation-dialog.service';
 import { CategoryDto, AddCategoryDto, UpdateCategoryDto } from '../../../models/category.model';
+import { QuestionDto, QuestionFilter, QuestionType, getQuestionTypeLabel } from '../../../models/question.model';
+import { CityDto } from '../../../models/city.model';
 import { TableColumn, TableAction } from '../../../components/unified-table/unified-table.component';
 import { ViewMode } from '../../../components/view-toggle/view-toggle.component';
-import { Pencil, Trash2, FolderPlus, Power, PowerOff } from 'lucide-angular';
+import { Pencil, Trash2, FolderPlus, Power, PowerOff, FileText } from 'lucide-angular';
 
 @Component({
   selector: 'app-categories-management',
@@ -23,6 +27,14 @@ export class CategoriesManagementComponent implements OnInit {
   editingCategory: CategoryDto | null = null;
   viewMode: ViewMode = 'table';
   togglingCategories: Set<number> = new Set();
+
+  // Questions document view properties
+  showQuestionsDocument = false;
+  selectedCategoryForQuestions: CategoryDto | null = null;
+  categoryQuestions: QuestionDto[] = [];
+  loadingQuestions = false;
+  cities: CityDto[] = [];
+  documentForm!: FormGroup;
 
   columns: TableColumn[] = [
     { key: 'name', label: 'الاسم', sortable: true, filterable: false },
@@ -48,9 +60,12 @@ export class CategoriesManagementComponent implements OnInit {
   FolderPlus = FolderPlus;
   Power = Power;
   PowerOff = PowerOff;
+  FileText = FileText;
 
   constructor(
     private categoryService: CategoryService,
+    private questionService: QuestionService,
+    private cityService: CityService,
     private toasterService: ToasterService,
     public permissionService: PermissionCheckService,
     private confirmationService: ConfirmationDialogService,
@@ -85,6 +100,17 @@ export class CategoriesManagementComponent implements OnInit {
 
   setupActions(): void {
     this.actions = [];
+    
+    if (this.permissionService.hasPermission('Question', 'Read') || this.permissionService.isSuperAdmin()) {
+      this.actions.push({
+        label: 'عرض الأسئلة',
+        icon: FileText,
+        action: (row) => this.viewCategoryQuestions(row),
+        class: 'btn-view-questions',
+        variant: 'info',
+        showLabel: false
+      });
+    }
     
     if (this.permissionService.hasPermission('Category', 'Update') || this.permissionService.isSuperAdmin()) {
       this.actions.push({
@@ -256,5 +282,127 @@ export class CategoriesManagementComponent implements OnInit {
 
   isToggling(categoryId: number): boolean {
     return this.togglingCategories.has(categoryId);
+  }
+
+  /**
+   * View questions for a category in document format
+   */
+  viewCategoryQuestions(category: CategoryDto): void {
+    this.selectedCategoryForQuestions = category;
+    this.showQuestionsDocument = true;
+    this.loadingQuestions = true;
+    this.categoryQuestions = [];
+    
+    // Initialize document form
+    this.initDocumentForm();
+
+    // Load questions filtered by category
+    const filter: QuestionFilter = {
+      categoryId: category.id,
+      isActive: undefined // Get all questions (active and inactive)
+    };
+
+    this.questionService.getAllQuestionsWithFilter(filter).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          const questions = Array.isArray(response.data) ? response.data : response.data.items || [];
+          // Sort questions by order
+          this.categoryQuestions = questions.sort((a, b) => a.order - b.order);
+        } else {
+          this.toasterService.showWarning(response.message || 'لا توجد أسئلة لهذه الفئة');
+        }
+        this.loadingQuestions = false;
+      },
+      error: (error) => {
+        console.error('Error loading questions:', error);
+        this.toasterService.showError('حدث خطأ أثناء تحميل الأسئلة');
+        this.loadingQuestions = false;
+      }
+    });
+
+    // Load cities for base fields display
+    this.cityService.getAllCities(undefined, undefined, true).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.cities = Array.isArray(response.data) ? response.data : response.data.items || [];
+        }
+      },
+      error: (error) => {
+        console.error('Error loading cities:', error);
+      }
+    });
+  }
+
+  /**
+   * Initialize document form for base fields
+   */
+  initDocumentForm(): void {
+    this.documentForm = this.fb.group({
+      cityId: [''],
+      location: [''],
+      violationDate: [''],
+      description: [''],
+      isWitness: [false],
+      contactPreference: [''],
+      email: [''],
+      phone: ['']
+    });
+  }
+
+  /**
+   * Close questions document modal
+   */
+  closeQuestionsDocument(): void {
+    this.showQuestionsDocument = false;
+    this.selectedCategoryForQuestions = null;
+    this.categoryQuestions = [];
+    if (this.documentForm) {
+      this.documentForm.reset();
+    }
+  }
+
+
+  /**
+   * Get question type label for display
+   */
+  getQuestionTypeLabel(type: number): string {
+    return getQuestionTypeLabel(type);
+  }
+
+  /**
+   * Get current date formatted for Arabic locale
+   */
+  getCurrentDate(): string {
+    return new Date().toLocaleDateString('ar-SA');
+  }
+
+  /**
+   * Get current time formatted for Arabic locale
+   */
+  getCurrentTime(): string {
+    return new Date().toLocaleTimeString('ar-SA');
+  }
+
+  /**
+   * Get QuestionType enum for template use
+   */
+  get QuestionType() {
+    return QuestionType;
+  }
+
+  /**
+   * Parse options JSON string for MultipleChoice type
+   */
+  getQuestionOptions(question: QuestionDto): string[] {
+    if (question.questionType === QuestionType.MultipleChoice && question.options) {
+      try {
+        const parsed = JSON.parse(question.options);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.error('Error parsing options JSON:', e);
+        return [];
+      }
+    }
+    return [];
   }
 }
