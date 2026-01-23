@@ -35,7 +35,7 @@ export class ModalComponent implements OnInit, OnDestroy {
   @Output() close = new EventEmitter<void>();
 
   @HostListener('document:keydown.escape', ['$event'])
-  handleEscapeKey(event: KeyboardEvent): void {
+  handleEscapeKey(event: Event): void {
     if (this.show && this.closeOnBackdrop) {
       this.onClose();
     }
