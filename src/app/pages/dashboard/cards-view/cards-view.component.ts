@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { ViolationService } from '../../../services/violation.service';
-import { Violation } from '../../../models/violation.model';
+import { CategoryService } from '../../../services/category.service';
+import { ViolationDto, AcceptanceStatus, getAcceptanceStatusLabel } from '../../../models/violation.model';
+import { CategoryDto } from '../../../models/category.model';
 
 @Component({
   selector: 'app-cards-view',
@@ -8,34 +10,52 @@ import { Violation } from '../../../models/violation.model';
   styleUrls: ['./cards-view.component.scss']
 })
 export class CardsViewComponent implements OnInit {
-  violations: Violation[] = [];
-  filteredViolations: Violation[] = [];
+  violations: ViolationDto[] = [];
+  filteredViolations: ViolationDto[] = [];
   loading = false;
   searchTerm = '';
-  statusFilter = 'all';
-  categoryFilter = 'all';
+  statusFilter: AcceptanceStatus | 'all' = 'all';
+  categoryFilter: number | 'all' = 'all';
   currentPage = 1;
   pageSize = 12;
   totalPages = 1;
 
-  categories: string[] = [];
+  categories: CategoryDto[] = [];
 
-  constructor(private violationService: ViolationService) {}
+  constructor(
+    private violationService: ViolationService,
+    private categoryService: CategoryService
+  ) {}
 
   ngOnInit(): void {
-    this.categories = this.violationService.getCategories();
+    this.loadCategories();
     this.loadViolations();
+  }
+
+  loadCategories(): void {
+    this.categoryService.getAllCategories(true).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.categories = Array.isArray(response.data) ? response.data : response.data.items || [];
+        }
+      },
+      error: (error: any) => {
+        console.error('Error loading categories:', error);
+      }
+    });
   }
 
   loadViolations(): void {
     this.loading = true;
-    this.violationService.getViolations().subscribe({
-      next: (data) => {
-        this.violations = data;
-        this.applyFilters();
+    this.violationService.getAllViolations(undefined, undefined, true).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.violations = Array.isArray(response.data) ? response.data : response.data.items || [];
+          this.applyFilters();
+        }
         this.loading = false;
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Error loading violations:', error);
         this.loading = false;
       }
@@ -49,20 +69,20 @@ export class CardsViewComponent implements OnInit {
     if (this.searchTerm) {
       const searchLower = this.searchTerm.toLowerCase();
       filtered = filtered.filter(v =>
-        v.title.toLowerCase().includes(searchLower) ||
         v.description.toLowerCase().includes(searchLower) ||
-        v.location.toLowerCase().includes(searchLower)
+        v.location.toLowerCase().includes(searchLower) ||
+        (v.city?.name && v.city.name.toLowerCase().includes(searchLower))
       );
     }
 
     // Status filter
     if (this.statusFilter !== 'all') {
-      filtered = filtered.filter(v => v.status === this.statusFilter);
+      filtered = filtered.filter(v => v.acceptanceStatus === this.statusFilter);
     }
 
     // Category filter
     if (this.categoryFilter !== 'all') {
-      filtered = filtered.filter(v => v.category === this.categoryFilter);
+      filtered = filtered.filter(v => v.categoryId === this.categoryFilter);
     }
 
     this.filteredViolations = filtered;
@@ -76,7 +96,7 @@ export class CardsViewComponent implements OnInit {
     }
   }
 
-  getPaginatedViolations(): Violation[] {
+  getPaginatedViolations(): ViolationDto[] {
     const start = (this.currentPage - 1) * this.pageSize;
     const end = start + this.pageSize;
     return this.filteredViolations.slice(start, end);
@@ -88,29 +108,22 @@ export class CardsViewComponent implements OnInit {
     }
   }
 
-  getStatusLabel(status: string): string {
-    const labels: { [key: string]: string } = {
-      'pending': 'قيد المراجعة',
-      'investigating': 'قيد التحقيق',
-      'resolved': 'تم الحل',
-      'rejected': 'مرفوض'
-    };
-    return labels[status] || status;
+  getStatusLabel(status: AcceptanceStatus): string {
+    return getAcceptanceStatusLabel(status);
   }
 
-  getStatusColor(status: string): 'primary' | 'success' | 'warning' | 'danger' | 'info' {
-    const colors: { [key: string]: 'primary' | 'success' | 'warning' | 'danger' | 'info' } = {
-      'pending': 'warning',
-      'investigating': 'info',
-      'resolved': 'success',
-      'rejected': 'danger'
+  getStatusColor(status: AcceptanceStatus): 'primary' | 'success' | 'warning' | 'danger' | 'info' {
+    const colors: { [key: number]: 'primary' | 'success' | 'warning' | 'danger' | 'info' } = {
+      1: 'warning', // Pending
+      2: 'success', // Approved
+      3: 'danger'    // Rejected
     };
     return colors[status] || 'primary';
   }
 
   Math = Math;
 
-  onCardClick(violation: Violation): void {
+  onCardClick(violation: ViolationDto): void {
     // Navigate to violation details or open modal
     console.log('Clicked violation:', violation);
   }

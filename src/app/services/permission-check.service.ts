@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { AuthService } from '../auth/auth.service';
+import { environment } from '../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
@@ -77,6 +78,49 @@ export class PermissionCheckService {
    */
   isSuperAdmin(): boolean {
     const user = this.authService.getCurrentUser();
-    return user?.isSuperAdmin || false;
+    if (user) {
+      return user.isSuperAdmin || false;
+    }
+
+    // If user is not available, try to get from stored user
+    const storedUserStr = localStorage.getItem(environment.userKey || 'tam_auth_user');
+    if (storedUserStr) {
+      try {
+        const storedUser = JSON.parse(storedUserStr);
+        if (storedUser?.isSuperAdmin !== undefined) {
+          return storedUser.isSuperAdmin || false;
+        }
+      } catch {
+        // Continue to token check
+      }
+    }
+
+    // Last resort: check token directly
+    const token = this.authService.getToken();
+    if (token) {
+      try {
+        // Decode token to check IsSuperAdmin claim
+        const parts = token.split('.');
+        if (parts.length === 3) {
+          const payload = parts[1];
+          const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+          const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+          const decoded = atob(padded);
+          const tokenData = JSON.parse(decoded);
+          
+          const isSuperAdmin = tokenData.IsSuperAdmin || tokenData.isSuperAdmin || 
+                              tokenData['IsSuperAdmin'] || tokenData['isSuperAdmin'];
+          
+          if (typeof isSuperAdmin === 'string') {
+            return isSuperAdmin.toLowerCase() === 'true';
+          }
+          return isSuperAdmin === true;
+        }
+      } catch (error) {
+        console.error('Error decoding token in permission check:', error);
+      }
+    }
+
+    return false;
   }
 }

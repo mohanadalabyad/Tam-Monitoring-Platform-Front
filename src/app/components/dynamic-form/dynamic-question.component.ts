@@ -1,6 +1,6 @@
 import { Component, Input, forwardRef } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { Question } from '../../models/question.model';
+import { QuestionDto, QuestionType } from '../../models/question.model';
 
 @Component({
   selector: 'app-dynamic-question',
@@ -15,12 +15,15 @@ import { Question } from '../../models/question.model';
   ]
 })
 export class DynamicQuestionComponent implements ControlValueAccessor {
-  @Input() question!: Question;
+  @Input() question!: QuestionDto;
   @Input() formControlName?: string;
 
   value: any = null;
   onChange = (value: any) => {};
   onTouched = () => {};
+
+  // QuestionType enum reference
+  QuestionType = QuestionType;
 
   writeValue(value: any): void {
     this.value = value;
@@ -36,7 +39,8 @@ export class DynamicQuestionComponent implements ControlValueAccessor {
 
   onValueChange(value: any): void {
     this.value = value;
-    this.onChange(value);
+    // Convert value to string for backend
+    this.onChange(value !== null && value !== undefined ? String(value) : '');
     this.onTouched();
   }
 
@@ -50,22 +54,30 @@ export class DynamicQuestionComponent implements ControlValueAccessor {
     return '';
   }
 
-  onCheckboxChange(optionValue: string, event: Event): void {
-    const checked = (event.target as HTMLInputElement).checked;
-    let currentValue = this.value || [];
-    
-    if (checked) {
-      if (!currentValue.includes(optionValue)) {
-        currentValue = [...currentValue, optionValue];
-      }
-    } else {
-      currentValue = currentValue.filter((v: string) => v !== optionValue);
-    }
-    
-    this.onValueChange(currentValue);
-  }
-
   parseNumber(value: string): number {
     return Number(value);
+  }
+
+  /**
+   * Convert number to string (for template use)
+   */
+  toString(value: number): string {
+    return String(value);
+  }
+
+  /**
+   * Parse options JSON string for MultipleChoice type
+   */
+  getOptions(): string[] {
+    if (this.question.questionType === QuestionType.MultipleChoice && this.question.options) {
+      try {
+        const parsed = JSON.parse(this.question.options);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.error('Error parsing options JSON:', e);
+        return [];
+      }
+    }
+    return [];
   }
 }

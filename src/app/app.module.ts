@@ -31,6 +31,7 @@ import { SubCategoriesManagementComponent } from './pages/dashboard/subcategorie
 import { QuestionsManagementComponent } from './pages/dashboard/questions-management/questions-management.component';
 import { RolesManagementComponent } from './pages/dashboard/roles-management/roles-management.component';
 import { PermissionsManagementComponent } from './pages/dashboard/permissions-management/permissions-management.component';
+import { CitiesManagementComponent } from './pages/dashboard/cities-management/cities-management.component';
 
 // Shared components
 import { UnifiedTableComponent } from './components/unified-table/unified-table.component';
@@ -73,6 +74,7 @@ import { HasPermissionDirective } from './directives/has-permission.directive';
     QuestionsManagementComponent,
     RolesManagementComponent,
     PermissionsManagementComponent,
+    CitiesManagementComponent,
     UnifiedCardComponent,
     ModalComponent,
     ToasterComponent,

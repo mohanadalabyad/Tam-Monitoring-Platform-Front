@@ -4,24 +4,229 @@
       <h1>إدارة الحوادث</h1>
       <p>إدارة وعرض جميع الحوادث المبلغ عنها</p>
     </div>
-    <button class="btn-primary" (click)="openAddModal()" *hasPermission="'Violation.Create'">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="12" y1="5" x2="12" y2="19"/>
-        <line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
-      إضافة حادثة جديدة
-    </button>
+    <div class="header-actions">
+      <app-view-toggle
+        [storageKey]="'violations-view-mode'"
+        [defaultView]="'table'"
+        (viewChange)="onViewChange($event)"
+      ></app-view-toggle>
+      <button class="btn-primary" (click)="openAddModal()" *hasPermission="'Violation.Create'">
+        <lucide-icon [img]="AlertCircle" [size]="18"></lucide-icon>
+        إضافة حادثة جديدة
+      </button>
+    </div>
   </div>
 
-  <app-unified-table
-    [columns]="columns"
-    [data]="violations"
-    [loading]="loading"
-    [actions]="actions"
-    [pageSize]="10"
-    emptyMessage="لا توجد حوادث"
-  ></app-unified-table>
+  <!-- Filters -->
+  <div class="filters-section">
+    <button class="btn-filter-toggle" (click)="showFilters = !showFilters">
+      <span>تصفية</span>
+      <lucide-icon [img]="showFilters ? X : Eye" [size]="16"></lucide-icon>
+    </button>
+    
+    <div class="filters-panel" *ngIf="showFilters" [formGroup]="filterForm">
+      <div class="filters-grid">
+        <div class="form-group">
+          <label>نوع الحادثة</label>
+          <select formControlName="violationType">
+            <option value="">الكل</option>
+            <option [value]="ViolationType.Public">عام</option>
+            <option [value]="ViolationType.Private">خاص</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>حالة القبول</label>
+          <select formControlName="acceptanceStatus">
+            <option value="">الكل</option>
+            <option [value]="AcceptanceStatus.Pending">قيد المراجعة</option>
+            <option [value]="AcceptanceStatus.Approved">موافق عليه</option>
+            <option [value]="AcceptanceStatus.Rejected">مرفوض</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>حالة النشر</label>
+          <select formControlName="publishStatus">
+            <option value="">الكل</option>
+            <option [value]="PublishStatus.Publish">منشور</option>
+            <option [value]="PublishStatus.NotPublish">غير منشور</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>المدينة</label>
+          <select formControlName="cityId">
+            <option value="">الكل</option>
+            <option *ngFor="let city of cities" [value]="city.id">{{ city.name }}</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>الفئة</label>
+          <select formControlName="categoryId">
+            <option value="">الكل</option>
+            <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>الفئة الفرعية</label>
+          <select formControlName="subCategoryId">
+            <option value="">الكل</option>
+            <option *ngFor="let subCategory of filteredSubCategories" [value]="subCategory.id">{{ subCategory.name }}</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>من تاريخ</label>
+          <input type="date" formControlName="startDate" />
+        </div>
+        
+        <div class="form-group">
+          <label>إلى تاريخ</label>
+          <input type="date" formControlName="endDate" />
+        </div>
+      </div>
+      
+      <div class="filters-actions">
+        <button class="btn-secondary" (click)="clearFilters()">مسح</button>
+        <button class="btn-primary" (click)="applyFilters()">تطبيق</button>
+      </div>
+    </div>
+  </div>
 
+  <!-- Toolbar -->
+  <div class="toolbar" *ngIf="!loading">
+    <div class="toolbar-left">
+      <div class="results-info">
+        <span class="results-count">
+          <strong>{{ violations.length }}</strong> حادثة
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table View -->
+  <div *ngIf="viewMode === 'table'">
+    <app-unified-table
+      [columns]="columns"
+      [data]="violations"
+      [loading]="loading"
+      [actions]="actions"
+      [pageSize]="10"
+      emptyMessage="لا توجد حوادث"
+      (rowClick)="editViolation($event)"
+    ></app-unified-table>
+  </div>
+
+  <!-- Cards View -->
+  <div *ngIf="viewMode === 'cards'" class="violations-cards-view">
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>جاري تحميل الحوادث...</p>
+    </div>
+    <div *ngIf="!loading && violations.length === 0" class="empty-state">
+      <p>لا توجد حوادث</p>
+    </div>
+    <div *ngIf="!loading && violations.length > 0" class="violations-grid">
+      <div *ngFor="let violation of violations" class="violation-card">
+        <div class="card-header">
+          <div class="card-title-section">
+            <h3 class="card-title">حادثة #{{ violation.id }}</h3>
+            <div class="card-badges">
+              <span class="badge" [class.badge-public]="violation.violationType === ViolationType.Public" [class.badge-private]="violation.violationType === ViolationType.Private">
+                {{ getViolationTypeLabel(violation.violationType) }}
+              </span>
+              <span class="badge" [ngClass]="getStatusBadgeClass(violation.acceptanceStatus)">
+                {{ getAcceptanceStatusLabel(violation.acceptanceStatus) }}
+              </span>
+            </div>
+          </div>
+          <div class="card-actions-header" (click)="$event.stopPropagation()">
+            <button
+              *ngIf="permissionService.hasPermission('Violation.Update') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-edit"
+              (click)="editViolation(violation); $event.stopPropagation()"
+              title="تعديل"
+            >
+              <lucide-icon [img]="Pencil" [size]="16"></lucide-icon>
+            </button>
+            <button
+              *ngIf="permissionService.hasPermission('Violation.Delete') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-delete"
+              (click)="deleteViolation(violation); $event.stopPropagation()"
+              title="حذف"
+            >
+              <lucide-icon [img]="Trash2" [size]="16"></lucide-icon>
+            </button>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="card-field">
+            <span class="field-label">المدينة:</span>
+            <span class="field-value">{{ violation.city?.name || 'غير محدد' }}</span>
+          </div>
+          <div class="card-field">
+            <span class="field-label">الفئة:</span>
+            <span class="field-value">{{ violation.category?.name || 'غير محدد' }}</span>
+          </div>
+          <div class="card-field">
+            <span class="field-label">تاريخ الحادثة:</span>
+            <span class="field-value">{{ violation.violationDate | date:'short' }}</span>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="card-actions-footer">
+            <button
+              *ngIf="(permissionService.hasPermission('Violation.Approve') || permissionService.isSuperAdmin()) && violation.acceptanceStatus === AcceptanceStatus.Pending"
+              class="btn-action btn-approve"
+              (click)="approveViolation(violation); $event.stopPropagation()"
+            >
+              <lucide-icon [img]="CheckCircle" [size]="14"></lucide-icon>
+              موافقة
+            </button>
+            <button
+              *ngIf="(permissionService.hasPermission('Violation.Reject') || permissionService.isSuperAdmin()) && violation.acceptanceStatus === AcceptanceStatus.Pending"
+              class="btn-action btn-reject"
+              (click)="rejectViolation(violation); $event.stopPropagation()"
+            >
+              <lucide-icon [img]="XCircle" [size]="14"></lucide-icon>
+              رفض
+            </button>
+            <button
+              *ngIf="(permissionService.hasPermission('Violation.Publish') || permissionService.isSuperAdmin()) && violation.acceptanceStatus === AcceptanceStatus.Approved && violation.publishStatus === PublishStatus.NotPublish"
+              class="btn-action btn-publish"
+              (click)="publishViolation(violation); $event.stopPropagation()"
+            >
+              <lucide-icon [img]="Check" [size]="14"></lucide-icon>
+              نشر
+            </button>
+            <button
+              *ngIf="(permissionService.hasPermission('Violation.Unpublish') || permissionService.isSuperAdmin()) && violation.publishStatus === PublishStatus.Publish"
+              class="btn-action btn-unpublish"
+              (click)="unpublishViolation(violation); $event.stopPropagation()"
+            >
+              <lucide-icon [img]="X" [size]="14"></lucide-icon>
+              إلغاء النشر
+            </button>
+            <button
+              *ngIf="permissionService.hasPermission('Violation.Read') || permissionService.isSuperAdmin()"
+              class="btn-action btn-print"
+              (click)="printViolation(violation); $event.stopPropagation()"
+            >
+              <lucide-icon [img]="Printer" [size]="14"></lucide-icon>
+              طباعة
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
   <app-modal
     [show]="showModal"
     [title]="modalTitle"
@@ -31,62 +236,77 @@
     <form [formGroup]="violationForm" (ngSubmit)="saveViolation()">
       <div class="form-row">
         <div class="form-group">
-          <label for="title">العنوان *</label>
-          <input
-            type="text"
-            id="title"
-            formControlName="title"
-            [class.invalid]="isFieldInvalid('title')"
-          />
-          <div class="error-message" *ngIf="isFieldInvalid('title')">
-            العنوان مطلوب
+          <label for="cityId">المدينة *</label>
+          <select
+            id="cityId"
+            formControlName="cityId"
+            [class.invalid]="isFieldInvalid('cityId')"
+          >
+            <option value="">اختر المدينة</option>
+            <option *ngFor="let city of cities" [value]="city.id">{{ city.name }}</option>
+          </select>
+          <div class="error-message" *ngIf="isFieldInvalid('cityId')">
+            المدينة مطلوبة
           </div>
         </div>
-      </div>
 
-      <div class="form-row">
         <div class="form-group">
-          <label for="category">الفئة *</label>
+          <label for="categoryId">الفئة *</label>
           <select
-            id="category"
-            formControlName="category"
-            [class.invalid]="isFieldInvalid('category')"
+            id="categoryId"
+            formControlName="categoryId"
+            [class.invalid]="isFieldInvalid('categoryId')"
           >
             <option value="">اختر الفئة</option>
-            <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+            <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
           </select>
-          <div class="error-message" *ngIf="isFieldInvalid('category')">
-            يرجى اختيار الفئة
+          <div class="error-message" *ngIf="isFieldInvalid('categoryId')">
+            الفئة مطلوبة
           </div>
-        </div>
-
-        <div class="form-group">
-          <label for="status">الحالة *</label>
-          <select
-            id="status"
-            formControlName="status"
-            [class.invalid]="isFieldInvalid('status')"
-          >
-            <option value="pending">قيد المراجعة</option>
-            <option value="investigating">قيد التحقيق</option>
-            <option value="resolved">تم الحل</option>
-            <option value="rejected">مرفوض</option>
-          </select>
         </div>
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label for="location">الموقع *</label>
-          <input
-            type="text"
-            id="location"
-            formControlName="location"
-            [class.invalid]="isFieldInvalid('location')"
-          />
-          <div class="error-message" *ngIf="isFieldInvalid('location')">
-            الموقع مطلوب
+          <label for="subCategoryId">الفئة الفرعية *</label>
+          <select
+            id="subCategoryId"
+            formControlName="subCategoryId"
+            [class.invalid]="isFieldInvalid('subCategoryId')"
+          >
+            <option value="">اختر الفئة الفرعية</option>
+            <option *ngFor="let subCategory of filteredSubCategories" [value]="subCategory.id">{{ subCategory.name }}</option>
+          </select>
+          <div class="error-message" *ngIf="isFieldInvalid('subCategoryId')">
+            الفئة الفرعية مطلوبة
           </div>
+        </div>
+
+        <div class="form-group">
+          <label for="violationDate">تاريخ الحادثة *</label>
+          <input
+            type="date"
+            id="violationDate"
+            formControlName="violationDate"
+            [class.invalid]="isFieldInvalid('violationDate')"
+          />
+          <div class="error-message" *ngIf="isFieldInvalid('violationDate')">
+            تاريخ الحادثة مطلوب
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="location">الموقع *</label>
+        <input
+          type="text"
+          id="location"
+          formControlName="location"
+          [class.invalid]="isFieldInvalid('location')"
+          placeholder="أدخل موقع الحادثة"
+        />
+        <div class="error-message" *ngIf="isFieldInvalid('location')">
+          الموقع مطلوب
         </div>
       </div>
 
@@ -95,52 +315,88 @@
         <textarea
           id="description"
           formControlName="description"
-          rows="4"
           [class.invalid]="isFieldInvalid('description')"
+          rows="4"
+          placeholder="أدخل وصف الحادثة"
         ></textarea>
         <div class="error-message" *ngIf="isFieldInvalid('description')">
           الوصف مطلوب
         </div>
       </div>
 
-      <div class="form-section-title">معلومات المبلغ</div>
-
-      <div class="form-row">
-        <div class="form-group">
-          <label for="reporterName">الاسم الكامل *</label>
+      <div class="form-group">
+        <label class="checkbox-label">
           <input
-            type="text"
-            id="reporterName"
-            formControlName="reporterName"
-            [class.invalid]="isFieldInvalid('reporterName')"
+            type="checkbox"
+            formControlName="isWitness"
           />
-          <div class="error-message" *ngIf="isFieldInvalid('reporterName')">
-            الاسم مطلوب
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="reporterEmail">البريد الإلكتروني *</label>
-          <input
-            type="email"
-            id="reporterEmail"
-            formControlName="reporterEmail"
-            [class.invalid]="isFieldInvalid('reporterEmail')"
-          />
-          <div class="error-message" *ngIf="isFieldInvalid('reporterEmail')">
-            بريد إلكتروني صحيح مطلوب
-          </div>
-        </div>
+          <span>هل أنت شاهد على الحادثة؟</span>
+        </label>
       </div>
 
-      <div class="form-row">
-        <div class="form-group">
-          <label for="reporterPhone">رقم الهاتف</label>
+      <!-- Dynamic Questions Section -->
+      <div class="questions-section" *ngIf="sortedQuestions.length > 0">
+        <h3 class="section-title">الأسئلة ({{ sortedQuestions.length }})</h3>
+        <p class="section-hint" *ngIf="violationForm.get('categoryId')?.value">
+          الأسئلة المخصصة للفئة المختارة
+        </p>
+        <div class="questions-container" [formGroup]="questionsForm">
+          <app-dynamic-question
+            *ngFor="let question of sortedQuestions"
+            [question]="question"
+            [formControlName]="getQuestionControlName(question.id)"
+          ></app-dynamic-question>
+        </div>
+      </div>
+      <div class="questions-section" *ngIf="sortedQuestions.length === 0 && violationForm.get('categoryId')?.value">
+        <p class="no-questions-message">لا توجد أسئلة مخصصة لهذه الفئة</p>
+      </div>
+
+      <!-- File Upload Section -->
+      <div class="attachments-section">
+        <h3 class="section-title">المرفقات</h3>
+        <div class="file-upload-area">
           <input
-            type="tel"
-            id="reporterPhone"
-            formControlName="reporterPhone"
+            type="file"
+            id="fileInput"
+            multiple
+            accept="image/*,video/*"
+            (change)="onFileSelected($event)"
+            style="display: none"
+            #fileInput
           />
+          <button
+            type="button"
+            class="btn-secondary btn-upload"
+            (click)="fileInput.click()"
+            [disabled]="uploadingFiles"
+          >
+            <lucide-icon [img]="Upload" [size]="16"></lucide-icon>
+            <span>رفع ملفات</span>
+          </button>
+          <p class="upload-hint">يمكنك رفع صور أو فيديو (حد أقصى 10 ميجابايت لكل ملف)</p>
+        </div>
+
+        <div class="attachments-preview" *ngIf="attachmentPreviews.length > 0">
+          <div *ngFor="let preview of attachmentPreviews; let i = index" class="attachment-item">
+            <div class="attachment-preview" *ngIf="preview.preview && preview.preview.startsWith('data:')">
+              <img [src]="preview.preview" alt="Preview" />
+            </div>
+            <div class="attachment-info">
+              <span class="attachment-name">{{ preview.file ? preview.file.name : 'ملف مرفق' }}</span>
+              <span class="attachment-size" *ngIf="preview.file">
+                {{ (preview.file.size / 1024 / 1024).toFixed(2) }} MB
+              </span>
+            </div>
+            <button
+              type="button"
+              class="btn-remove-attachment"
+              (click)="removeAttachment(i)"
+              [disabled]="uploadingFiles"
+            >
+              <lucide-icon [img]="X" [size]="14"></lucide-icon>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -153,5 +409,32 @@
         </button>
       </div>
     </form>
+  </app-modal>
+
+  <!-- Print View Modal -->
+  <app-modal
+    [show]="showPrintView"
+    [title]="'طباعة الحادثة'"
+    size="xl"
+    (close)="closePrintView()"
+  >
+    <div class="print-view-container">
+      <div class="print-actions" *ngIf="!loadingPrintView">
+        <button class="btn-primary" (click)="printCurrentView()">
+          <lucide-icon [img]="Printer" [size]="16"></lucide-icon>
+          طباعة
+        </button>
+        <button class="btn-secondary" (click)="closePrintView()">
+          إغلاق
+        </button>
+      </div>
+      
+      <div class="print-loading" *ngIf="loadingPrintView">
+        <div class="spinner"></div>
+        <p>جاري تحميل صفحة الطباعة...</p>
+      </div>
+      
+      <div class="print-content" *ngIf="!loadingPrintView && printViewHtml" [innerHTML]="printViewHtml"></div>
+    </div>
   </app-modal>
 </div>

@@ -2,257 +2,305 @@
   <div class="page-header">
     <div>
       <h1>إدارة الأسئلة</h1>
-      <p>إدارة الأسئلة الديناميكية للنماذج</p>
+      <p>إدارة وعرض جميع الأسئلة</p>
     </div>
-    <button class="btn-primary" (click)="openAddModal()" *hasPermission="'Question.Create'">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="12" y1="5" x2="12" y2="19"/>
-        <line x1="5" y1="12" x2="19" y2="12"/>
-      </svg>
-      إضافة سؤال جديد
-    </button>
-  </div>
-
-  <div class="filter-section">
-    <div class="filter-row">
-      <div class="form-group">
-        <label for="categoryFilter">تصفية حسب الفئة:</label>
-        <select id="categoryFilter" [ngModel]="selectedCategoryId" (ngModelChange)="selectedCategoryId = $event ? +$event : null; onCategoryFilterChange()">
-          <option [value]="null">جميع الفئات</option>
-          <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
-        </select>
-      </div>
+    <div class="header-actions">
+      <app-view-toggle
+        [storageKey]="'questions-view-mode'"
+        [defaultView]="'table'"
+        (viewChange)="onViewChange($event)"
+      ></app-view-toggle>
+      <button class="btn-primary" (click)="openAddModal()" *hasPermission="'Question.Create'">
+        <lucide-icon [img]="HelpCircle" [size]="18"></lucide-icon>
+        إضافة سؤال جديد
+      </button>
     </div>
   </div>
 
-  <div class="questions-list" *ngIf="!loading">
-    <div class="question-item" *ngFor="let question of filteredQuestions">
-      <div class="question-header">
-        <div class="question-info">
-          <div class="question-type-badge" [attr.data-type]="question.type">
-            {{ getQuestionTypeLabel(question.type) }}
-          </div>
-          <h3>{{ question.labelAr }}</h3>
-          <p class="question-label-en">{{ question.labelEn }}</p>
-          <div class="question-meta">
-            <span class="meta-item" *ngIf="question.categoryId">
-              الفئة: {{ getCategoryName(question.categoryId) }}
-            </span>
-            <span class="meta-item" *ngIf="question.section">
-              القسم: {{ question.section }}
-            </span>
-            <span class="meta-item">
-              الترتيب: #{{ question.order }}
-            </span>
-            <span class="meta-item required-badge" *ngIf="question.required">
-              مطلوب
-            </span>
-          </div>
-        </div>
-        <div class="question-actions">
-          <button 
-            *hasPermission="'Question.Update'"
-            class="btn-edit" 
-            (click)="editQuestion(question)"
+  <!-- Filter Section -->
+  <div class="filter-section" *ngIf="categories.length > 0">
+    <form [formGroup]="filterForm" class="filter-form">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label for="filterCategory">تصفية حسب الفئة:</label>
+          <select
+            id="filterCategory"
+            formControlName="categoryId"
+            class="filter-select"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
-            </svg>
-            تعديل
-          </button>
-          <button 
-            *hasPermission="'Question.Delete'"
-            class="btn-delete" 
-            (click)="deleteQuestion(question)"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-            </svg>
-            حذف
-          </button>
+            <option value="">جميع الفئات</option>
+            <option *ngFor="let category of categories" [value]="category.id">
+              {{ category.name }}
+            </option>
+          </select>
         </div>
+        <button
+          type="button"
+          class="btn-secondary btn-clear-filter"
+          (click)="clearFilter()"
+          *ngIf="selectedCategoryFilter"
+        >
+          إزالة التصفية
+        </button>
       </div>
-      <p class="question-description" *ngIf="question.description">{{ question.description }}</p>
-      <div class="question-options" *ngIf="question.options && question.options.length > 0">
-        <strong>الخيارات:</strong>
-        <div class="options-list">
-          <span class="option-tag" *ngFor="let option of question.options">
-            {{ option.labelAr }}
+    </form>
+  </div>
+
+  <!-- Toolbar with Results Counter -->
+  <div class="toolbar" *ngIf="!loading">
+    <div class="toolbar-left">
+      <div class="results-info">
+        <span class="results-count">
+          <strong>{{ questions.length }}</strong> سؤال
+          <span *ngIf="selectedCategoryFilter" class="filter-indicator">
+            (مصفى)
           </span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table View -->
+  <div *ngIf="viewMode === 'table'">
+    <app-unified-table
+      [columns]="columns"
+      [data]="questions"
+      [loading]="loading"
+      [actions]="actions"
+      [pageSize]="10"
+      emptyMessage="لا توجد أسئلة"
+      (rowClick)="editQuestion($event)"
+    ></app-unified-table>
+  </div>
+
+  <!-- Cards View -->
+  <div *ngIf="viewMode === 'cards'" class="questions-cards-view">
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>جاري تحميل الأسئلة...</p>
+    </div>
+    <div *ngIf="!loading && questions.length === 0" class="empty-state">
+      <p>لا توجد أسئلة</p>
+    </div>
+    <div *ngIf="!loading && questions.length > 0" class="questions-grid">
+      <div *ngFor="let question of questions" class="question-card">
+        <div class="card-header">
+          <div class="card-title-section">
+            <h3 class="card-title">{{ question.text }}</h3>
+            <span class="card-badge" [attr.data-type]="question.questionType">
+              {{ getQuestionTypeLabel(question.questionType) }}
+            </span>
+          </div>
+          <div class="card-actions-header" (click)="$event.stopPropagation()">
+            <button
+              *ngIf="permissionService.hasPermission('Question', 'Update') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-edit"
+              (click)="editQuestion(question); $event.stopPropagation()"
+              title="تعديل"
+            >
+              <lucide-icon [img]="Pencil" [size]="16"></lucide-icon>
+            </button>
+            <button
+              *ngIf="permissionService.hasPermission('Question', 'Delete') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-delete"
+              (click)="deleteQuestion(question); $event.stopPropagation()"
+              title="حذف"
+            >
+              <lucide-icon [img]="Trash2" [size]="16"></lucide-icon>
+            </button>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="card-field">
+            <span class="field-label">الفئة:</span>
+            <span class="field-value">{{ getCategoryName(question.categoryId) }}</span>
+          </div>
+          <div class="card-field">
+            <span class="field-label">الترتيب:</span>
+            <span class="field-value">#{{ question.order }}</span>
+          </div>
+          <div class="card-field">
+            <span class="field-label">مطلوب:</span>
+            <span class="field-value">{{ question.isRequired ? 'نعم' : 'لا' }}</span>
+          </div>
+          <div class="card-field" *ngIf="question.questionType === 4 && question.options">
+            <span class="field-label">الخيارات:</span>
+            <span class="field-value">{{ question.options }}</span>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="status-toggle">
+            <span class="status-label">الحالة:</span>
+            <button
+              *ngIf="permissionService.hasPermission('Question', 'ToggleActivity') || permissionService.isSuperAdmin()"
+              type="button"
+              class="toggle-btn-card"
+              [class.active]="question.isActive"
+              [class.toggling]="isToggling(question.id)"
+              [disabled]="isToggling(question.id)"
+              (click)="toggleQuestionActivity(question, $event)"
+              [title]="question.isActive ? 'إلغاء التفعيل' : 'تفعيل'"
+            >
+              <lucide-icon 
+                [img]="question.isActive ? Power : PowerOff" 
+                [size]="16"
+              ></lucide-icon>
+              <span>{{ question.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </button>
+            <span
+              *ngIf="!(permissionService.hasPermission('Question', 'ToggleActivity') || permissionService.isSuperAdmin())"
+              class="status-readonly"
+              [class.active]="question.isActive"
+            >
+              <lucide-icon 
+                [img]="question.isActive ? Power : PowerOff" 
+                [size]="16"
+              ></lucide-icon>
+              <span>{{ question.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </span>
+          </div>
         </div>
       </div>
     </div>
-    <div class="empty-state" *ngIf="filteredQuestions.length === 0">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"/>
-        <line x1="12" y1="8" x2="12" y2="12"/>
-        <line x1="12" y1="16" x2="12.01" y2="16"/>
-      </svg>
-      <p>لا توجد أسئلة. ابدأ بإضافة سؤال جديد.</p>
-    </div>
   </div>
 
-  <div class="loading-state" *ngIf="loading">
-    <div class="spinner"></div>
-    <p>جاري التحميل...</p>
-  </div>
+  <app-modal
+    [show]="showModal"
+    [title]="modalTitle"
+    size="md"
+    (close)="closeModal()"
+  >
+    <form [formGroup]="questionForm" (ngSubmit)="saveQuestion()">
+      <div class="form-group">
+        <label for="text">نص السؤال *</label>
+        <textarea
+          id="text"
+          formControlName="text"
+          [class.invalid]="isFieldInvalid('text')"
+          placeholder="أدخل نص السؤال"
+          rows="3"
+        ></textarea>
+        <div class="error-message" *ngIf="isFieldInvalid('text')">
+          نص السؤال مطلوب
+        </div>
+      </div>
 
-  <app-modal [show]="isModalOpen" [title]="editMode ? 'تعديل سؤال' : 'إضافة سؤال جديد'" size="lg" (close)="closeModal()">
-    <form [formGroup]="questionForm" class="question-form">
-      <div class="form-section">
-        <h4>المعلومات الأساسية</h4>
-        
+      <div class="form-row">
         <div class="form-group">
           <label for="categoryId">الفئة *</label>
-          <select id="categoryId" formControlName="categoryId"
-                  [class.invalid]="questionForm.get('categoryId')?.invalid && (questionForm.get('categoryId')?.dirty || questionForm.get('categoryId')?.touched)">
+          <select
+            id="categoryId"
+            formControlName="categoryId"
+            [class.invalid]="isFieldInvalid('categoryId')"
+          >
             <option value="">اختر الفئة</option>
             <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
           </select>
-          <div class="error-message" *ngIf="questionForm.get('categoryId')?.invalid && (questionForm.get('categoryId')?.dirty || questionForm.get('categoryId')?.touched)">
-            يرجى اختيار الفئة
+          <div class="error-message" *ngIf="isFieldInvalid('categoryId')">
+            الفئة مطلوبة
           </div>
         </div>
 
         <div class="form-group">
-          <label for="type">نوع السؤال *</label>
-          <select id="type" formControlName="type"
-                  [class.invalid]="questionForm.get('type')?.invalid && (questionForm.get('type')?.dirty || questionForm.get('type')?.touched)">
-            <option value="">اختر نوع السؤال</option>
-            <option *ngFor="let qType of questionTypes" [value]="qType.value">{{ qType.labelAr }}</option>
+          <label for="questionType">نوع السؤال *</label>
+          <select
+            id="questionType"
+            formControlName="questionType"
+            [class.invalid]="isFieldInvalid('questionType')"
+            (change)="onQuestionTypeChange($event)"
+          >
+            <option *ngFor="let type of questionTypes" [value]="type.value">
+              {{ type.label }}
+            </option>
           </select>
-          <div class="error-message" *ngIf="questionForm.get('type')?.invalid && (questionForm.get('type')?.dirty || questionForm.get('type')?.touched)">
+          <div class="error-message" *ngIf="isFieldInvalid('questionType')">
             نوع السؤال مطلوب
           </div>
         </div>
+      </div>
 
+      <div class="form-row">
         <div class="form-group">
-          <label for="labelAr">نص السؤال بالعربية *</label>
-          <input type="text" id="labelAr" formControlName="labelAr" placeholder="نص السؤال بالعربية"
-                 [class.invalid]="questionForm.get('labelAr')?.invalid && (questionForm.get('labelAr')?.dirty || questionForm.get('labelAr')?.touched)"/>
-          <div class="error-message" *ngIf="questionForm.get('labelAr')?.invalid && (questionForm.get('labelAr')?.dirty || questionForm.get('labelAr')?.touched)">
-            نص السؤال بالعربية مطلوب
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="labelEn">نص السؤال بالإنجليزية *</label>
-          <input type="text" id="labelEn" formControlName="labelEn" placeholder="Question Text in English"
-                 [class.invalid]="questionForm.get('labelEn')?.invalid && (questionForm.get('labelEn')?.dirty || questionForm.get('labelEn')?.touched)"/>
-          <div class="error-message" *ngIf="questionForm.get('labelEn')?.invalid && (questionForm.get('labelEn')?.dirty || questionForm.get('labelEn')?.touched)">
-            نص السؤال بالإنجليزية مطلوب
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="description">الوصف</label>
-          <textarea id="description" formControlName="description" placeholder="وصف السؤال (اختياري)" rows="2"></textarea>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="section">القسم</label>
-            <input type="text" id="section" formControlName="section" placeholder="اسم القسم (للتجميع)"/>
-          </div>
-
-          <div class="form-group">
-            <label for="order">الترتيب *</label>
-            <input type="number" id="order" formControlName="order" min="1"
-                   [class.invalid]="questionForm.get('order')?.invalid && (questionForm.get('order')?.dirty || questionForm.get('order')?.touched)"/>
-            <div class="error-message" *ngIf="questionForm.get('order')?.invalid && (questionForm.get('order')?.dirty || questionForm.get('order')?.touched)">
-              الترتيب مطلوب
-            </div>
+          <label for="order">الترتيب *</label>
+          <input
+            type="number"
+            id="order"
+            formControlName="order"
+            [class.invalid]="isFieldInvalid('order')"
+            placeholder="1"
+            min="1"
+          />
+          <div class="error-message" *ngIf="isFieldInvalid('order')">
+            الترتيب مطلوب ويجب أن يكون أكبر من 0
           </div>
         </div>
 
         <div class="form-group">
           <label class="checkbox-label">
-            <input type="checkbox" formControlName="required"/>
-            <span>السؤال مطلوب</span>
+            <input
+              type="checkbox"
+              formControlName="isRequired"
+            />
+            <span>مطلوب</span>
           </label>
         </div>
       </div>
 
-      <div class="form-section" *ngIf="needsOptions(questionForm.get('type')?.value)">
-        <h4>خيارات السؤال</h4>
-        <div formArrayName="options">
-          <div *ngFor="let option of optionsArray.controls; let i = index" [formGroupName]="i" class="option-item">
-            <div class="option-row">
-              <div class="form-group">
-                <label>النص بالعربية *</label>
-                <input type="text" formControlName="labelAr" placeholder="النص بالعربية"
-                       [class.invalid]="option.get('labelAr')?.invalid && option.get('labelAr')?.touched"/>
-              </div>
-              <div class="form-group">
-                <label>النص بالإنجليزية *</label>
-                <input type="text" formControlName="labelEn" placeholder="Text in English"
-                       [class.invalid]="option.get('labelEn')?.invalid && option.get('labelEn')?.touched"/>
-              </div>
-              <div class="form-group">
-                <label>القيمة *</label>
-                <input type="text" formControlName="value" placeholder="value"
-                       [class.invalid]="option.get('value')?.invalid && option.get('value')?.touched"/>
-              </div>
-              <button type="button" class="btn-remove-option" (click)="removeOption(i)" *ngIf="optionsArray.length > 1">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="18" y1="6" x2="6" y2="18"/>
-                  <line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
-            </div>
+      <!-- Options Section for MultipleChoice -->
+      <div class="form-group options-section" *ngIf="isMultipleChoiceType()">
+        <div class="options-header">
+          <label>الخيارات *</label>
+          <button
+            type="button"
+            class="btn-add-option"
+            (click)="addOption()"
+            title="إضافة خيار"
+          >
+            <lucide-icon [img]="Plus" [size]="16"></lucide-icon>
+            إضافة خيار
+          </button>
+        </div>
+        
+        <div class="options-list">
+          <div
+            *ngFor="let optionControl of optionsArray.controls; let i = index"
+            class="option-item"
+          >
+            <input
+              type="text"
+              [formControl]="getOptionControl(i)"
+              [class.invalid]="getOptionControl(i).invalid && (getOptionControl(i).dirty || getOptionControl(i).touched)"
+              [placeholder]="'خيار ' + (i + 1)"
+              class="option-input"
+            />
+            <button
+              type="button"
+              class="btn-remove-option"
+              (click)="removeOption(i)"
+              [disabled]="optionsArray.length <= 1"
+              title="حذف الخيار"
+            >
+              <lucide-icon [img]="X" [size]="14"></lucide-icon>
+            </button>
           </div>
         </div>
-        <button type="button" class="btn-add-option" (click)="addOption()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          إضافة خيار
+        
+        <div class="error-message" *ngIf="optionsArray.invalid && (optionsArray.dirty || optionsArray.touched)">
+          يجب إضافة خيار واحد على الأقل
+        </div>
+        <small class="form-hint">أضف الخيارات المتاحة للمستخدم. يمكنك إضافة أو حذف خيارات.</small>
+      </div>
+
+      <div footer>
+        <button type="button" class="btn-secondary" (click)="closeModal()">
+          إلغاء
+        </button>
+        <button type="submit" class="btn-primary">
+          {{ editingQuestion ? 'حفظ التغييرات' : 'إضافة' }}
         </button>
       </div>
-
-      <div class="form-section">
-        <h4>التحقق (اختياري)</h4>
-        <div formGroupName="validation">
-          <div class="form-row">
-            <div class="form-group">
-              <label for="validationMin">الحد الأدنى</label>
-              <input type="number" id="validationMin" formControlName="min" placeholder="الحد الأدنى"/>
-            </div>
-            <div class="form-group">
-              <label for="validationMax">الحد الأقصى</label>
-              <input type="number" id="validationMax" formControlName="max" placeholder="الحد الأقصى"/>
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="validationPattern">النمط (Pattern)</label>
-            <input type="text" id="validationPattern" formControlName="pattern" placeholder="regex pattern"/>
-          </div>
-        </div>
-      </div>
-
-      <div class="form-section">
-        <h4>الشرطية (اختياري)</h4>
-        <div formGroupName="conditional">
-          <div class="form-group">
-            <label for="dependsOn">يعتمد على السؤال</label>
-            <select id="dependsOn" formControlName="dependsOn">
-              <option value="">اختر السؤال</option>
-              <option *ngFor="let q of availableQuestions" [value]="q.id">{{ q.labelAr }}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="showIf">يظهر إذا كانت القيمة</label>
-            <input type="text" id="showIf" formControlName="showIf" placeholder="القيمة المطلوبة"/>
-          </div>
-        </div>
-      </div>
     </form>
-    <div footer>
-      <button type="button" class="btn-secondary" (click)="closeModal()">إلغاء</button>
-      <button type="button" class="btn-primary" (click)="onModalSubmit()">
-        {{ editMode ? 'تحديث' : 'إضافة' }}
-      </button>
-    </div>
   </app-modal>
 </div>

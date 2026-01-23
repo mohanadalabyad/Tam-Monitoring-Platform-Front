@@ -20,6 +20,7 @@ export interface LoginResponse {
   roles: string[];
   permissions: string[];
   expiresAt: Date | string; // Backend returns as ISO string, we convert to Date
+  isSuperAdmin?: boolean; // Backend may send isSuperAdmin flag directly
 }
 
 // Auth response wrapper

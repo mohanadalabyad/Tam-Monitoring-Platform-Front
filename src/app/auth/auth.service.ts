@@ -24,6 +24,55 @@ export class AuthService {
     }
   }
 
+  /**
+   * Decode JWT token to extract claims
+   * @param token JWT token string
+   * @returns Decoded token payload or null if invalid
+   */
+  private decodeToken(token: string): any {
+    try {
+      // JWT format: header.payload.signature
+      const parts = token.split('.');
+      if (parts.length !== 3) {
+        return null;
+      }
+
+      // Decode base64url encoded payload
+      const payload = parts[1];
+      // Replace URL-safe base64 characters
+      const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+      // Add padding if needed
+      const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+      // Decode
+      const decoded = atob(padded);
+      return JSON.parse(decoded);
+    } catch (error) {
+      console.error('Error decoding token:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Extract IsSuperAdmin from JWT token
+   * @param token JWT token string
+   * @returns true if IsSuperAdmin claim is "True" or true, false otherwise
+   */
+  private getIsSuperAdminFromToken(token: string): boolean {
+    const decoded = this.decodeToken(token);
+    if (!decoded) {
+      return false;
+    }
+
+    // Check for IsSuperAdmin claim (case-insensitive, handle both string and boolean)
+    const isSuperAdmin = decoded.IsSuperAdmin || decoded.isSuperAdmin || decoded['IsSuperAdmin'] || decoded['isSuperAdmin'];
+    
+    // Handle string "True" or boolean true
+    if (typeof isSuperAdmin === 'string') {
+      return isSuperAdmin.toLowerCase() === 'true';
+    }
+    return isSuperAdmin === true;
+  }
+
   login(credentials: LoginCredentials): Observable<AuthResponse> {
     return this.http.post<ApiResponse<LoginResponse>>(
       `${environment.apiUrl}/auth/login`,
@@ -43,9 +92,15 @@ export class AuthService {
         const loginResponse = response.data;
         
         // Convert LoginResponse to User
-        // Check if user has SuperAdmin role
-        const isSuperAdmin = loginResponse.roles.includes('SuperAdmin') || 
-                            loginResponse.roles.some(role => role.toLowerCase().includes('superadmin'));
+        // Check if user is super admin - prioritize IsSuperAdmin from token,
+        // then isSuperAdmin flag from backend response,
+        // then check for SuperAdmin role in roles array
+        const isSuperAdminFromToken = this.getIsSuperAdminFromToken(loginResponse.token);
+        const isSuperAdmin = isSuperAdminFromToken ||
+                            loginResponse.isSuperAdmin === true || 
+                            loginResponse.roles?.includes('SuperAdmin') || 
+                            loginResponse.roles?.some(role => role?.toLowerCase().includes('superadmin')) ||
+                            false;
         
         const user: User = {
           id: loginResponse.userId,
@@ -53,8 +108,8 @@ export class AuthService {
           email: loginResponse.email,
           fullName: loginResponse.fullName,
           isSuperAdmin: isSuperAdmin,
-          roles: loginResponse.roles,
-          permissions: loginResponse.permissions
+          roles: loginResponse.roles || [],
+          permissions: loginResponse.permissions || []
         };
 
         const authResponse: AuthResponse = {
@@ -122,9 +177,39 @@ export class AuthService {
     const userStr = localStorage.getItem(this.USER_KEY);
     if (userStr) {
       try {
-        return JSON.parse(userStr);
+        const user = JSON.parse(userStr);
+        // If user exists but isSuperAdmin might be outdated, check token
+        const token = this.getToken();
+        if (token && !this.isTokenExpired()) {
+          const isSuperAdminFromToken = this.getIsSuperAdminFromToken(token);
+          if (isSuperAdminFromToken !== user.isSuperAdmin) {
+            // Update isSuperAdmin from token
+            user.isSuperAdmin = isSuperAdminFromToken;
+            // Update stored user
+            localStorage.setItem(this.USER_KEY, JSON.stringify(user));
+          }
+        }
+        return user;
       } catch {
         return null;
+      }
+    }
+    // If no stored user but token exists, try to get isSuperAdmin from token
+    const token = this.getToken();
+    if (token && !this.isTokenExpired()) {
+      const isSuperAdminFromToken = this.getIsSuperAdminFromToken(token);
+      if (isSuperAdminFromToken) {
+        // Return a minimal user object with isSuperAdmin flag
+        // This is a fallback - normally user should be stored
+        return {
+          id: '',
+          userName: '',
+          email: '',
+          fullName: '',
+          isSuperAdmin: true,
+          roles: [],
+          permissions: []
+        };
       }
     }
     return null;

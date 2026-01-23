@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit, OnChanges, SimpleChanges } from '@angular/core';
-import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { QuestionService } from '../../services/question.service';
-import { Question, QuestionAnswer } from '../../models/question.model';
+import { QuestionDto, QuestionAnswer } from '../../models/question.model';
 
 @Component({
   selector: 'app-dynamic-form',
@@ -9,15 +9,13 @@ import { Question, QuestionAnswer } from '../../models/question.model';
   styleUrls: ['./dynamic-form.component.scss']
 })
 export class DynamicFormComponent implements OnInit, OnChanges {
-  @Input() categoryId?: string;
   @Input() initialAnswers?: QuestionAnswer[];
   @Output() formSubmit = new EventEmitter<QuestionAnswer[]>();
   @Output() formChange = new EventEmitter<QuestionAnswer[]>();
 
-  questions: Question[] = [];
+  questions: QuestionDto[] = [];
   formGroup!: FormGroup;
   loading = false;
-  sections: string[] = [];
 
   constructor(
     private questionService: QuestionService,
@@ -29,26 +27,20 @@ export class DynamicFormComponent implements OnInit, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['categoryId']) {
-      this.loadQuestions();
-    }
-    if (changes['initialAnswers'] && this.initialAnswers) {
+    if (changes['initialAnswers'] && this.initialAnswers && this.formGroup) {
       this.populateForm();
     }
   }
 
   loadQuestions(): void {
-    if (!this.categoryId) {
-      this.loading = false;
-      return;
-    }
-
     this.loading = true;
-    this.questionService.getQuestionsByCategory(this.categoryId).subscribe({
-      next: (data) => {
-        this.questions = data.sort((a, b) => a.order - b.order);
-        this.extractSections();
-        this.buildForm();
+    this.questionService.getAllQuestions(undefined, undefined, true).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          const questions = Array.isArray(response.data) ? response.data : response.data.items || [];
+          this.questions = questions.sort((a, b) => a.order - b.order);
+          this.buildForm();
+        }
         this.loading = false;
       },
       error: (error) => {
@@ -58,55 +50,12 @@ export class DynamicFormComponent implements OnInit, OnChanges {
     });
   }
 
-  extractSections(): void {
-    const sectionSet = new Set<string>();
-    this.questions.forEach(q => {
-      if (q.section) {
-        sectionSet.add(q.section);
-      }
-    });
-    this.sections = Array.from(sectionSet);
-  }
-
-  getQuestionsBySection(section?: string): Question[] {
-    if (!section) {
-      return this.questions.filter(q => !q.section);
-    }
-    return this.questions.filter(q => q.section === section);
-  }
-
   buildForm(): void {
     const formControls: any = {};
 
     this.questions.forEach(question => {
-      let validators = [];
-      
-      if (question.required) {
-        validators.push(Validators.required);
-      }
-
-      if (question.validation) {
-        if (question.validation.min !== undefined) {
-          validators.push(Validators.min(question.validation.min));
-        }
-        if (question.validation.max !== undefined) {
-          validators.push(Validators.max(question.validation.max));
-        }
-        if (question.validation.pattern) {
-          validators.push(Validators.pattern(question.validation.pattern));
-        }
-      }
-
-      let defaultValue: any = null;
-      if (question.type === 'checkbox') {
-        defaultValue = [];
-      } else if (question.type === 'yesno') {
-        defaultValue = false;
-      } else if (question.type === 'scale') {
-        defaultValue = 1;
-      }
-
-      formControls[question.id] = [defaultValue, validators];
+      const validators = question.isRequired ? [Validators.required] : [];
+      formControls[`question_${question.id}`] = ['', validators];
     });
 
     this.formGroup = this.fb.group(formControls);
@@ -119,38 +68,29 @@ export class DynamicFormComponent implements OnInit, OnChanges {
   populateForm(): void {
     if (this.initialAnswers && this.formGroup) {
       this.initialAnswers.forEach(answer => {
-        const control = this.formGroup.get(answer.questionId);
+        const control = this.formGroup.get(`question_${answer.questionId}`);
         if (control) {
-          control.setValue(answer.value);
+          control.setValue(answer.answerValue);
         }
       });
     }
   }
 
-  shouldShowQuestion(question: Question): boolean {
-    if (!question.conditional) {
-      return true;
-    }
-
-    const dependsOnControl = this.formGroup.get(question.conditional.dependsOn);
-    if (!dependsOnControl) {
-      return true;
-    }
-
-    const dependsOnValue = dependsOnControl.value;
-    return dependsOnValue === question.conditional.showIf || 
-           (Array.isArray(dependsOnValue) && dependsOnValue.includes(question.conditional.showIf));
+  shouldShowQuestion(question: QuestionDto): boolean {
+    // No conditional logic in new model, show all
+    return true;
   }
 
   onSubmit(): void {
     if (this.formGroup.valid) {
       const answers: QuestionAnswer[] = this.questions
-        .filter(q => this.shouldShowQuestion(q))
-        .map(q => ({
-          questionId: q.id,
-          value: this.formGroup.get(q.id)?.value
-        }))
-        .filter(answer => answer.value !== null && answer.value !== undefined && answer.value !== '');
+        .map(q => {
+          const value = this.formGroup.get(`question_${q.id}`)?.value;
+          return value !== null && value !== undefined && value !== '' 
+            ? { questionId: q.id, answerValue: String(value) }
+            : null;
+        })
+        .filter((answer): answer is QuestionAnswer => answer !== null);
       
       this.formSubmit.emit(answers);
     } else {
@@ -160,17 +100,22 @@ export class DynamicFormComponent implements OnInit, OnChanges {
 
   emitFormChange(): void {
     const answers: QuestionAnswer[] = this.questions
-      .filter(q => this.shouldShowQuestion(q))
-      .map(q => ({
-        questionId: q.id,
-        value: this.formGroup.get(q.id)?.value
-      }))
-      .filter(answer => answer.value !== null && answer.value !== undefined && answer.value !== '');
+      .map(q => {
+        const value = this.formGroup.get(`question_${q.id}`)?.value;
+        return value !== null && value !== undefined && value !== '' 
+          ? { questionId: q.id, answerValue: String(value) }
+          : null;
+      })
+      .filter((answer): answer is QuestionAnswer => answer !== null);
     
     this.formChange.emit(answers);
   }
 
-  getQuestionControl(questionId: string) {
-    return this.formGroup.get(questionId);
+  getQuestionControl(questionId: number) {
+    return this.formGroup.get(`question_${questionId}`);
+  }
+
+  getQuestionsBySection(): QuestionDto[] {
+    return this.questions;
   }
 }

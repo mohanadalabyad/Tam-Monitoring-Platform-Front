@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ViolationService } from '../../../services/violation.service';
 import { UserService } from '../../../services/user.service';
-import { Violation } from '../../../models/violation.model';
+import { ViolationDto, AcceptanceStatus, getAcceptanceStatusLabel } from '../../../models/violation.model';
 import { UserDto } from '../../../models/user-management.model';
 
 @Component({
@@ -14,7 +14,7 @@ export class StatisticsComponent implements OnInit {
   pendingViolations = 0;
   resolvedViolations = 0;
   totalUsers = 0;
-  recentViolations: Violation[] = [];
+  recentViolations: ViolationDto[] = [];
   loading = true;
 
   constructor(
@@ -30,14 +30,20 @@ export class StatisticsComponent implements OnInit {
     this.loading = true;
     
     // Load violations
-    this.violationService.getViolations().subscribe({
-      next: (violations) => {
-        this.totalViolations = violations.length;
-        this.pendingViolations = violations.filter(v => v.status === 'pending').length;
-        this.resolvedViolations = violations.filter(v => v.status === 'resolved').length;
-        this.recentViolations = violations.slice(0, 5);
+    this.violationService.getAllViolations(undefined, undefined, true).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          const violations: ViolationDto[] = Array.isArray(response.data) 
+            ? response.data 
+            : response.data.items || [];
+          
+          this.totalViolations = violations.length;
+          this.pendingViolations = violations.filter((v: ViolationDto) => v.acceptanceStatus === AcceptanceStatus.Pending).length;
+          this.resolvedViolations = violations.filter((v: ViolationDto) => v.acceptanceStatus === AcceptanceStatus.Approved).length;
+          this.recentViolations = violations.slice(0, 5);
+        }
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Error loading violations:', error);
       }
     });
@@ -67,13 +73,7 @@ export class StatisticsComponent implements OnInit {
     });
   }
 
-  getStatusLabel(status: string): string {
-    const labels: { [key: string]: string } = {
-      'pending': 'قيد المراجعة',
-      'investigating': 'قيد التحقيق',
-      'resolved': 'تم الحل',
-      'rejected': 'مرفوض'
-    };
-    return labels[status] || status;
+  getStatusLabel(status: AcceptanceStatus): string {
+    return getAcceptanceStatusLabel(status);
   }
 }

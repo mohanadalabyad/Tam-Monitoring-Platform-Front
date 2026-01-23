@@ -24,15 +24,14 @@
     <div class="filter-controls">
       <select [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()" class="filter-select">
         <option value="all">جميع الحالات</option>
-        <option value="pending">قيد المراجعة</option>
-        <option value="investigating">قيد التحقيق</option>
-        <option value="resolved">تم الحل</option>
-        <option value="rejected">مرفوض</option>
+        <option [value]="1">قيد المراجعة</option>
+        <option [value]="2">موافق عليه</option>
+        <option [value]="3">مرفوض</option>
       </select>
 
       <select [(ngModel)]="categoryFilter" (ngModelChange)="applyFilters()" class="filter-select">
         <option value="all">جميع الفئات</option>
-        <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+        <option *ngFor="let cat of categories" [value]="cat.id">{{ cat.name }}</option>
       </select>
     </div>
   </div>
@@ -40,10 +39,10 @@
   <div class="cards-grid" *ngIf="!loading">
     <app-unified-card
       *ngFor="let violation of getPaginatedViolations()"
-      [title]="violation.title"
+      [title]="'حادثة #' + violation.id"
       [subtitle]="violation.description"
-      [badge]="getStatusLabel(violation.status)"
-      [badgeColor]="getStatusColor(violation.status)"
+      [badge]="getStatusLabel(violation.acceptanceStatus)"
+      [badgeColor]="getStatusColor(violation.acceptanceStatus)"
       [clickable]="true"
       (cardClick)="onCardClick(violation)"
     >
@@ -59,13 +58,13 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
           </svg>
-          <span>{{ violation.category }}</span>
+          <span>{{ violation.category?.name || 'غير محدد' }}</span>
         </div>
         <div class="detail-item">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
           </svg>
-          <span>{{ violation.reportedDate | date:'short' }}</span>
+          <span>{{ violation.violationDate | date:'short' }}</span>
         </div>
       </div>
     </app-unified-card>

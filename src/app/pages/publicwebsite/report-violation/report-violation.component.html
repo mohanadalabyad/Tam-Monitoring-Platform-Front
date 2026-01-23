@@ -1,139 +1,375 @@
 <div class="report-violation">
-      <div class="container">
-        <div class="page-header">
-          <h1>الإبلاغ عن حادثة</h1>
-          <p>ساعدنا في الحفاظ على سلامة المجتمع من خلال الإبلاغ عن الحوادث</p>
+  <div class="container">
+    <div class="page-header">
+      <h1>الإبلاغ عن حادثة</h1>
+      <p>ساعدنا في الحفاظ على سلامة المجتمع من خلال الإبلاغ عن الحوادث</p>
+    </div>
+
+    <!-- Success Message -->
+    <div *ngIf="submitted && !submitting" class="success-card">
+      <div class="success-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+          <polyline points="22 4 12 14.01 9 11.01"/>
+        </svg>
+      </div>
+      <h2>تم الإرسال بنجاح!</h2>
+      <p>تم إرسال تقريرك بنجاح. رقم التقرير: <strong>#{{ submittedViolationId }}</strong></p>
+      <div class="success-actions">
+        <button (click)="openPrintView()" class="btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+          </svg>
+          طباعة التقرير
+        </button>
+        <button class="btn-outline" (click)="resetForm()">إرسال تقرير آخر</button>
+      </div>
+    </div>
+
+    <!-- Print View Section -->
+    <div *ngIf="showPrintView" class="print-view-overlay" (click)="closePrintView()">
+      <div class="print-view-modal" (click)="$event.stopPropagation()">
+        <div class="print-view-header">
+          <h3>طباعة التقرير</h3>
+          <button class="btn-close" (click)="closePrintView()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
         </div>
-
-        <div class="card">
-          <div *ngIf="submitted && !submitting" class="alert alert-success">
-            <strong>تم الإرسال بنجاح!</strong> تم إرسال تقريرك بنجاح. 
-            سنقوم بمراجعته واتخاذ الإجراءات المناسبة.
+        
+        <div class="print-view-body">
+          <div class="print-actions" *ngIf="!loadingPrintView">
+            <button class="btn-primary" (click)="printCurrentView()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 6 2 18 2 18 9"/>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+                <rect x="6" y="14" width="12" height="8"/>
+              </svg>
+              طباعة
+            </button>
           </div>
-
-          <form [formGroup]="violationForm" (ngSubmit)="onSubmit()" *ngIf="!submitted">
-            <div class="form-row">
-              <div class="form-group">
-                <label for="title">عنوان الحادثة *</label>
-                <input 
-                  type="text" 
-                  id="title" 
-                  formControlName="title"
-                  placeholder="عنوان مختصر يصف الحادثة"
-                  [class.invalid]="isFieldInvalid('title')"
-                />
-                <div class="error-message" *ngIf="isFieldInvalid('title')">
-                  العنوان مطلوب
-                </div>
-              </div>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="category">الفئة *</label>
-                <select 
-                  id="category" 
-                  formControlName="category"
-                  [class.invalid]="isFieldInvalid('category')"
-                >
-                  <option value="">اختر الفئة</option>
-                  <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
-                </select>
-                <div class="error-message" *ngIf="isFieldInvalid('category')">
-                  يرجى اختيار الفئة
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="location">الموقع *</label>
-                <input 
-                  type="text" 
-                  id="location" 
-                  formControlName="location"
-                  placeholder="أين وقعت هذه الحادثة؟"
-                  [class.invalid]="isFieldInvalid('location')"
-                />
-                <div class="error-message" *ngIf="isFieldInvalid('location')">
-                  الموقع مطلوب
-                </div>
-              </div>
-            </div>
-
-            <div class="form-group">
-              <label for="description">الوصف *</label>
-              <textarea 
-                id="description" 
-                formControlName="description"
-                placeholder="قدم معلومات مفصلة عن الحادثة"
-                [class.invalid]="isFieldInvalid('description')"
-                rows="5"
-              ></textarea>
-              <div class="error-message" *ngIf="isFieldInvalid('description')">
-                الوصف مطلوب
-              </div>
-            </div>
-
-            <div class="section-header">
-              <h3>معلومات المبلغ</h3>
-              <p>سيتم الحفاظ على سرية معلومات الاتصال الخاصة بك</p>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="reporterName">الاسم الكامل *</label>
-                <input 
-                  type="text" 
-                  id="reporterName" 
-                  formControlName="reporterName"
-                  placeholder="الاسم الكامل"
-                  [class.invalid]="isFieldInvalid('reporterName')"
-                />
-                <div class="error-message" *ngIf="isFieldInvalid('reporterName')">
-                  الاسم مطلوب
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="reporterEmail">البريد الإلكتروني *</label>
-                <input 
-                  type="email" 
-                  id="reporterEmail" 
-                  formControlName="reporterEmail"
-                  placeholder="example@email.com"
-                  [class.invalid]="isFieldInvalid('reporterEmail')"
-                />
-                <div class="error-message" *ngIf="isFieldInvalid('reporterEmail')">
-                  بريد إلكتروني صحيح مطلوب
-                </div>
-              </div>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group">
-                <label for="reporterPhone">رقم الهاتف (اختياري)</label>
-                <input 
-                  type="tel" 
-                  id="reporterPhone" 
-                  formControlName="reporterPhone"
-                  placeholder="+970-XXX-XXXX"
-                />
-              </div>
-            </div>
-
-            <div class="form-actions">
-              <button type="submit" class="btn-primary" [disabled]="submitting">
-                {{ submitting ? 'جاري الإرسال...' : 'إرسال التقرير' }}
-              </button>
-              <button type="button" class="btn-outline" (click)="resetForm()">
-                إعادة تعيين
-              </button>
-            </div>
-          </form>
-
-          <div *ngIf="submitted" class="success-actions">
-            <button class="btn-primary" (click)="resetForm()">إرسال تقرير آخر</button>
-            <button class="btn-outline" routerLink="/violations">عرض جميع التقارير</button>
+          
+          <div class="print-loading" *ngIf="loadingPrintView">
+            <div class="spinner"></div>
+            <p>جاري تحميل صفحة الطباعة...</p>
           </div>
+          
+          <div class="print-content" *ngIf="!loadingPrintView && printViewHtml" [innerHTML]="printViewHtml"></div>
         </div>
       </div>
     </div>
+
+    <!-- Multi-Step Form -->
+    <div *ngIf="!submitted" class="form-card">
+      <!-- Progress Steps -->
+      <div class="steps-indicator">
+        <div 
+          *ngFor="let step of [1,2,3,4,5]; let i = index" 
+          class="step-item"
+          [class.active]="currentStep === step"
+          [class.completed]="currentStep > step"
+          (click)="goToStep(step)"
+        >
+          <div class="step-number">{{ step }}</div>
+          <div class="step-label">
+            <span *ngIf="step === 1">المعلومات الأساسية</span>
+            <span *ngIf="step === 2">الأسئلة</span>
+            <span *ngIf="step === 3">معلومات الاتصال</span>
+            <span *ngIf="step === 4">المعلومات الشخصية</span>
+            <span *ngIf="step === 5">المرفقات</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 1: Basic Information -->
+      <div *ngIf="currentStep === 1" class="form-step">
+        <h2 class="step-title">المعلومات الأساسية</h2>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="cityId">المدينة *</label>
+            <select
+              id="cityId"
+              formControlName="cityId"
+              [class.invalid]="isFieldInvalid(violationForm, 'cityId')"
+            >
+              <option value="">اختر المدينة</option>
+              <option *ngFor="let city of cities" [value]="city.id">{{ city.name }}</option>
+            </select>
+            <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'cityId')">
+              المدينة مطلوبة
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="categoryId">الفئة *</label>
+            <select
+              id="categoryId"
+              formControlName="categoryId"
+              [class.invalid]="isFieldInvalid(violationForm, 'categoryId')"
+            >
+              <option value="">اختر الفئة</option>
+              <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
+            </select>
+            <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'categoryId')">
+              الفئة مطلوبة
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="subCategoryId">الفئة الفرعية *</label>
+            <select
+              id="subCategoryId"
+              formControlName="subCategoryId"
+              [class.invalid]="isFieldInvalid(violationForm, 'subCategoryId')"
+              [disabled]="filteredSubCategories.length === 0"
+            >
+              <option value="">اختر الفئة الفرعية</option>
+              <option *ngFor="let subCategory of filteredSubCategories" [value]="subCategory.id">{{ subCategory.name }}</option>
+            </select>
+            <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'subCategoryId')">
+              الفئة الفرعية مطلوبة
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="violationDate">تاريخ الحادثة *</label>
+            <input
+              type="date"
+              id="violationDate"
+              formControlName="violationDate"
+              [class.invalid]="isFieldInvalid(violationForm, 'violationDate')"
+              [max]="maxDate"
+            />
+            <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'violationDate')">
+              تاريخ الحادثة مطلوب
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="location">الموقع *</label>
+          <input
+            type="text"
+            id="location"
+            formControlName="location"
+            placeholder="أين وقعت هذه الحادثة؟"
+            [class.invalid]="isFieldInvalid(violationForm, 'location')"
+          />
+          <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'location')">
+            الموقع مطلوب
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="description">الوصف *</label>
+          <textarea
+            id="description"
+            formControlName="description"
+            placeholder="قدم معلومات مفصلة عن الحادثة"
+            [class.invalid]="isFieldInvalid(violationForm, 'description')"
+            rows="5"
+          ></textarea>
+          <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'description')">
+            الوصف مطلوب
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input
+              type="radio"
+              name="isWitness"
+              [value]="true"
+              formControlName="isWitness"
+            />
+            <span>نعم، أنا شاهد على الحادثة</span>
+          </label>
+          <label class="checkbox-label">
+            <input
+              type="radio"
+              name="isWitness"
+              [value]="false"
+              formControlName="isWitness"
+            />
+            <span>لا، لم أكن شاهداً</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Step 2: Questions -->
+      <div *ngIf="currentStep === 2" class="form-step">
+        <h2 class="step-title">الأسئلة</h2>
+        <p class="step-description" *ngIf="sortedQuestions.length > 0">يرجى الإجابة على الأسئلة التالية</p>
+        <p class="step-description" *ngIf="sortedQuestions.length === 0 && violationForm.get('categoryId')?.value">
+          لا توجد أسئلة مخصصة للفئة المختارة. يمكنك المتابعة إلى الخطوة التالية.
+        </p>
+        <p class="step-description" *ngIf="sortedQuestions.length === 0 && !violationForm.get('categoryId')?.value">
+          يرجى اختيار الفئة أولاً لعرض الأسئلة
+        </p>
+        
+        <div class="questions-container" [formGroup]="questionsForm" *ngIf="sortedQuestions.length > 0">
+          <app-dynamic-question
+            *ngFor="let question of sortedQuestions"
+            [question]="question"
+            [formControlName]="getQuestionControlName(question.id)"
+          ></app-dynamic-question>
+        </div>
+      </div>
+
+      <!-- Step 3: Contact Information -->
+      <div *ngIf="currentStep === 3" class="form-step">
+        <h2 class="step-title">معلومات الاتصال</h2>
+        <p class="step-description">سيتم الحفاظ على سرية معلومات الاتصال الخاصة بك</p>
+        
+        <div class="form-group">
+          <label for="contactPreference">طريقة الاتصال المفضلة *</label>
+          <select
+            id="contactPreference"
+            formControlName="contactPreference"
+            [class.invalid]="isFieldInvalid(violationForm, 'contactPreference')"
+          >
+            <option value="">اختر طريقة الاتصال</option>
+            <option value="email">بريد إلكتروني</option>
+            <option value="phone">رقم جوال</option>
+            <option value="both">بريد إلكتروني ورقم جوال</option>
+            <option value="none">لا أريد الاتصال</option>
+          </select>
+          <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'contactPreference')">
+            طريقة الاتصال مطلوبة
+          </div>
+        </div>
+
+        <div class="form-group" *ngIf="violationForm.get('contactPreference')?.value === 'email' || violationForm.get('contactPreference')?.value === 'both'">
+          <label for="email">البريد الإلكتروني *</label>
+          <input
+            type="email"
+            id="email"
+            formControlName="email"
+            placeholder="example@email.com"
+            [class.invalid]="isFieldInvalid(violationForm, 'email')"
+          />
+          <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'email')">
+            بريد إلكتروني صحيح مطلوب
+          </div>
+        </div>
+
+        <div class="form-group" *ngIf="violationForm.get('contactPreference')?.value === 'phone' || violationForm.get('contactPreference')?.value === 'both'">
+          <label for="phone">رقم الجوال *</label>
+          <input
+            type="tel"
+            id="phone"
+            formControlName="phone"
+            placeholder="+970-XXX-XXXX"
+            [class.invalid]="isFieldInvalid(violationForm, 'phone')"
+          />
+          <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'phone')">
+            رقم الجوال مطلوب
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Personal Information -->
+      <div *ngIf="currentStep === 4" class="form-step">
+        <h2 class="step-title">المعلومات الشخصية (اختياري)</h2>
+        <p class="step-description">يمكنك اختيارياً إضافة معلومات شخصية إضافية</p>
+        
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              formControlName="personalInfoVisible"
+            />
+            <span>أريد إضافة معلومات شخصية</span>
+          </label>
+        </div>
+
+        <div class="form-group" *ngIf="violationForm.get('personalInfoVisible')?.value">
+          <label for="personalInfo">المعلومات الشخصية (JSON)</label>
+          <textarea
+            id="personalInfo"
+            formControlName="personalInfo"
+            placeholder='{"name": "الاسم", "age": 30}'
+            rows="4"
+          ></textarea>
+          <small class="form-hint">أدخل المعلومات بصيغة JSON</small>
+        </div>
+      </div>
+
+      <!-- Step 5: Attachments -->
+      <div *ngIf="currentStep === 5" class="form-step">
+        <h2 class="step-title">المرفقات</h2>
+        <p class="step-description">يمكنك إرفاق صور أو فيديوهات متعلقة بالحادثة</p>
+        
+        <div class="form-group">
+          <label for="attachments">رفع الملفات</label>
+          <input
+            type="file"
+            id="attachments"
+            multiple
+            accept="image/*,video/*"
+            (change)="onFileSelected($event)"
+          />
+          <small class="form-hint">يمكن رفع صور أو فيديوهات (حد أقصى 10 ميجابايت لكل ملف)</small>
+        </div>
+
+        <div class="attachments-preview" *ngIf="attachmentPreviews.length > 0">
+          <div *ngFor="let preview of attachmentPreviews; let i = index" class="attachment-item">
+            <img *ngIf="preview.preview" [src]="preview.preview" alt="Preview" />
+            <div *ngIf="!preview.preview" class="video-placeholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="23 7 16 12 23 17 23 7"/>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+              </svg>
+            </div>
+            <div class="attachment-info">
+              <span>{{ preview.file.name }}</span>
+              <span class="file-size">({{ (preview.file.size / 1024 / 1024).toFixed(2) }} MB)</span>
+            </div>
+            <button type="button" class="btn-remove" (click)="removeAttachment(i)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Buttons -->
+      <div class="form-navigation">
+        <button
+          type="button"
+          class="btn-secondary"
+          (click)="previousStep()"
+          [disabled]="currentStep === 1"
+        >
+          السابق
+        </button>
+        <button
+          *ngIf="currentStep < totalSteps"
+          type="button"
+          class="btn-primary"
+          (click)="nextStep()"
+        >
+          التالي
+        </button>
+        <button
+          *ngIf="currentStep === totalSteps"
+          type="button"
+          class="btn-primary"
+          (click)="onSubmit()"
+          [disabled]="submitting"
+        >
+          {{ submitting ? 'جاري الإرسال...' : 'إرسال التقرير' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

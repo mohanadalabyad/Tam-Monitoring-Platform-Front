@@ -1,11 +1,15 @@
-import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, FormArray, Validators } from '@angular/forms';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, FormArray, FormControl } from '@angular/forms';
 import { QuestionService } from '../../../services/question.service';
 import { CategoryService } from '../../../services/category.service';
-import { Question, QuestionType, QuestionOption } from '../../../models/question.model';
-import { Category } from '../../../models/category.model';
 import { ToasterService } from '../../../services/toaster.service';
 import { PermissionCheckService } from '../../../services/permission-check.service';
+import { ConfirmationDialogService } from '../../../services/confirmation-dialog.service';
+import { QuestionDto, AddQuestionDto, UpdateQuestionDto, QuestionType, getQuestionTypeLabel } from '../../../models/question.model';
+import { CategoryDto } from '../../../models/category.model';
+import { TableColumn, TableAction } from '../../../components/unified-table/unified-table.component';
+import { ViewMode } from '../../../components/view-toggle/view-toggle.component';
+import { Pencil, Trash2, HelpCircle, Power, PowerOff, Plus, X } from 'lucide-angular';
 
 @Component({
   selector: 'app-questions-management',
@@ -13,31 +17,96 @@ import { PermissionCheckService } from '../../../services/permission-check.servi
   styleUrls: ['./questions-management.component.scss']
 })
 export class QuestionsManagementComponent implements OnInit {
-  questions: Question[] = [];
-  categories: Category[] = [];
-  filteredQuestions: Question[] = [];
+  questions: QuestionDto[] = [];
+  categories: CategoryDto[] = [];
   loading = false;
-  isModalOpen = false;
+  showModal = false;
+  modalTitle = '';
   questionForm!: FormGroup;
-  editMode = false;
-  currentQuestionId: string | null = null;
-  selectedCategoryId: number | null = null;
-  questionTypes: { value: QuestionType; labelAr: string; labelEn: string; icon: string }[] = [];
-  availableQuestions: Question[] = [];
+  filterForm!: FormGroup;
+  editingQuestion: QuestionDto | null = null;
+  viewMode: ViewMode = 'table';
+  togglingQuestions: Set<number> = new Set();
+  questionTypes: { value: QuestionType; label: string }[] = [];
+  selectedCategoryFilter: number | null = null;
+
+  columns: TableColumn[] = [
+    { key: 'order', label: 'الترتيب', sortable: true, filterable: false },
+    { key: 'text', label: 'النص', sortable: true, filterable: false },
+    { 
+      key: 'categoryId', 
+      label: 'الفئة', 
+      sortable: true, 
+      filterable: false,
+      render: (value) => {
+        const category = this.categories.find(c => c.id === value);
+        return category ? category.name : 'غير محدد';
+      }
+    },
+    { 
+      key: 'questionType', 
+      label: 'النوع', 
+      sortable: true, 
+      filterable: false,
+      render: (value) => getQuestionTypeLabel(value)
+    },
+    { 
+      key: 'isRequired', 
+      label: 'مطلوب', 
+      sortable: true, 
+      filterable: false,
+      type: 'chip',
+      render: (value) => value ? 'نعم' : 'لا'
+    },
+    { 
+      key: 'isActive', 
+      label: 'الحالة', 
+      sortable: true, 
+      filterable: false,
+      type: 'toggle',
+      toggleAction: (this.permissionService.hasPermission('Question', 'ToggleActivity') || this.permissionService.isSuperAdmin()) 
+        ? (row, event) => this.toggleQuestionActivity(row, event)
+        : undefined,
+      isToggling: (row) => this.isToggling(row.id)
+    }
+  ];
+
+  actions: TableAction[] = [];
+  
+  // Lucide icons
+  Pencil = Pencil;
+  Trash2 = Trash2;
+  HelpCircle = HelpCircle;
+  Power = Power;
+  PowerOff = PowerOff;
+  Plus = Plus;
+  X = X;
 
   constructor(
     private questionService: QuestionService,
     private categoryService: CategoryService,
+    private toasterService: ToasterService,
+    public permissionService: PermissionCheckService,
+    private confirmationService: ConfirmationDialogService,
     private fb: FormBuilder,
-    private toaster: ToasterService,
-    public permissionService: PermissionCheckService
-  ) { }
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
+    // Load view preference
+    const savedView = localStorage.getItem('questions-view-mode');
+    if (savedView === 'table' || savedView === 'cards') {
+      this.viewMode = savedView;
+    }
     this.questionTypes = this.questionService.getQuestionTypes();
     this.loadCategories();
-    this.loadQuestions();
     this.initForm();
+    this.initFilterForm();
+    this.loadQuestions();
+    // Setup actions after a brief delay to ensure user data is loaded
+    setTimeout(() => {
+      this.setupActions();
+    }, 0);
   }
 
   loadCategories(): void {
@@ -47,281 +116,414 @@ export class QuestionsManagementComponent implements OnInit {
           this.categories = Array.isArray(response.data) ? response.data : response.data.items || [];
         }
       },
-      error: (error: any) => {
+      error: (error) => {
         console.error('Error loading categories:', error);
       }
     });
   }
 
-
-  loadQuestions(): void {
-    this.loading = true;
-    this.questionService.getQuestions().subscribe({
-      next: (data) => {
-        this.questions = data;
-        this.availableQuestions = data;
-        this.filterQuestions();
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('Error loading questions:', error);
-        this.toaster.showError('فشل تحميل الأسئلة.', 'خطأ');
-        this.loading = false;
-      }
-    });
-  }
-
-  filterQuestions(): void {
-    let filtered = [...this.questions];
-
-    if (this.selectedCategoryId !== null) {
-      filtered = filtered.filter(q => q.categoryId === this.selectedCategoryId?.toString());
-    }
-
-    this.filteredQuestions = filtered.sort((a, b) => a.order - b.order);
-  }
-
-  onCategoryFilterChange(): void {
-    this.filterQuestions();
+  onViewChange(view: ViewMode): void {
+    this.viewMode = view;
+    localStorage.setItem('questions-view-mode', view);
   }
 
   initForm(): void {
     this.questionForm = this.fb.group({
+      text: ['', Validators.required],
+      questionType: [QuestionType.Text, Validators.required],
       categoryId: ['', Validators.required],
-      type: ['', Validators.required],
-      labelAr: ['', Validators.required],
-      labelEn: ['', Validators.required],
-      description: [''],
-      required: [false],
-      section: [''],
       order: [1, [Validators.required, Validators.min(1)]],
-      options: this.fb.array([]),
-      validation: this.fb.group({
-        min: [''],
-        max: [''],
-        pattern: ['']
-      }),
-      conditional: this.fb.group({
-        dependsOn: [''],
-        showIf: ['']
-      })
+      isRequired: [false],
+      optionsArray: this.fb.array([]) // FormArray for user-friendly options
     });
 
-    // Watch for type changes to show/hide options
-    this.questionForm.get('type')?.valueChanges.subscribe(type => {
-      this.onQuestionTypeChange(type);
+    // Watch for questionType changes to show/hide options field
+    this.questionForm.get('questionType')?.valueChanges.subscribe(type => {
+      this.handleQuestionTypeChange(type);
     });
   }
 
-  onQuestionTypeChange(type: QuestionType): void {
-    const optionsArray = this.questionForm.get('options') as FormArray;
+  get optionsArray(): FormArray {
+    return this.questionForm.get('optionsArray') as FormArray;
+  }
+
+  addOption(): void {
+    const optionsArray = this.questionForm.get('optionsArray') as FormArray;
+    const validators = this.isMultipleChoiceType() ? [Validators.required] : [];
+    optionsArray.push(this.fb.control('', validators));
+  }
+
+  removeOption(index: number): void {
+    const optionsArray = this.questionForm.get('optionsArray') as FormArray;
+    if (optionsArray.length > 1) {
+      optionsArray.removeAt(index);
+    }
+  }
+
+  initFilterForm(): void {
+    this.filterForm = this.fb.group({
+      categoryId: ['']
+    });
+
+    // Watch for category filter changes
+    this.filterForm.get('categoryId')?.valueChanges.subscribe(categoryId => {
+      this.selectedCategoryFilter = categoryId || null;
+      this.loadQuestions();
+    });
+  }
+
+  setupActions(): void {
+    this.actions = [];
     
-    if (['radio', 'checkbox', 'dropdown'].includes(type)) {
-      if (optionsArray.length === 0) {
+    if (this.permissionService.hasPermission('Question', 'Update') || this.permissionService.isSuperAdmin()) {
+      this.actions.push({
+        label: 'تعديل',
+        icon: Pencil,
+        action: (row) => this.editQuestion(row),
+        class: 'btn-edit',
+        variant: 'warning',
+        showLabel: false
+      });
+    }
+    
+    if (this.permissionService.hasPermission('Question', 'Delete') || this.permissionService.isSuperAdmin()) {
+      this.actions.push({
+        label: 'حذف',
+        icon: Trash2,
+        action: (row) => this.deleteQuestion(row),
+        class: 'btn-delete',
+        variant: 'danger',
+        showLabel: false
+      });
+    }
+  }
+
+  loadQuestions(): void {
+    this.loading = true;
+    
+    // If category filter is selected, use filter endpoint
+    if (this.selectedCategoryFilter) {
+      const filter = { 
+        categoryId: this.selectedCategoryFilter,
+        isActive: undefined // Get all (active and inactive) for management page
+      };
+      this.questionService.getAllQuestionsWithFilter(filter, undefined, undefined, undefined).subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            const questions = Array.isArray(response.data) ? response.data : response.data.items || [];
+            // Sort by order
+            this.questions = questions.sort((a, b) => a.order - b.order);
+          } else {
+            this.toasterService.showError(response.message || 'حدث خطأ أثناء تحميل الأسئلة');
+          }
+          this.loading = false;
+        },
+        error: (error) => {
+          console.error('Error loading questions:', error);
+          this.loading = false;
+          this.toasterService.showError('حدث خطأ أثناء تحميل الأسئلة');
+        }
+      });
+    } else {
+      // No filter: get ALL questions (active and inactive) - pass undefined for isActive
+      this.questionService.getAllQuestions(undefined, undefined, undefined).subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            const questions = Array.isArray(response.data) ? response.data : response.data.items || [];
+            // Sort by order
+            this.questions = questions.sort((a, b) => a.order - b.order);
+          } else {
+            this.toasterService.showError(response.message || 'حدث خطأ أثناء تحميل الأسئلة');
+          }
+          this.loading = false;
+        },
+        error: (error) => {
+          console.error('Error loading questions:', error);
+          this.loading = false;
+          this.toasterService.showError('حدث خطأ أثناء تحميل الأسئلة');
+        }
+      });
+    }
+  }
+
+  clearFilter(): void {
+    this.filterForm.patchValue({ categoryId: '' });
+    this.selectedCategoryFilter = null;
+    // loadQuestions will be triggered by valueChanges subscription
+  }
+
+  openAddModal(): void {
+    this.modalTitle = 'إضافة سؤال جديد';
+    this.editingQuestion = null;
+    // Get next order number
+    const maxOrder = this.questions.length > 0 ? Math.max(...this.questions.map(q => q.order)) : 0;
+    // Clear options array
+    const optionsArray = this.questionForm.get('optionsArray') as FormArray;
+    while (optionsArray.length !== 0) {
+      optionsArray.removeAt(0);
+    }
+    this.questionForm.reset({ 
+      text: '', 
+      questionType: QuestionType.Text,
+      categoryId: '',
+      order: maxOrder + 1, 
+      isRequired: false
+    });
+    this.showModal = true;
+  }
+
+  editQuestion(question: QuestionDto): void {
+    // Check permission
+    if (!this.permissionService.hasPermission('Question', 'Update') && !this.permissionService.isSuperAdmin()) {
+      this.toasterService.showWarning('ليس لديك صلاحية لتعديل الأسئلة', 'صلاحية مرفوضة');
+      return;
+    }
+
+    this.modalTitle = 'تعديل سؤال';
+    this.editingQuestion = question;
+    
+    // Reset form first to clear any previous state
+    this.questionForm.reset();
+    
+    // Clear options array
+    const optionsArray = this.questionForm.get('optionsArray') as FormArray;
+    while (optionsArray.length !== 0) {
+      optionsArray.removeAt(0);
+    }
+    
+    // Parse options JSON if MultipleChoice type
+    if (question.questionType === QuestionType.MultipleChoice && question.options) {
+      try {
+        const parsedOptions = JSON.parse(question.options);
+        if (Array.isArray(parsedOptions)) {
+          parsedOptions.forEach((option: string) => {
+            optionsArray.push(this.fb.control(option, [Validators.required]));
+          });
+        }
+      } catch (e) {
+        console.error('Error parsing options JSON:', e);
+        // If parsing fails, add empty option
         this.addOption();
       }
+    }
+    
+    // Patch values
+    this.questionForm.patchValue({
+      text: question.text,
+      questionType: question.questionType,
+      categoryId: question.categoryId,
+      order: question.order,
+      isRequired: question.isRequired
+    }, { emitEvent: false });
+    
+    this.showModal = true;
+  }
+
+  deleteQuestion(question: QuestionDto): void {
+    // Check permission before deleting
+    if (!this.permissionService.hasPermission('Question', 'Delete') && !this.permissionService.isSuperAdmin()) {
+      this.toasterService.showWarning('ليس لديك صلاحية لحذف الأسئلة', 'صلاحية مرفوضة');
+      return;
+    }
+
+    this.confirmationService.show({
+      title: 'تأكيد الحذف',
+      message: `هل أنت متأكد من حذف السؤال "${question.text}"؟`,
+      confirmText: 'حذف',
+      cancelText: 'إلغاء',
+      type: 'danger'
+    }).then(confirmed => {
+      if (confirmed) {
+        this.questionService.deleteQuestion(question.id).subscribe({
+          next: () => {
+            this.questions = this.questions.filter(q => q.id !== question.id);
+            this.toasterService.showSuccess('تم حذف السؤال بنجاح');
+          },
+          error: (error) => {
+            console.error('Error deleting question:', error);
+            this.toasterService.showError(error.message || 'حدث خطأ أثناء حذف السؤال');
+          }
+        });
+      }
+    });
+  }
+
+  saveQuestion(): void {
+    if (this.questionForm.invalid) {
+      Object.keys(this.questionForm.controls).forEach(key => {
+        if (key !== 'optionsArray') {
+          this.questionForm.get(key)?.markAsTouched();
+        }
+      });
+      // Mark all option controls as touched
+      const optionsArray = this.questionForm.get('optionsArray') as FormArray;
+      optionsArray.controls.forEach(control => {
+        control.markAsTouched();
+      });
+      this.toasterService.showWarning('يرجى ملء جميع الحقول المطلوبة');
+      return;
+    }
+
+    const formValue = this.questionForm.value;
+
+    try {
+      // Convert options array to JSON string for MultipleChoice
+      let optionsJson: string | null = null;
+      if (formValue.questionType === QuestionType.MultipleChoice) {
+        const optionsArray = this.questionForm.get('optionsArray') as FormArray;
+        const options = optionsArray.controls
+          .map(control => control.value)
+          .filter(value => value && value.trim() !== '');
+        
+        if (options.length === 0) {
+          this.toasterService.showWarning('يجب إضافة خيار واحد على الأقل لنوع السؤال متعدد الخيارات');
+          return;
+        }
+        
+        optionsJson = JSON.stringify(options);
+      }
+      
+      if (this.editingQuestion) {
+        const updateDto: UpdateQuestionDto = {
+          id: this.editingQuestion.id,
+          text: formValue.text,
+          questionType: Number(formValue.questionType), // Ensure it's a number, not string
+          categoryId: Number(formValue.categoryId), // Ensure it's a number
+          order: Number(formValue.order), // Ensure it's a number
+          isRequired: Boolean(formValue.isRequired),
+          options: optionsJson
+        };
+        
+        this.questionService.updateQuestion(updateDto).subscribe({
+          next: (updatedQuestion) => {
+            this.toasterService.showSuccess('تم تحديث السؤال بنجاح');
+            this.closeModal();
+            this.loadQuestions(); // Reload data from backend
+          },
+          error: (error) => {
+            this.toasterService.showError(error.message || 'حدث خطأ أثناء تحديث السؤال');
+          }
+        });
+      } else {
+        const addDto: AddQuestionDto = {
+          text: formValue.text,
+          questionType: Number(formValue.questionType), // Ensure it's a number, not string
+          categoryId: Number(formValue.categoryId), // Ensure it's a number
+          order: Number(formValue.order), // Ensure it's a number
+          isRequired: Boolean(formValue.isRequired),
+          options: optionsJson
+        };
+        
+        this.questionService.createQuestion(addDto).subscribe({
+          next: (newQuestion) => {
+            this.toasterService.showSuccess('تم إضافة السؤال بنجاح');
+            this.closeModal();
+            this.loadQuestions(); // Reload data from backend
+          },
+          error: (error) => {
+            this.toasterService.showError(error.message || 'حدث خطأ أثناء إضافة السؤال');
+          }
+        });
+      }
+    } catch (error: any) {
+      console.error('Error saving question:', error);
+      this.toasterService.showError('حدث خطأ أثناء حفظ السؤال');
+    }
+  }
+
+  closeModal(): void {
+    this.showModal = false;
+    this.editingQuestion = null;
+    const optionsArray = this.questionForm.get('optionsArray') as FormArray;
+    while (optionsArray.length !== 0) {
+      optionsArray.removeAt(0);
+    }
+    this.questionForm.reset();
+  }
+
+  isFieldInvalid(fieldName: string): boolean {
+    const field = this.questionForm.get(fieldName);
+    return !!(field && field.invalid && (field.dirty || field.touched));
+  }
+
+  toggleQuestionActivity(question: QuestionDto, event: Event): void {
+    event.stopPropagation();
+    
+    if (this.togglingQuestions.has(question.id)) {
+      return; // Already toggling
+    }
+
+    this.togglingQuestions.add(question.id);
+    
+    this.questionService.toggleQuestionActivity(question.id).subscribe({
+      next: (updatedQuestion) => {
+        this.toasterService.showSuccess(`تم ${updatedQuestion.isActive ? 'تفعيل' : 'إلغاء تفعيل'} السؤال بنجاح`);
+        this.togglingQuestions.delete(question.id);
+        // Update the question in the list
+        const index = this.questions.findIndex(q => q.id === question.id);
+        if (index !== -1) {
+          this.questions[index] = updatedQuestion;
+        }
+        this.loadQuestions(); // Reload to get fresh data
+      },
+      error: (error) => {
+        console.error('Error toggling question activity:', error);
+        this.toasterService.showError(error.message || 'حدث خطأ أثناء تغيير حالة السؤال');
+        this.togglingQuestions.delete(question.id);
+      }
+    });
+  }
+
+  isToggling(questionId: number): boolean {
+    return this.togglingQuestions.has(questionId);
+  }
+
+  getQuestionTypeLabel(type: QuestionType): string {
+    return getQuestionTypeLabel(type);
+  }
+
+  isMultipleChoiceType(): boolean {
+    return this.questionForm.get('questionType')?.value === QuestionType.MultipleChoice;
+  }
+
+  onQuestionTypeChange(event: Event): void {
+    const selectElement = event.target as HTMLSelectElement;
+    const selectedType = Number(selectElement.value);
+    // Update the form control value first
+    this.questionForm.patchValue({ questionType: selectedType }, { emitEvent: false });
+    // Then handle the change
+    this.handleQuestionTypeChange(selectedType);
+  }
+
+  private handleQuestionTypeChange(type: number): void {
+    const optionsArray = this.questionForm.get('optionsArray') as FormArray;
+    
+    if (type === QuestionType.MultipleChoice) {
+      // If no options exist, add one empty option
+      if (optionsArray.length === 0) {
+        this.addOption();
+        // Manually trigger change detection to update the view
+        this.cdr.detectChanges();
+      }
+      // Set validators for each option
+      optionsArray.controls.forEach(control => {
+        control.setValidators([Validators.required]);
+        control.updateValueAndValidity();
+      });
     } else {
-      // Clear options for non-option types
-      while (optionsArray.length > 0) {
+      // Clear all options when not MultipleChoice
+      while (optionsArray.length !== 0) {
         optionsArray.removeAt(0);
       }
     }
   }
 
-  get optionsArray(): FormArray {
-    return this.questionForm.get('options') as FormArray;
+  getOptionControl(index: number): FormControl {
+    return this.optionsArray.at(index) as FormControl;
   }
 
-  addOption(): void {
-    const optionGroup = this.fb.group({
-      labelAr: ['', Validators.required],
-      labelEn: ['', Validators.required],
-      value: ['', Validators.required],
-      order: [this.optionsArray.length + 1]
-    });
-    this.optionsArray.push(optionGroup);
-  }
-
-  removeOption(index: number): void {
-    this.optionsArray.removeAt(index);
-    // Update order
-    this.optionsArray.controls.forEach((control, i) => {
-      control.patchValue({ order: i + 1 });
-    });
-  }
-
-  openAddModal(): void {
-    this.editMode = false;
-    this.currentQuestionId = null;
-    this.initForm();
-    if (this.selectedCategoryId !== null) {
-      this.questionForm.patchValue({ categoryId: this.selectedCategoryId.toString() });
-    }
-    this.isModalOpen = true;
-  }
-
-  editQuestion(question: Question): void {
-    this.editMode = true;
-    this.currentQuestionId = question.id;
-    
-    // Clear options array first
-    const optionsArray = this.questionForm.get('options') as FormArray;
-    while (optionsArray.length > 0) {
-      optionsArray.removeAt(0);
-    }
-
-    // Add options if they exist
-    if (question.options && question.options.length > 0) {
-      question.options.forEach(option => {
-        const optionGroup = this.fb.group({
-          labelAr: [option.labelAr, Validators.required],
-          labelEn: [option.labelEn, Validators.required],
-          value: [option.value, Validators.required],
-          order: [option.order]
-        });
-        optionsArray.push(optionGroup);
-      });
-    }
-
-    this.questionForm.patchValue({
-      categoryId: question.categoryId,
-      type: question.type,
-      labelAr: question.labelAr,
-      labelEn: question.labelEn,
-      description: question.description || '',
-      required: question.required,
-      section: question.section || '',
-      order: question.order,
-      validation: question.validation || { min: '', max: '', pattern: '' },
-      conditional: question.conditional || { dependsOn: '', showIf: '' }
-    });
-
-    this.onQuestionTypeChange(question.type);
-    this.isModalOpen = true;
-  }
-
-  deleteQuestion(question: Question): void {
-    if (confirm(`هل أنت متأكد أنك تريد حذف السؤال "${question.labelAr}"؟`)) {
-      this.questionService.deleteQuestion(question.id).subscribe({
-        next: () => {
-          this.toaster.showSuccess('تم حذف السؤال بنجاح.', 'نجاح');
-          this.loadQuestions();
-        },
-        error: (error) => {
-          console.error('Error deleting question:', error);
-          this.toaster.showError('فشل حذف السؤال.', 'خطأ');
-        }
-      });
-    }
-  }
-
-  onModalSubmit(): void {
-    if (this.questionForm.invalid) {
-      this.questionForm.markAllAsTouched();
-      this.toaster.showError('يرجى ملء جميع الحقول المطلوبة.', 'خطأ في الإدخال');
-      return;
-    }
-
-    const formValue = this.questionForm.value;
-    
-    // Prepare question data
-    const questionData: any = {
-      categoryId: formValue.categoryId,
-      type: formValue.type,
-      labelAr: formValue.labelAr,
-      labelEn: formValue.labelEn,
-      description: formValue.description || undefined,
-      required: formValue.required,
-      section: formValue.section || undefined,
-      order: formValue.order
-    };
-
-    // Add options if needed
-    if (['radio', 'checkbox', 'dropdown'].includes(formValue.type)) {
-      const options: QuestionOption[] = formValue.options.map((opt: any, index: number) => ({
-        id: `opt-${Date.now()}-${index}`,
-        labelAr: opt.labelAr,
-        labelEn: opt.labelEn,
-        value: opt.value,
-        order: opt.order || index + 1
-      }));
-      questionData.options = options;
-    }
-
-    // Add validation if provided
-    if (formValue.validation && (formValue.validation.min || formValue.validation.max || formValue.validation.pattern)) {
-      questionData.validation = {};
-      if (formValue.validation.min) questionData.validation.min = Number(formValue.validation.min);
-      if (formValue.validation.max) questionData.validation.max = Number(formValue.validation.max);
-      if (formValue.validation.pattern) questionData.validation.pattern = formValue.validation.pattern;
-    }
-
-    // Add conditional if provided
-    if (formValue.conditional && formValue.conditional.dependsOn && formValue.conditional.showIf) {
-      questionData.conditional = {
-        dependsOn: formValue.conditional.dependsOn,
-        showIf: formValue.conditional.showIf
-      };
-    }
-
-    // Validate question
-    const validation = this.questionService.validateQuestion(questionData);
-    if (!validation.valid) {
-      this.toaster.showError(validation.errors.join(', '), 'خطأ في التحقق');
-      return;
-    }
-
-    if (this.editMode && this.currentQuestionId) {
-      this.questionService.updateQuestion(this.currentQuestionId, questionData).subscribe({
-        next: () => {
-          this.toaster.showSuccess('تم تحديث السؤال بنجاح.', 'نجاح');
-          this.closeModal();
-          this.loadQuestions();
-        },
-        error: (error) => {
-          console.error('Error updating question:', error);
-          this.toaster.showError('فشل تحديث السؤال.', 'خطأ');
-        }
-      });
-    } else {
-      this.questionService.createQuestion(questionData).subscribe({
-        next: () => {
-          this.toaster.showSuccess('تم إضافة سؤال جديد بنجاح.', 'نجاح');
-          this.closeModal();
-          this.loadQuestions();
-        },
-        error: (error) => {
-          console.error('Error creating question:', error);
-          this.toaster.showError('فشل إضافة سؤال جديد.', 'خطأ');
-        }
-      });
-    }
-  }
-
-  closeModal(): void {
-    this.isModalOpen = false;
-    this.questionForm.reset();
-    this.editMode = false;
-    this.currentQuestionId = null;
-    const optionsArray = this.questionForm.get('options') as FormArray;
-    while (optionsArray.length > 0) {
-      optionsArray.removeAt(0);
-    }
-  }
-
-  getCategoryName(categoryId: number | string): string {
-    if (!categoryId) return '';
-    const id = typeof categoryId === 'string' ? parseInt(categoryId, 10) : categoryId;
-    const category = this.categories.find(c => c.id === id);
-    return category ? category.name : categoryId.toString();
-  }
-
-  getQuestionTypeLabel(type: QuestionType): string {
-    const questionType = this.questionTypes.find(t => t.value === type);
-    return questionType ? questionType.labelAr : type;
-  }
-
-  needsOptions(type: QuestionType): boolean {
-    return ['radio', 'checkbox', 'dropdown'].includes(type);
+  getCategoryName(categoryId: number): string {
+    const category = this.categories.find(c => c.id === categoryId);
+    return category ? category.name : 'غير محدد';
   }
 }

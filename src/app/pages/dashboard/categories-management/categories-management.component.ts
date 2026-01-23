@@ -65,7 +65,10 @@ export class CategoriesManagementComponent implements OnInit {
     }
     this.initForm();
     this.loadCategories();
-    this.setupActions();
+    // Setup actions after a brief delay to ensure user data is loaded
+    setTimeout(() => {
+      this.setupActions();
+    }, 0);
   }
 
   onViewChange(view: ViewMode): void {

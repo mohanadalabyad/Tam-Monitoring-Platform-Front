@@ -1,0 +1,181 @@
+<div class="cities-management-page">
+  <div class="page-header">
+    <div>
+      <h1>إدارة المدن</h1>
+      <p>إدارة وعرض جميع المدن</p>
+    </div>
+    <div class="header-actions">
+      <app-view-toggle
+        [storageKey]="'cities-view-mode'"
+        [defaultView]="'table'"
+        (viewChange)="onViewChange($event)"
+      ></app-view-toggle>
+      <button class="btn-primary" (click)="openAddModal()" *hasPermission="'City.Create'">
+        <lucide-icon [img]="MapPin" [size]="18"></lucide-icon>
+        إضافة مدينة جديدة
+      </button>
+    </div>
+  </div>
+
+  <!-- Toolbar with Results Counter -->
+  <div class="toolbar" *ngIf="!loading">
+    <div class="toolbar-left">
+      <div class="results-info">
+        <span class="results-count">
+          <strong>{{ cities.length }}</strong> مدينة
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table View -->
+  <div *ngIf="viewMode === 'table'">
+    <app-unified-table
+      [columns]="columns"
+      [data]="cities"
+      [loading]="loading"
+      [actions]="actions"
+      [pageSize]="10"
+      emptyMessage="لا توجد مدن"
+      (rowClick)="editCity($event)"
+    ></app-unified-table>
+  </div>
+
+  <!-- Cards View -->
+  <div *ngIf="viewMode === 'cards'" class="cities-cards-view">
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>جاري تحميل المدن...</p>
+    </div>
+    <div *ngIf="!loading && cities.length === 0" class="empty-state">
+      <p>لا توجد مدن</p>
+    </div>
+    <div *ngIf="!loading && cities.length > 0" class="cities-grid">
+      <div *ngFor="let city of cities" class="city-card">
+        <div class="card-header">
+          <div class="card-title-section">
+            <h3 class="card-title">{{ city.name }}</h3>
+          </div>
+          <div class="card-actions-header" (click)="$event.stopPropagation()">
+            <button
+              *ngIf="permissionService.hasPermission('City.Update') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-edit"
+              (click)="editCity(city); $event.stopPropagation()"
+              title="تعديل"
+            >
+              <lucide-icon [img]="Pencil" [size]="16"></lucide-icon>
+            </button>
+            <button
+              *ngIf="permissionService.hasPermission('City.Delete') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-delete"
+              (click)="deleteCity(city); $event.stopPropagation()"
+              title="حذف"
+            >
+              <lucide-icon [img]="Trash2" [size]="16"></lucide-icon>
+            </button>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="card-field">
+            <span class="field-label">المحافظة:</span>
+            <span class="field-value">{{ city.governorate }}</span>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="status-toggle">
+            <span class="status-label">الحالة:</span>
+            <button
+              *ngIf="permissionService.hasPermission('City.ToggleActivity') || permissionService.isSuperAdmin()"
+              type="button"
+              class="toggle-btn-card"
+              [class.active]="city.isActive"
+              [class.toggling]="isToggling(city.id)"
+              [disabled]="isToggling(city.id)"
+              (click)="toggleCityActivity(city, $event)"
+              [title]="city.isActive ? 'إلغاء التفعيل' : 'تفعيل'"
+            >
+              <lucide-icon 
+                [img]="city.isActive ? Power : PowerOff" 
+                [size]="16"
+              ></lucide-icon>
+              <span>{{ city.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </button>
+            <span
+              *ngIf="!(permissionService.hasPermission('City.ToggleActivity') || permissionService.isSuperAdmin())"
+              class="status-readonly"
+              [class.active]="city.isActive"
+            >
+              <lucide-icon 
+                [img]="city.isActive ? Power : PowerOff" 
+                [size]="16"
+              ></lucide-icon>
+              <span>{{ city.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-modal
+    [show]="showModal"
+    [title]="modalTitle"
+    size="md"
+    (close)="closeModal()"
+  >
+    <form [formGroup]="cityForm" (ngSubmit)="saveCity()">
+      <div class="form-group">
+        <label for="name">اسم المدينة *</label>
+        <input
+          type="text"
+          id="name"
+          formControlName="name"
+          [class.invalid]="isFieldInvalid('name')"
+          placeholder="أدخل اسم المدينة"
+        />
+        <div class="error-message" *ngIf="isFieldInvalid('name')">
+          اسم المدينة مطلوب
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="governorate">المحافظة *</label>
+        <input
+          type="text"
+          id="governorate"
+          formControlName="governorate"
+          [class.invalid]="isFieldInvalid('governorate')"
+          placeholder="أدخل اسم المحافظة"
+        />
+        <div class="error-message" *ngIf="isFieldInvalid('governorate')">
+          المحافظة مطلوبة
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="area">المنطقة (JSON Polygon) *</label>
+        <textarea
+          id="area"
+          formControlName="area"
+          [class.invalid]="isFieldInvalid('area')"
+          placeholder='{"type":"Polygon","coordinates":[...]}'
+          rows="5"
+        ></textarea>
+        <div class="error-message" *ngIf="isFieldInvalid('area')">
+          المنطقة مطلوبة (يجب أن تكون بصيغة JSON Polygon)
+        </div>
+      </div>
+
+      <div footer>
+        <button type="button" class="btn-secondary" (click)="closeModal()">
+          إلغاء
+        </button>
+        <button type="submit" class="btn-primary">
+          {{ editingCity ? 'حفظ التغييرات' : 'إضافة' }}
+        </button>
+      </div>
+    </form>
+  </app-modal>
+</div>

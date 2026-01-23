@@ -1,86 +1,89 @@
 <div class="violation-list">
-      <div class="container">
-        <div class="page-header">
-          <h1>الحوادث المنشورة</h1>
-          <p>عرض جميع الحوادث المبلغ عنها وحالتها الحالية</p>
-        </div>
+  <div class="container">
+    <div class="page-header">
+      <h1>الحوادث المنشورة</h1>
+      <p>عرض جميع الحوادث المبلغ عنها وحالتها الحالية</p>
+    </div>
 
-        <div class="filters">
-          <div class="filter-group">
-            <label for="statusFilter">تصفية حسب الحالة:</label>
-            <select id="statusFilter" [(ngModel)]="statusFilter" (change)="applyFilters()">
-              <option value="all">الكل</option>
-              <option value="pending">قيد المراجعة</option>
-              <option value="investigating">قيد التحقيق</option>
-              <option value="resolved">تم الحل</option>
-              <option value="rejected">مرفوض</option>
-            </select>
+    <div class="filters">
+      <div class="filter-group">
+        <label for="statusFilter">تصفية حسب الحالة:</label>
+        <select id="statusFilter" [(ngModel)]="statusFilter" (change)="applyFilters()">
+          <option value="all">الكل</option>
+          <option [value]="1">قيد المراجعة</option>
+          <option [value]="2">موافق عليه</option>
+          <option [value]="3">مرفوض</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="categoryFilter">تصفية حسب الفئة:</label>
+        <select id="categoryFilter" [(ngModel)]="categoryFilter" (change)="applyFilters()">
+          <option value="all">جميع الفئات</option>
+          <option *ngFor="let cat of categories" [value]="cat.id">{{ cat.name }}</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="loading" *ngIf="loading">
+      <p>جاري تحميل الحوادث...</p>
+    </div>
+
+    <div class="violations-container" *ngIf="!loading">
+      <div class="alert alert-info" *ngIf="filteredViolations.length === 0">
+        لم يتم العثور على حوادث تطابق معايير البحث.
+      </div>
+
+      <div class="violation-card" *ngFor="let violation of filteredViolations" [class.fade-in]="true">
+        <div class="violation-header">
+          <div>
+            <h3>حادثة #{{ violation.id }}</h3>
+            <span class="badge badge-{{ getStatusLabel(violation.acceptanceStatus).toLowerCase() }}">
+              {{ getStatusLabel(violation.acceptanceStatus) }}
+            </span>
           </div>
-
-          <div class="filter-group">
-            <label for="categoryFilter">تصفية حسب الفئة:</label>
-            <select id="categoryFilter" [(ngModel)]="categoryFilter" (change)="applyFilters()">
-              <option value="all">جميع الفئات</option>
-              <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
-            </select>
-          </div>
+          <span class="violation-date">{{ violation.violationDate | date:'medium' }}</span>
         </div>
-
-        <div class="loading" *ngIf="loading">
-          <p>جاري تحميل الحوادث...</p>
-        </div>
-
-        <div class="violations-container" *ngIf="!loading">
-          <div class="alert alert-info" *ngIf="filteredViolations.length === 0">
-            لم يتم العثور على حوادث تطابق معايير البحث.
+        
+        <div class="violation-body">
+          <div class="violation-info">
+            <span class="info-label">الفئة:</span>
+            <span class="info-value">{{ violation.category?.name || 'غير محدد' }}</span>
           </div>
-
-          <div class="violation-card" *ngFor="let violation of filteredViolations" [class.fade-in]="true">
-            <div class="violation-header">
-              <div>
-                <h3>{{ violation.title }}</h3>
-                <span class="badge badge-{{ violation.status }}">{{ getStatusLabel(violation.status) }}</span>
-              </div>
-              <span class="violation-date">{{ violation.reportedDate | date:'medium' }}</span>
-            </div>
-            
-            <div class="violation-body">
-              <div class="violation-info">
-                <span class="info-label">الفئة:</span>
-                <span class="info-value">{{ violation.category }}</span>
-              </div>
-              <div class="violation-info">
-                <span class="info-label">الموقع:</span>
-                <span class="info-value">{{ violation.location }}</span>
-              </div>
-              <div class="violation-description">
-                <p>{{ violation.description }}</p>
-              </div>
-            </div>
-
-            <div class="violation-footer">
-              <span class="reporter-info">تم الإبلاغ بواسطة: {{ violation.reporterName }}</span>
-            </div>
+          <div class="violation-info">
+            <span class="info-label">الموقع:</span>
+            <span class="info-value">{{ violation.location }}</span>
+          </div>
+          <div class="violation-description">
+            <p>{{ violation.description }}</p>
           </div>
         </div>
 
-        <div class="stats-summary" *ngIf="!loading">
-          <div class="stat-item">
-            <span class="stat-label">الإجمالي:</span>
-            <span class="stat-value">{{ violations.length }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">قيد المراجعة:</span>
-            <span class="stat-value">{{ getCountByStatus('pending') }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">قيد التحقيق:</span>
-            <span class="stat-value">{{ getCountByStatus('investigating') }}</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">تم الحل:</span>
-            <span class="stat-value">{{ getCountByStatus('resolved') }}</span>
-          </div>
+        <div class="violation-footer">
+          <span class="reporter-info" *ngIf="violation.city">
+            المدينة: {{ violation.city.name }}
+          </span>
         </div>
       </div>
     </div>
+
+    <div class="stats-summary" *ngIf="!loading">
+      <div class="stat-item">
+        <span class="stat-label">الإجمالي:</span>
+        <span class="stat-value">{{ violations.length }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">قيد المراجعة:</span>
+        <span class="stat-value">{{ getCountByStatus(1) }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">موافق عليه:</span>
+        <span class="stat-value">{{ getCountByStatus(2) }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">مرفوض:</span>
+        <span class="stat-value">{{ getCountByStatus(3) }}</span>
+      </div>
+    </div>
+  </div>
+</div>

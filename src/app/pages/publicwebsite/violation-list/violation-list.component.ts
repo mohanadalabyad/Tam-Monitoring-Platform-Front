@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { ViolationService } from '../../../services/violation.service';
-import { Violation } from '../../../models/violation.model';
+import { CategoryService } from '../../../services/category.service';
+import { ViolationDto, AcceptanceStatus, getAcceptanceStatusLabel } from '../../../models/violation.model';
+import { CategoryDto } from '../../../models/category.model';
 
 @Component({
   selector: 'app-violation-list',
@@ -8,29 +10,47 @@ import { Violation } from '../../../models/violation.model';
   styleUrls: ['./violation-list.component.scss']
 })
 export class ViolationListComponent implements OnInit {
-  violations: Violation[] = [];
-  filteredViolations: Violation[] = [];
-  categories: string[] = [];
-  statusFilter = 'all';
-  categoryFilter = 'all';
+  violations: ViolationDto[] = [];
+  filteredViolations: ViolationDto[] = [];
+  categories: CategoryDto[] = [];
+  statusFilter: AcceptanceStatus | 'all' = 'all';
+  categoryFilter: number | 'all' = 'all';
   loading = true;
 
-  constructor(private violationService: ViolationService) {}
+  constructor(
+    private violationService: ViolationService,
+    private categoryService: CategoryService
+  ) {}
 
   ngOnInit(): void {
-    this.categories = this.violationService.getCategories();
+    this.loadCategories();
     this.loadViolations();
+  }
+
+  loadCategories(): void {
+    this.categoryService.getAllCategories(true).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.categories = Array.isArray(response.data) ? response.data : response.data.items || [];
+        }
+      },
+      error: (error: any) => {
+        console.error('Error loading categories:', error);
+      }
+    });
   }
 
   loadViolations(): void {
     this.loading = true;
-    this.violationService.getViolations().subscribe({
-      next: (data) => {
-        this.violations = data;
-        this.applyFilters();
+    this.violationService.getAllViolations(undefined, undefined, true).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.violations = Array.isArray(response.data) ? response.data : response.data.items || [];
+          this.applyFilters();
+        }
         this.loading = false;
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Error loading violations:', error);
         this.loading = false;
       }
@@ -38,24 +58,18 @@ export class ViolationListComponent implements OnInit {
   }
 
   applyFilters(): void {
-    this.filteredViolations = this.violations.filter(v => {
-      const statusMatch = this.statusFilter === 'all' || v.status === this.statusFilter;
-      const categoryMatch = this.categoryFilter === 'all' || v.category === this.categoryFilter;
+    this.filteredViolations = this.violations.filter((v: ViolationDto) => {
+      const statusMatch = this.statusFilter === 'all' || v.acceptanceStatus === this.statusFilter;
+      const categoryMatch = this.categoryFilter === 'all' || v.categoryId === this.categoryFilter;
       return statusMatch && categoryMatch;
     });
   }
 
-  getCountByStatus(status: string): number {
-    return this.violations.filter(v => v.status === status).length;
+  getCountByStatus(status: AcceptanceStatus): number {
+    return this.violations.filter((v: ViolationDto) => v.acceptanceStatus === status).length;
   }
 
-  getStatusLabel(status: string): string {
-    const statusLabels: { [key: string]: string } = {
-      'pending': 'قيد المراجعة',
-      'investigating': 'قيد التحقيق',
-      'resolved': 'تم الحل',
-      'rejected': 'مرفوض'
-    };
-    return statusLabels[status] || status;
+  getStatusLabel(status: AcceptanceStatus): string {
+    return getAcceptanceStatusLabel(status);
   }
 }

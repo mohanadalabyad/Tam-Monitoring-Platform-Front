@@ -1,116 +1,28 @@
-<div class="dynamic-question" [class.required]="question.required" [class.invalid]="isInvalid()">
+<div class="dynamic-question" [class.required]="question.isRequired" [class.invalid]="isInvalid()">
   <label class="question-label">
-    {{ question.labelAr }}
-    <span class="required-indicator" *ngIf="question.required">*</span>
+    {{ question.text }}
+    <span class="required-indicator" *ngIf="question.isRequired">*</span>
   </label>
-  
-  <p class="question-description" *ngIf="question.description">{{ question.description }}</p>
 
-  <!-- Radio Buttons -->
-  <div *ngIf="question.type === 'radio'" class="radio-group">
-    <label *ngFor="let option of question.options" class="radio-option">
-      <input
-        type="radio"
-        [name]="'q-' + question.id"
-        [value]="option.value"
-        [checked]="value === option.value"
-        (change)="onValueChange(option.value)"
-      />
-      <span class="radio-label">{{ option.labelAr }}</span>
-    </label>
-  </div>
-
-  <!-- Checkboxes -->
-  <div *ngIf="question.type === 'checkbox'" class="checkbox-group">
-    <label *ngFor="let option of question.options" class="checkbox-option">
-      <input
-        type="checkbox"
-        [value]="option.value"
-        [checked]="value && value.includes(option.value)"
-        (change)="onCheckboxChange(option.value, $event)"
-      />
-      <span class="checkbox-label">{{ option.labelAr }}</span>
-    </label>
-  </div>
-
-  <!-- Text Input -->
+  <!-- Text Input (Type 1) -->
   <input
-    *ngIf="question.type === 'text'"
+    *ngIf="question.questionType === QuestionType.Text"
     type="text"
     [value]="value || ''"
     (input)="onValueChange($any($event.target).value)"
-    [placeholder]="question.labelAr"
+    [placeholder]="question.text"
     class="text-input"
   />
 
-  <!-- Textarea -->
-  <textarea
-    *ngIf="question.type === 'textarea'"
-    [value]="value || ''"
-    (input)="onValueChange($any($event.target).value)"
-    [placeholder]="question.labelAr"
-    rows="4"
-    class="textarea-input"
-  ></textarea>
-
-  <!-- Date Input -->
-  <input
-    *ngIf="question.type === 'date'"
-    type="date"
-    [value]="value || ''"
-    (input)="onValueChange($any($event.target).value)"
-    class="date-input"
-  />
-
-  <!-- Time Input -->
-  <input
-    *ngIf="question.type === 'time'"
-    type="time"
-    [value]="value || ''"
-    (input)="onValueChange($any($event.target).value)"
-    class="time-input"
-  />
-
-  <!-- Number Input -->
-  <input
-    *ngIf="question.type === 'number'"
-    type="number"
-    [value]="value || ''"
-    (input)="onValueChange(parseNumber($any($event.target).value))"
-    [min]="question.validation?.min"
-    [max]="question.validation?.max"
-    class="number-input"
-  />
-
-  <!-- Scale (1-5) -->
-  <div *ngIf="question.type === 'scale'" class="scale-group">
-    <div class="scale-options">
-      <label *ngFor="let i of [1,2,3,4,5]" class="scale-option">
-        <input
-          type="radio"
-          [name]="'scale-' + question.id"
-          [value]="i"
-          [checked]="value === i"
-          (change)="onValueChange(i)"
-        />
-        <span class="scale-number">{{ i }}</span>
-      </label>
-    </div>
-    <div class="scale-labels">
-      <span>منخفض</span>
-      <span>عالٍ</span>
-    </div>
-  </div>
-
-  <!-- Yes/No -->
-  <div *ngIf="question.type === 'yesno'" class="yesno-group">
+  <!-- Yes/No (Type 2) -->
+  <div *ngIf="question.questionType === QuestionType.YesNo" class="yesno-group">
     <label class="yesno-option">
       <input
         type="radio"
         [name]="'yesno-' + question.id"
-        [value]="true"
-        [checked]="value === true"
-        (change)="onValueChange(true)"
+        value="نعم"
+        [checked]="value === 'نعم'"
+        (change)="onValueChange('نعم')"
       />
       <span>نعم</span>
     </label>
@@ -118,26 +30,64 @@
       <input
         type="radio"
         [name]="'yesno-' + question.id"
-        [value]="false"
-        [checked]="value === false"
-        (change)="onValueChange(false)"
+        value="لا"
+        [checked]="value === 'لا'"
+        (change)="onValueChange('لا')"
       />
       <span>لا</span>
     </label>
   </div>
 
-  <!-- Dropdown -->
+  <!-- Rating (Type 3) - 1-5 scale -->
+  <div *ngIf="question.questionType === QuestionType.Rating" class="rating-group">
+    <div class="rating-options">
+      <label *ngFor="let i of [1,2,3,4,5]" class="rating-option">
+        <input
+          type="radio"
+          [name]="'rating-' + question.id"
+          [value]="i"
+          [checked]="value === toString(i)"
+          (change)="onValueChange(toString(i))"
+        />
+        <span class="rating-number">{{ i }}</span>
+      </label>
+    </div>
+    <div class="rating-labels">
+      <span>منخفض</span>
+      <span>عالٍ</span>
+    </div>
+  </div>
+
+  <!-- MultipleChoice (Type 4) - Dropdown with options from JSON -->
   <select
-    *ngIf="question.type === 'dropdown'"
+    *ngIf="question.questionType === QuestionType.MultipleChoice"
     [value]="value || ''"
     (change)="onValueChange($any($event.target).value)"
     class="dropdown-input"
   >
-    <option value="">{{ question.labelAr }}</option>
-    <option *ngFor="let option of question.options" [value]="option.value">
-      {{ option.labelAr }}
+    <option value="">اختر...</option>
+    <option *ngFor="let option of getOptions()" [value]="option">
+      {{ option }}
     </option>
   </select>
+
+  <!-- Date (Type 5) -->
+  <input
+    *ngIf="question.questionType === QuestionType.Date"
+    type="date"
+    [value]="value || ''"
+    (input)="onValueChange($any($event.target).value)"
+    class="date-input"
+  />
+
+  <!-- Number (Type 6) -->
+  <input
+    *ngIf="question.questionType === QuestionType.Number"
+    type="number"
+    [value]="value || ''"
+    (input)="onValueChange($any($event.target).value)"
+    class="number-input"
+  />
 
   <div class="error-message" *ngIf="isInvalid()">
     {{ getErrorMessage() }}
