@@ -14,6 +14,12 @@ export class ConfirmationDialogService {
 
   show(config: ConfirmationConfig): Promise<boolean> {
     return new Promise((resolve) => {
+      // If a dialog is already open, cancel it first to prevent multiple dialogs
+      const current = this.confirmationSubject.value;
+      if (current) {
+        current.resolve(false);
+      }
+      
       this.confirmationSubject.next({
         show: true,
         config,

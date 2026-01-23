@@ -197,7 +197,7 @@
     size="lg"
     (close)="closeModal()"
   >
-    <form [formGroup]="roleForm" (ngSubmit)="saveRole()">
+    <form [formGroup]="roleForm">
       <div class="form-group">
         <label for="name">اسم الدور *</label>
         <input
@@ -210,16 +210,15 @@
           اسم الدور مطلوب
         </div>
       </div>
-
-
-      <div footer>
-        <button type="button" class="btn-secondary" (click)="closeModal()">
-          إلغاء
-        </button>
-        <button type="submit" class="btn-primary">
-          {{ editingRole ? 'حفظ التغييرات' : 'إضافة' }}
-        </button>
-      </div>
     </form>
+    
+    <div footer>
+      <button type="button" class="btn-secondary" (click)="closeModal()">
+        إلغاء
+      </button>
+      <button type="button" class="btn-primary" (click)="saveRole()">
+        {{ editingRole ? 'حفظ التغييرات' : 'إضافة' }}
+      </button>
+    </div>
   </app-modal>
 </div>

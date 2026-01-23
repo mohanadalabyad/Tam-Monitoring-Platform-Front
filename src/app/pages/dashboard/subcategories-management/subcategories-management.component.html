@@ -132,7 +132,7 @@
     size="md"
     (close)="closeModal()"
   >
-    <form [formGroup]="subCategoryForm" (ngSubmit)="saveSubCategory()">
+    <form [formGroup]="subCategoryForm">
       <div class="form-group">
         <label for="categoryId">الفئة الرئيسية *</label>
         <select
@@ -173,15 +173,15 @@
           rows="3"
         ></textarea>
       </div>
-
-      <div footer>
-        <button type="button" class="btn-secondary" (click)="closeModal()">
-          إلغاء
-        </button>
-        <button type="submit" class="btn-primary">
-          {{ editingSubCategory ? 'حفظ التغييرات' : 'إضافة' }}
-        </button>
-      </div>
     </form>
+    
+    <div footer>
+      <button type="button" class="btn-secondary" (click)="closeModal()">
+        إلغاء
+      </button>
+      <button type="button" class="btn-primary" (click)="saveSubCategory()">
+        {{ editingSubCategory ? 'حفظ التغييرات' : 'إضافة' }}
+      </button>
+    </div>
   </app-modal>
 </div>

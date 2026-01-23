@@ -233,7 +233,7 @@
     size="lg"
     (close)="closeModal()"
   >
-    <form [formGroup]="violationForm" (ngSubmit)="saveViolation()">
+    <form [formGroup]="violationForm">
       <div class="form-row">
         <div class="form-group">
           <label for="cityId">المدينة *</label>
@@ -399,16 +399,16 @@
           </div>
         </div>
       </div>
-
-      <div footer>
-        <button type="button" class="btn-secondary" (click)="closeModal()">
-          إلغاء
-        </button>
-        <button type="submit" class="btn-primary">
-          {{ editingViolation ? 'حفظ التغييرات' : 'إضافة' }}
-        </button>
-      </div>
     </form>
+    
+    <div footer>
+      <button type="button" class="btn-secondary" (click)="closeModal()">
+        إلغاء
+      </button>
+      <button type="button" class="btn-primary" (click)="saveViolation()">
+        {{ editingViolation ? 'حفظ التغييرات' : 'إضافة' }}
+      </button>
+    </div>
   </app-modal>
 
   <!-- Print View Modal -->

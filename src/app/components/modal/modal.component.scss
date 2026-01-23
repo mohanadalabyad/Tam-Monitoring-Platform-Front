@@ -177,19 +177,67 @@
 }
 
 .modal-footer {
-  padding: var(--spacing-xl) var(--spacing-2xl);
-  background: linear-gradient(to top, 
-    rgba(248, 249, 250, 0.9) 0%, 
-    rgba(255, 255, 255, 0.5) 50%,
-    transparent 100%);
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
+  padding: var(--spacing-lg);
+  border-top: 1px solid var(--border-light);
   display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   gap: var(--spacing-md);
-  justify-content: flex-end;
+  justify-content: flex-start;
+  align-items: center;
   flex-shrink: 0;
   position: relative;
   z-index: 1;
-  backdrop-filter: blur(10px);
+}
+
+// Button styles for footer actions - matching confirmation dialog design exactly
+// Using more specific selectors to override global button styles
+.modal-footer {
+  ::ng-deep .btn,
+  ::ng-deep button {
+    padding: var(--spacing-sm) var(--spacing-lg) !important;
+    border-radius: var(--radius-md) !important;
+    font-size: var(--font-size-sm) !important;
+    font-weight: var(--font-weight-semibold) !important;
+    border: none !important;
+    cursor: pointer;
+    transition: all var(--transition-base) var(--transition-timing);
+    min-width: 100px;
+    width: auto !important;
+    display: inline-flex !important;
+    flex-shrink: 0;
+  }
+
+  ::ng-deep .btn-secondary,
+  ::ng-deep button[type="button"]:not(.btn-primary) {
+    background: var(--white) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-color) !important;
+    
+    &:hover {
+      background: var(--light-bg) !important;
+      border-color: var(--border-light) !important;
+      color: var(--text-primary) !important;
+      transform: none !important;
+    }
+  }
+
+  ::ng-deep .btn-primary,
+  ::ng-deep button.btn-primary {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%) !important;
+    color: var(--white) !important;
+    box-shadow: var(--shadow-md) !important;
+    
+    &:hover {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--secondary-color) 100%) !important;
+      transform: translateY(-1px) !important;
+      box-shadow: var(--shadow-lg) !important;
+    }
+    
+    &:active {
+      transform: translateY(0) !important;
+    }
+  }
 }
 
 @keyframes fadeInBackdrop {
@@ -241,5 +289,15 @@
   
   .modal-title {
     font-size: var(--font-size-xl);
+  }
+  
+  .modal-footer {
+    flex-direction: column;
+    justify-content: flex-start;
+    
+    ::ng-deep .btn,
+    ::ng-deep button {
+      width: 100%;
+    }
   }
 }

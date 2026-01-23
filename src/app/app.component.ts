@@ -50,4 +50,9 @@ export class AppComponent implements OnInit {
   onConfirmationCancelled(): void {
     this.confirmationService.cancel();
   }
+
+  onConfirmationClosed(): void {
+    // Ensure state is cleared when dialog is closed
+    this.confirmationService.cancel();
+  }
 }

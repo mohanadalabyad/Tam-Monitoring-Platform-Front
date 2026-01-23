@@ -40,12 +40,12 @@ export class ConfirmationDialogComponent {
 
   onConfirm(): void {
     this.confirmed.emit();
-    this.close();
+    // Don't set show = false here, let the service handle it
   }
 
   onCancel(): void {
     this.cancelled.emit();
-    this.close();
+    // Don't set show = false here, let the service handle it
   }
 
   onBackdropClick(event: MouseEvent): void {
@@ -55,9 +55,9 @@ export class ConfirmationDialogComponent {
     }
   }
 
-  close(): void {
-    this.show = false;
-    this.closed.emit();
+  onClose(): void {
+    // Close button should also cancel to properly resolve the promise
+    this.onCancel();
   }
 
   getIcon(): any {

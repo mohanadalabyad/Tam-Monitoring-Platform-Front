@@ -158,7 +158,7 @@
     size="md"
     (close)="closeModal()"
   >
-    <form [formGroup]="permissionForm" (ngSubmit)="savePermission()">
+    <form [formGroup]="permissionForm">
       <div class="form-group">
         <label for="name">اسم الصلاحية *</label>
         <input
@@ -172,15 +172,15 @@
           اسم الصلاحية مطلوب
         </div>
       </div>
-
-      <div footer>
-        <button type="button" class="btn-secondary" (click)="closeModal()">
-          إلغاء
-        </button>
-        <button type="submit" class="btn-primary">
-          {{ editingPermission ? 'حفظ التغييرات' : 'إضافة' }}
-        </button>
-      </div>
     </form>
+    
+    <div footer>
+      <button type="button" class="btn-secondary" (click)="closeModal()">
+        إلغاء
+      </button>
+      <button type="button" class="btn-primary" (click)="savePermission()">
+        {{ editingPermission ? 'حفظ التغييرات' : 'إضافة' }}
+      </button>
+    </div>
   </app-modal>
 </div>

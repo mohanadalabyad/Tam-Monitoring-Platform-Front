@@ -140,7 +140,7 @@
     size="md"
     (close)="closeModal()"
   >
-    <form [formGroup]="userForm" (ngSubmit)="saveUser()">
+    <form [formGroup]="userForm">
       <div class="form-section">
         <h3 class="section-title">المعلومات الأساسية</h3>
         <div class="form-row">
@@ -215,16 +215,16 @@
           </div>
         </div>
       </div>
-
-      <div footer>
-        <button type="button" class="btn-secondary" (click)="closeModal()">
-          إلغاء
-        </button>
-        <button type="submit" class="btn-primary">
-          {{ editingUser ? 'حفظ التغييرات' : 'إضافة' }}
-        </button>
-      </div>
     </form>
+    
+    <div footer>
+      <button type="button" class="btn-secondary" (click)="closeModal()">
+        إلغاء
+      </button>
+      <button type="button" class="btn-primary" (click)="saveUser()">
+        {{ editingUser ? 'حفظ التغييرات' : 'إضافة' }}
+      </button>
+    </div>
   </app-modal>
 
   <!-- Role Assignment Modal -->

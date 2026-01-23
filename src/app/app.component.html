@@ -6,6 +6,7 @@
     [config]="confirmationState.config"
     (confirmed)="onConfirmationConfirmed()"
     (cancelled)="onConfirmationCancelled()"
+    (closed)="onConfirmationClosed()"
   ></app-confirmation-dialog>
   <app-header *ngIf="!isDashboardRoute"></app-header>
   <main class="main-content" [class.dashboard-main-content]="isDashboardRoute">

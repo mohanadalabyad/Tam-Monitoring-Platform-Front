@@ -172,7 +172,7 @@
     size="md"
     (close)="closeModal()"
   >
-    <form [formGroup]="questionForm" (ngSubmit)="saveQuestion()">
+    <form [formGroup]="questionForm">
       <div class="form-group">
         <label for="text">نص السؤال *</label>
         <textarea
@@ -292,15 +292,15 @@
         </div>
         <small class="form-hint">أضف الخيارات المتاحة للمستخدم. يمكنك إضافة أو حذف خيارات.</small>
       </div>
-
-      <div footer>
-        <button type="button" class="btn-secondary" (click)="closeModal()">
-          إلغاء
-        </button>
-        <button type="submit" class="btn-primary">
-          {{ editingQuestion ? 'حفظ التغييرات' : 'إضافة' }}
-        </button>
-      </div>
     </form>
+    
+    <div footer>
+      <button type="button" class="btn-secondary" (click)="closeModal()">
+        إلغاء
+      </button>
+      <button type="button" class="btn-primary" (click)="saveQuestion()">
+        {{ editingQuestion ? 'حفظ التغييرات' : 'إضافة' }}
+      </button>
+    </div>
   </app-modal>
 </div>

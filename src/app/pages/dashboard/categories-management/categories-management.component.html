@@ -134,7 +134,7 @@
     size="md"
     (close)="closeModal()"
   >
-    <form [formGroup]="categoryForm" (ngSubmit)="saveCategory()">
+    <form [formGroup]="categoryForm" #categoryFormRef="ngForm">
       <div class="form-group">
         <label for="name">اسم الفئة *</label>
         <input
@@ -158,16 +158,16 @@
           rows="3"
         ></textarea>
       </div>
-
-      <div footer>
-        <button type="button" class="btn-secondary" (click)="closeModal()">
-          إلغاء
-        </button>
-        <button type="submit" class="btn-primary">
-          {{ editingCategory ? 'حفظ التغييرات' : 'إضافة' }}
-        </button>
-      </div>
     </form>
+    
+    <div footer>
+      <button type="button" class="btn-secondary" (click)="closeModal()">
+        إلغاء
+      </button>
+      <button type="button" class="btn-primary" (click)="saveCategory()">
+        {{ editingCategory ? 'حفظ التغييرات' : 'إضافة' }}
+      </button>
+    </div>
   </app-modal>
 
   <!-- Questions Document View Modal -->
