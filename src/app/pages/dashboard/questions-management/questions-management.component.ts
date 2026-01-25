@@ -134,12 +134,26 @@ export class QuestionsManagementComponent implements OnInit {
       categoryId: ['', Validators.required],
       order: [1, [Validators.required, Validators.min(1)]],
       isRequired: [false],
+      hasMultiSelect: [false],
+      hasOtherOption: [false],
+      otherOptionText: ['أخرى'],
       optionsArray: this.fb.array([]) // FormArray for user-friendly options
     });
 
     // Watch for questionType changes to show/hide options field
     this.questionForm.get('questionType')?.valueChanges.subscribe(type => {
       this.handleQuestionTypeChange(type);
+    });
+
+    // Watch for hasOtherOption changes to show/hide otherOptionText
+    this.questionForm.get('hasOtherOption')?.valueChanges.subscribe(hasOther => {
+      const otherTextControl = this.questionForm.get('otherOptionText');
+      if (hasOther) {
+        otherTextControl?.setValidators([Validators.required]);
+      } else {
+        otherTextControl?.clearValidators();
+      }
+      otherTextControl?.updateValueAndValidity();
     });
   }
 
@@ -267,7 +281,10 @@ export class QuestionsManagementComponent implements OnInit {
       questionType: QuestionType.Text,
       categoryId: '',
       order: maxOrder + 1, 
-      isRequired: false
+      isRequired: false,
+      hasMultiSelect: false,
+      hasOtherOption: false,
+      otherOptionText: 'أخرى'
     });
     this.showModal = true;
   }
@@ -313,7 +330,10 @@ export class QuestionsManagementComponent implements OnInit {
       questionType: question.questionType,
       categoryId: question.categoryId,
       order: question.order,
-      isRequired: question.isRequired
+      isRequired: question.isRequired,
+      hasMultiSelect: question.hasMultiSelect || false,
+      hasOtherOption: question.hasOtherOption || false,
+      otherOptionText: question.otherOptionText || 'أخرى'
     }, { emitEvent: false });
     
     this.showModal = true;
@@ -391,7 +411,10 @@ export class QuestionsManagementComponent implements OnInit {
           categoryId: Number(formValue.categoryId), // Ensure it's a number
           order: Number(formValue.order), // Ensure it's a number
           isRequired: Boolean(formValue.isRequired),
-          options: optionsJson
+          options: optionsJson,
+          hasMultiSelect: formValue.questionType === QuestionType.MultipleChoice ? Boolean(formValue.hasMultiSelect) : false,
+          hasOtherOption: formValue.questionType === QuestionType.MultipleChoice ? Boolean(formValue.hasOtherOption) : false,
+          otherOptionText: formValue.questionType === QuestionType.MultipleChoice && formValue.hasOtherOption ? (formValue.otherOptionText || 'أخرى') : null
         };
         
         this.questionService.updateQuestion(updateDto).subscribe({

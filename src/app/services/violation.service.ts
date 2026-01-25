@@ -14,6 +14,15 @@ import {
   ViolationFilter
 } from '../models/violation.model';
 
+/**
+ * @deprecated This service is deprecated. Use the following services instead:
+ * - PublicViolationService for public violations
+ * - PrivateViolationService for private violations
+ * - PublishedViolationService for published violations
+ * - StatisticsService for violation statistics
+ * 
+ * This service is kept for backward compatibility only and may be removed in future versions.
+ */
 @Injectable({
   providedIn: 'root'
 })

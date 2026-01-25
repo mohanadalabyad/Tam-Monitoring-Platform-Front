@@ -136,4 +136,33 @@ export class CityService {
         })
       );
   }
+
+  /**
+   * Get public lookup - all active cities (no pagination, AllowAnonymous)
+   */
+  getPublicLookup(): Observable<ApiResponse<CityDto[]>> {
+    return this.http.get<ApiResponse<CityDto[]>>(`${this.apiUrl}/public/lookup`)
+      .pipe(
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          // Ensure data is always an array
+          if (Array.isArray(response.data)) {
+            return response;
+          }
+          // If data is paginated, extract items
+          if (response.data && typeof response.data === 'object' && 'items' in response.data) {
+            return {
+              ...response,
+              data: (response.data as any).items || []
+            };
+          }
+          return {
+            ...response,
+            data: []
+          };
+        })
+      );
+  }
 }

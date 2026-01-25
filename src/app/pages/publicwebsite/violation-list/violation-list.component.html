@@ -7,16 +7,6 @@
 
     <div class="filters">
       <div class="filter-group">
-        <label for="statusFilter">تصفية حسب الحالة:</label>
-        <select id="statusFilter" [(ngModel)]="statusFilter" (change)="applyFilters()">
-          <option value="all">الكل</option>
-          <option [value]="1">قيد المراجعة</option>
-          <option [value]="2">موافق عليه</option>
-          <option [value]="3">مرفوض</option>
-        </select>
-      </div>
-
-      <div class="filter-group">
         <label for="categoryFilter">تصفية حسب الفئة:</label>
         <select id="categoryFilter" [(ngModel)]="categoryFilter" (change)="applyFilters()">
           <option value="all">جميع الفئات</option>
@@ -34,55 +24,82 @@
         لم يتم العثور على حوادث تطابق معايير البحث.
       </div>
 
-      <div class="violation-card" *ngFor="let violation of filteredViolations" [class.fade-in]="true">
-        <div class="violation-header">
-          <div>
-            <h3>حادثة #{{ violation.id }}</h3>
-            <span class="badge badge-{{ getStatusLabel(violation.acceptanceStatus).toLowerCase() }}">
-              {{ getStatusLabel(violation.acceptanceStatus) }}
-            </span>
+      <div class="incident-item" *ngFor="let violation of filteredViolations">
+        <div class="incident-badge">{{ violation.categoryName || 'غير محدد' }}</div>
+        <div class="incident-header-details">
+          <span class="incident-id">حادثة #{{ violation.id }}</span>
+          <span class="incident-date">{{ violation.violationDate | date:'medium' }}</span>
+        </div>
+        <h3 class="incident-title">{{ violation.subCategoryName || 'غير محدد' }}</h3>
+        <p class="incident-desc">{{ violation.description }}</p>
+        
+        <div class="incident-details">
+          <div class="detail-item" *ngIf="violation.cityName">
+            <span class="detail-label">المدينة:</span>
+            <span class="detail-value">{{ violation.cityName }}</span>
           </div>
-          <span class="violation-date">{{ violation.violationDate | date:'medium' }}</span>
+          <div class="detail-item">
+            <span class="detail-label">الموقع:</span>
+            <span class="detail-value">{{ getLocation(violation) }}</span>
+          </div>
         </div>
         
-        <div class="violation-body">
-          <div class="violation-info">
-            <span class="info-label">الفئة:</span>
-            <span class="info-value">{{ violation.category?.name || 'غير محدد' }}</span>
-          </div>
-          <div class="violation-info">
-            <span class="info-label">الموقع:</span>
-            <span class="info-value">{{ violation.location }}</span>
-          </div>
-          <div class="violation-description">
-            <p>{{ violation.description }}</p>
-          </div>
-        </div>
-
-        <div class="violation-footer">
-          <span class="reporter-info" *ngIf="violation.city">
-            المدينة: {{ violation.city.name }}
+        <div class="incident-meta">
+          <span class="meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+              <path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+            {{ getLocation(violation) }}
           </span>
+          <span class="meta-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+            </svg>
+            {{ violation.creationDate | date:'medium' }}
+          </span>
+        </div>
+        
+        <!-- Attachments Section -->
+        <div class="incident-attachments" *ngIf="violation.attachments && violation.attachments.length > 0">
+          <div class="attachments-label">المرفقات:</div>
+          <div class="attachments-grid">
+            <div class="attachment-item" *ngFor="let attachment of violation.attachments">
+              <img 
+                *ngIf="isImage(attachment.fileType)" 
+                [src]="getAttachmentUrl(attachment.filePath)" 
+                [alt]="attachment.fileName"
+                (click)="openAttachment(attachment)"
+                class="attachment-image"
+              />
+              <div 
+                *ngIf="!isImage(attachment.fileType)" 
+                class="attachment-file"
+                (click)="openAttachment(attachment)"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                <span>{{ attachment.fileName }}</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <div class="stats-summary" *ngIf="!loading">
       <div class="stat-item">
-        <span class="stat-label">الإجمالي:</span>
-        <span class="stat-value">{{ violations.length }}</span>
+        <span class="stat-label">الاجمالي:</span>
+        <span class="stat-value">{{ totalPublishedCount }}</span>
       </div>
-      <div class="stat-item">
-        <span class="stat-label">قيد المراجعة:</span>
-        <span class="stat-value">{{ getCountByStatus(1) }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">موافق عليه:</span>
-        <span class="stat-value">{{ getCountByStatus(2) }}</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-label">مرفوض:</span>
-        <span class="stat-value">{{ getCountByStatus(3) }}</span>
+    
+      <div class="stat-item" *ngFor="let category of categories">
+        <span class="stat-label">{{ category.name }}:</span>
+        <span class="stat-value">{{ getCountByCategory(category.id) }}</span>
       </div>
     </div>
   </div>

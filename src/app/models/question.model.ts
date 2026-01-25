@@ -15,6 +15,9 @@ export interface QuestionDto {
   order: number;
   isRequired: boolean;
   options: string | null; // JSON string for MultipleChoice type
+  hasMultiSelect?: boolean; // Whether question allows multiple selections
+  hasOtherOption?: boolean; // Whether question has "Other" option
+  otherOptionText?: string | null; // Label for "Other" option (default: "أخرى")
   categoryId: number; // Link to category
   isActive: boolean;
   creationDate: Date;
@@ -27,6 +30,9 @@ export interface AddQuestionDto {
   order: number;
   isRequired: boolean;
   options?: string | null; // JSON string for MultipleChoice type
+  hasMultiSelect?: boolean; // Whether question allows multiple selections
+  hasOtherOption?: boolean; // Whether question has "Other" option
+  otherOptionText?: string | null; // Label for "Other" option (default: "أخرى")
   categoryId: number; // Link to category
 }
 
@@ -37,6 +43,9 @@ export interface UpdateQuestionDto {
   order: number;
   isRequired: boolean;
   options?: string | null; // JSON string for MultipleChoice type
+  hasMultiSelect?: boolean; // Whether question allows multiple selections
+  hasOtherOption?: boolean; // Whether question has "Other" option
+  otherOptionText?: string | null; // Label for "Other" option (default: "أخرى")
   categoryId: number; // Link to category
 }
 

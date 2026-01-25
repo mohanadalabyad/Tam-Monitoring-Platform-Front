@@ -16,59 +16,17 @@
       <h2>تم الإرسال بنجاح!</h2>
       <p>تم إرسال تقريرك بنجاح. رقم التقرير: <strong>#{{ submittedViolationId }}</strong></p>
       <div class="success-actions">
-        <button (click)="openPrintView()" class="btn-primary">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="6 9 6 2 18 2 18 9"/>
-            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-            <rect x="6" y="14" width="12" height="8"/>
-          </svg>
-          طباعة التقرير
-        </button>
         <button class="btn-outline" (click)="resetForm()">إرسال تقرير آخر</button>
       </div>
     </div>
 
-    <!-- Print View Section -->
-    <div *ngIf="showPrintView" class="print-view-overlay" (click)="closePrintView()">
-      <div class="print-view-modal" (click)="$event.stopPropagation()">
-        <div class="print-view-header">
-          <h3>طباعة التقرير</h3>
-          <button class="btn-close" (click)="closePrintView()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="6" x2="6" y2="18"/>
-              <line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
-        </div>
-        
-        <div class="print-view-body">
-          <div class="print-actions" *ngIf="!loadingPrintView">
-            <button class="btn-primary" (click)="printCurrentView()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="6 9 6 2 18 2 18 9"/>
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
-                <rect x="6" y="14" width="12" height="8"/>
-              </svg>
-              طباعة
-            </button>
-          </div>
-          
-          <div class="print-loading" *ngIf="loadingPrintView">
-            <div class="spinner"></div>
-            <p>جاري تحميل صفحة الطباعة...</p>
-          </div>
-          
-          <div class="print-content" *ngIf="!loadingPrintView && printViewHtml" [innerHTML]="printViewHtml"></div>
-        </div>
-      </div>
-    </div>
 
     <!-- Multi-Step Form -->
-    <div *ngIf="!submitted" class="form-card">
+    <div *ngIf="!submitted" class="form-card" [formGroup]="violationForm">
       <!-- Progress Steps -->
       <div class="steps-indicator">
         <div 
-          *ngFor="let step of [1,2,3,4,5]; let i = index" 
+          *ngFor="let step of [1,2,3,4]; let i = index" 
           class="step-item"
           [class.active]="currentStep === step"
           [class.completed]="currentStep > step"
@@ -77,10 +35,9 @@
           <div class="step-number">{{ step }}</div>
           <div class="step-label">
             <span *ngIf="step === 1">المعلومات الأساسية</span>
-            <span *ngIf="step === 2">الأسئلة</span>
-            <span *ngIf="step === 3">معلومات الاتصال</span>
-            <span *ngIf="step === 4">المعلومات الشخصية</span>
-            <span *ngIf="step === 5">المرفقات</span>
+            <span *ngIf="step === 2">معلومات الاتصال</span>
+            <span *ngIf="step === 3">المرفقات</span>
+            <span *ngIf="step === 4">المراجعة والإرسال</span>
           </div>
         </div>
       </div>
@@ -111,6 +68,7 @@
               id="categoryId"
               formControlName="categoryId"
               [class.invalid]="isFieldInvalid(violationForm, 'categoryId')"
+              (change)="onCategoryChange($any($event.target).value)"
             >
               <option value="">اختر الفئة</option>
               <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
@@ -139,31 +97,41 @@
           </div>
 
           <div class="form-group">
-            <label for="violationDate">تاريخ الحادثة *</label>
-            <input
-              type="date"
-              id="violationDate"
-              formControlName="violationDate"
-              [class.invalid]="isFieldInvalid(violationForm, 'violationDate')"
-              [max]="maxDate"
-            />
+            <label for="violationDate">تاريخ ووقت الحادثة *</label>
+            <div class="datetime-input-wrapper">
+              <div class="datetime-input-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+              </div>
+              <input
+                type="datetime-local"
+                id="violationDate"
+                formControlName="violationDate"
+                [class.invalid]="isFieldInvalid(violationForm, 'violationDate')"
+                [max]="maxDate"
+                class="datetime-input"
+                placeholder="اختر التاريخ والوقت"
+              />
+            </div>
             <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'violationDate')">
-              تاريخ الحادثة مطلوب
+              تاريخ ووقت الحادثة مطلوب
             </div>
           </div>
         </div>
 
         <div class="form-group">
-          <label for="location">الموقع *</label>
+          <label for="address">العنوان *</label>
           <input
             type="text"
-            id="location"
-            formControlName="location"
+            id="address"
+            formControlName="address"
             placeholder="أين وقعت هذه الحادثة؟"
-            [class.invalid]="isFieldInvalid(violationForm, 'location')"
+            [class.invalid]="isFieldInvalid(violationForm, 'address')"
           />
-          <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'location')">
-            الموقع مطلوب
+          <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'address')">
+            العنوان مطلوب
           </div>
         </div>
 
@@ -182,71 +150,37 @@
         </div>
 
         <div class="form-group">
-          <label class="checkbox-label">
-            <input
-              type="radio"
-              name="isWitness"
-              [value]="true"
-              formControlName="isWitness"
-            />
-            <span>نعم، أنا شاهد على الحادثة</span>
-          </label>
-          <label class="checkbox-label">
-            <input
-              type="radio"
-              name="isWitness"
-              [value]="false"
-              formControlName="isWitness"
-            />
-            <span>لا، لم أكن شاهداً</span>
-          </label>
+          <label for="violationType">صفة المبلغ *</label>
+          <select
+            id="violationType"
+            formControlName="violationType"
+            [class.invalid]="isFieldInvalid(violationForm, 'violationType')"
+          >
+            <option [value]="PublicViolationType.Victim">صاحب البلاغ</option>
+            <option [value]="PublicViolationType.Witness">شاهد</option>
+          </select>
+          <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'violationType')">
+            صفة المبلغ مطلوبة
+          </div>
         </div>
       </div>
 
-      <!-- Step 2: Questions -->
+      <!-- Step 2: Contact Information -->
       <div *ngIf="currentStep === 2" class="form-step">
-        <h2 class="step-title">الأسئلة</h2>
-        <p class="step-description" *ngIf="sortedQuestions.length > 0">يرجى الإجابة على الأسئلة التالية</p>
-        <p class="step-description" *ngIf="sortedQuestions.length === 0 && violationForm.get('categoryId')?.value">
-          لا توجد أسئلة مخصصة للفئة المختارة. يمكنك المتابعة إلى الخطوة التالية.
-        </p>
-        <p class="step-description" *ngIf="sortedQuestions.length === 0 && !violationForm.get('categoryId')?.value">
-          يرجى اختيار الفئة أولاً لعرض الأسئلة
-        </p>
-        
-        <div class="questions-container" [formGroup]="questionsForm" *ngIf="sortedQuestions.length > 0">
-          <app-dynamic-question
-            *ngFor="let question of sortedQuestions"
-            [question]="question"
-            [formControlName]="getQuestionControlName(question.id)"
-          ></app-dynamic-question>
-        </div>
-      </div>
-
-      <!-- Step 3: Contact Information -->
-      <div *ngIf="currentStep === 3" class="form-step">
         <h2 class="step-title">معلومات الاتصال</h2>
         <p class="step-description">سيتم الحفاظ على سرية معلومات الاتصال الخاصة بك</p>
         
         <div class="form-group">
-          <label for="contactPreference">طريقة الاتصال المفضلة *</label>
-          <select
-            id="contactPreference"
-            formControlName="contactPreference"
-            [class.invalid]="isFieldInvalid(violationForm, 'contactPreference')"
-          >
-            <option value="">اختر طريقة الاتصال</option>
-            <option value="email">بريد إلكتروني</option>
-            <option value="phone">رقم جوال</option>
-            <option value="both">بريد إلكتروني ورقم جوال</option>
-            <option value="none">لا أريد الاتصال</option>
-          </select>
-          <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'contactPreference')">
-            طريقة الاتصال مطلوبة
-          </div>
+          <label class="checkbox-label">
+            <input
+              type="checkbox"
+              formControlName="canContact"
+            />
+            <span>يمكن الاتصال بي</span>
+          </label>
         </div>
 
-        <div class="form-group" *ngIf="violationForm.get('contactPreference')?.value === 'email' || violationForm.get('contactPreference')?.value === 'both'">
+        <div class="form-group" *ngIf="violationForm.get('canContact')?.value">
           <label for="email">البريد الإلكتروني *</label>
           <input
             type="email"
@@ -259,64 +193,39 @@
             بريد إلكتروني صحيح مطلوب
           </div>
         </div>
-
-        <div class="form-group" *ngIf="violationForm.get('contactPreference')?.value === 'phone' || violationForm.get('contactPreference')?.value === 'both'">
-          <label for="phone">رقم الجوال *</label>
-          <input
-            type="tel"
-            id="phone"
-            formControlName="phone"
-            placeholder="+970-XXX-XXXX"
-            [class.invalid]="isFieldInvalid(violationForm, 'phone')"
-          />
-          <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'phone')">
-            رقم الجوال مطلوب
-          </div>
-        </div>
       </div>
 
-      <!-- Step 4: Personal Information -->
-      <div *ngIf="currentStep === 4" class="form-step">
-        <h2 class="step-title">المعلومات الشخصية (اختياري)</h2>
-        <p class="step-description">يمكنك اختيارياً إضافة معلومات شخصية إضافية</p>
-        
-        <div class="form-group">
-          <label class="checkbox-label">
-            <input
-              type="checkbox"
-              formControlName="personalInfoVisible"
-            />
-            <span>أريد إضافة معلومات شخصية</span>
-          </label>
-        </div>
-
-        <div class="form-group" *ngIf="violationForm.get('personalInfoVisible')?.value">
-          <label for="personalInfo">المعلومات الشخصية (JSON)</label>
-          <textarea
-            id="personalInfo"
-            formControlName="personalInfo"
-            placeholder='{"name": "الاسم", "age": 30}'
-            rows="4"
-          ></textarea>
-          <small class="form-hint">أدخل المعلومات بصيغة JSON</small>
-        </div>
-      </div>
-
-      <!-- Step 5: Attachments -->
-      <div *ngIf="currentStep === 5" class="form-step">
+      <!-- Step 3: Attachments -->
+      <div *ngIf="currentStep === 3" class="form-step">
         <h2 class="step-title">المرفقات</h2>
         <p class="step-description">يمكنك إرفاق صور أو فيديوهات متعلقة بالحادثة</p>
         
         <div class="form-group">
           <label for="attachments">رفع الملفات</label>
-          <input
-            type="file"
-            id="attachments"
-            multiple
-            accept="image/*,video/*"
-            (change)="onFileSelected($event)"
-          />
-          <small class="form-hint">يمكن رفع صور أو فيديوهات (حد أقصى 10 ميجابايت لكل ملف)</small>
+          <div class="file-input-wrapper">
+            <input
+              type="file"
+              id="attachments"
+              multiple
+              accept="image/*,video/*"
+              (change)="onFileSelected($event)"
+            />
+            <label 
+              for="attachments" 
+              class="file-input-label"
+              [class.has-files]="attachments.length > 0"
+            >
+              <svg class="file-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              <span class="file-input-text">
+                {{ attachments.length > 0 ? 'تم اختيار ' + attachments.length + ' ملف' : 'انقر أو اسحب الملفات هنا' }}
+              </span>
+              <span class="file-input-hint">يمكن رفع صور أو فيديوهات (حد أقصى 10 ميجابايت لكل ملف)</span>
+            </label>
+          </div>
         </div>
 
         <div class="attachments-preview" *ngIf="attachmentPreviews.length > 0">
@@ -338,6 +247,142 @@
                 <line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
             </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Review & Submit -->
+      <div *ngIf="currentStep === 4" class="form-step">
+        <h2 class="step-title">المراجعة والإرسال</h2>
+        <p class="step-description">يرجى مراجعة المعلومات قبل الإرسال</p>
+        
+        <div class="review-section">
+          <div class="review-card">
+            <h3 class="review-card-title">المعلومات الأساسية</h3>
+            <div class="review-grid">
+              <div class="review-item">
+                <div class="review-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                    <circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  <strong>المدينة:</strong>
+                </div>
+                <div class="review-value">{{ getSelectedCityName() }}</div>
+              </div>
+              <div class="review-item">
+                <div class="review-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M3 9h18M9 3v18"/>
+                  </svg>
+                  <strong>الفئة:</strong>
+                </div>
+                <div class="review-value">{{ getSelectedCategoryName() }}</div>
+              </div>
+              <div class="review-item">
+                <div class="review-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <path d="M3 9h18M9 3v18M12 3v18"/>
+                  </svg>
+                  <strong>الفئة الفرعية:</strong>
+                </div>
+                <div class="review-value">{{ getSelectedSubCategoryName() }}</div>
+              </div>
+              <div class="review-item">
+                <div class="review-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                  </svg>
+                  <strong>تاريخ ووقت الحادثة:</strong>
+                </div>
+                <div class="review-value">{{ getViolationDateValue() }}</div>
+              </div>
+              <div class="review-item">
+                <div class="review-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                    <circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  <strong>العنوان:</strong>
+                </div>
+                <div class="review-value">{{ getAddressValue() }}</div>
+              </div>
+              <div class="review-item">
+                <div class="review-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                    <polyline points="10 9 9 9 8 9"/>
+                  </svg>
+                  <strong>صفة المبلغ:</strong>
+                </div>
+                <div class="review-value">{{ getViolationTypeLabel() }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="review-card">
+            <h3 class="review-card-title">تفاصيل الحادثة</h3>
+            <div class="review-item review-item-full">
+              <div class="review-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                <strong>الوصف:</strong>
+              </div>
+              <div class="review-value review-description">{{ getDescriptionValue() }}</div>
+            </div>
+          </div>
+
+          <div class="review-card" *ngIf="getCanContactValue()">
+            <h3 class="review-card-title">معلومات الاتصال</h3>
+            <div class="review-item">
+              <div class="review-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                <strong>البريد الإلكتروني:</strong>
+              </div>
+              <div class="review-value">{{ getEmailValue() }}</div>
+            </div>
+          </div>
+
+          <div class="review-card" *ngIf="attachments.length > 0">
+            <h3 class="review-card-title">المرفقات</h3>
+            <div class="review-attachments">
+              <div class="review-attachment-count">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                  <line x1="16" y1="13" x2="8" y2="13"/>
+                  <line x1="16" y1="17" x2="8" y2="17"/>
+                  <polyline points="10 9 9 9 8 9"/>
+                </svg>
+                <span>عدد المرفقات: <strong>{{ attachments.length }}</strong></span>
+              </div>
+              <div class="review-attachment-preview">
+                <div *ngFor="let preview of attachmentPreviews; let i = index" class="review-attachment-item">
+                  <img *ngIf="preview.preview" [src]="preview.preview" alt="Preview" />
+                  <div *ngIf="!preview.preview" class="review-video-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <polygon points="23 7 16 12 23 17 23 7"/>
+                      <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                    </svg>
+                  </div>
+                  <div class="review-attachment-name">{{ preview.file.name }}</div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -365,9 +410,9 @@
           type="button"
           class="btn-primary"
           (click)="onSubmit()"
-          [disabled]="submitting"
+          [disabled]="submitting || violationForm.invalid"
         >
-          {{ submitting ? 'جاري الإرسال...' : 'إرسال التقرير' }}
+          {{ submitting ? 'جاري الإرسال...' : 'البلاغ' }}
         </button>
       </div>
     </div>

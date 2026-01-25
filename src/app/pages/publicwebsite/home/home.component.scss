@@ -439,6 +439,33 @@
       flex-shrink: 0;
     }
 
+    .loading-incidents {
+      text-align: center;
+      padding: var(--spacing-3xl);
+      color: var(--text-secondary);
+      font-size: var(--font-size-lg);
+    }
+
+    .loading-statistics {
+      text-align: center;
+      padding: var(--spacing-3xl);
+      color: var(--text-secondary);
+      font-size: var(--font-size-lg);
+    }
+
+    .alert {
+      padding: var(--spacing-lg);
+      border-radius: var(--radius-lg);
+      margin-top: var(--spacing-lg);
+    }
+
+    .alert-info {
+      background: var(--light-bg);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-light);
+      text-align: center;
+    }
+
     /* Process/Timeline Section */
     .process-section {
       padding: var(--spacing-5xl) 0;

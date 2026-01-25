@@ -58,18 +58,78 @@
     </div>
   </div>
 
-  <!-- MultipleChoice (Type 4) - Dropdown with options from JSON -->
-  <select
-    *ngIf="question.questionType === QuestionType.MultipleChoice"
-    [value]="value || ''"
-    (change)="onValueChange($any($event.target).value)"
-    class="dropdown-input"
-  >
-    <option value="">اختر...</option>
-    <option *ngFor="let option of getOptions()" [value]="option">
-      {{ option }}
-    </option>
-  </select>
+  <!-- MultipleChoice (Type 4) - Conditional rendering based on hasMultiSelect -->
+  <!-- Single Selection (Radio Buttons) -->
+  <div *ngIf="question.questionType === QuestionType.MultipleChoice && !question.hasMultiSelect" class="single-choice-group">
+    <div class="radio-option-list">
+      <label *ngFor="let option of getOptions(); trackBy: trackByOption" class="radio-option">
+        <input
+          type="radio"
+          [name]="'mc-single-' + question.id"
+          [value]="option"
+          [checked]="isSingleOptionSelected(option)"
+          (change)="onSingleChoiceChange(option)"
+        />
+        <span>{{ option }}</span>
+      </label>
+    </div>
+    
+    <!-- Other Option -->
+    <div *ngIf="question.hasOtherOption" class="single-other-option-group">
+      <label class="radio-option">
+        <input
+          type="radio"
+          [name]="'mc-single-' + question.id"
+          value="__OTHER__"
+          [checked]="otherOptionSelected"
+          (change)="onSingleOtherOptionChange(true)"
+        />
+        <span>{{ question.otherOptionText || 'أخرى' }}</span>
+      </label>
+      <input
+        *ngIf="otherOptionSelected"
+        type="text"
+        [value]="otherOptionText"
+        (input)="onSingleOtherTextChange($any($event.target).value)"
+        [placeholder]="'أدخل ' + (question.otherOptionText || 'أخرى')"
+        class="other-option-input"
+      />
+    </div>
+  </div>
+
+  <!-- Multiple Selection (Checkboxes) -->
+  <div *ngIf="question.questionType === QuestionType.MultipleChoice && question.hasMultiSelect" class="multiple-choice-group">
+    <div class="options-checkbox-list">
+      <label *ngFor="let option of getOptions(); trackBy: trackByOption" class="checkbox-option">
+        <input
+          type="checkbox"
+          [checked]="isOptionSelected(option)"
+          (change)="toggleOption(option)"
+        />
+        <span>{{ option }}</span>
+      </label>
+    </div>
+
+    <!-- Other Option -->
+    <div *ngIf="question.hasOtherOption" class="other-option-group">
+      <label class="checkbox-option">
+        <input
+          type="checkbox"
+          [checked]="otherOptionSelected"
+          (change)="onOtherOptionChange($any($event.target).checked)"
+        />
+        <span>{{ question.otherOptionText || 'أخرى' }}</span>
+      </label>
+      <input
+        *ngIf="otherOptionSelected"
+        type="text"
+        [value]="otherOptionText"
+        (input)="onOtherTextChange($any($event.target).value)"
+        [placeholder]="'أدخل ' + (question.otherOptionText || 'أخرى')"
+        class="other-option-input"
+      />
+    </div>
+  </div>
 
   <!-- Date (Type 5) -->
   <input

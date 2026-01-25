@@ -1,0 +1,428 @@
+<div class="private-violations-management-page">
+  <div class="page-header">
+    <div>
+      <h1>إدارة البلاغات الخاصة</h1>
+      <p>إدارة وعرض جميع البلاغات الخاصة</p>
+    </div>
+    <div class="header-actions">
+      <app-view-toggle
+        [storageKey]="'private-violations-view-mode'"
+        [defaultView]="'table'"
+        (viewChange)="onViewChange($event)"
+      ></app-view-toggle>
+    </div>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section" *hasPermission="'PrivateViolation.Read'">
+    <div class="filters-header" (click)="showFilters = !showFilters">
+      <span>التصفية</span>
+      <svg [class.rotated]="showFilters" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6 9l6 6 6-6"/>
+      </svg>
+    </div>
+    <div class="filters-content" *ngIf="showFilters">
+      <form [formGroup]="filterForm">
+        <div class="filters-grid">
+          <div class="filter-group">
+            <label for="acceptanceStatus">حالة الموافقة:</label>
+            <select id="acceptanceStatus" formControlName="acceptanceStatus">
+              <option [ngValue]="null">جميع الحالات</option>
+              <option [ngValue]="1">قيد المراجعة</option>
+              <option [ngValue]="2">موافق عليه</option>
+              <option [ngValue]="3">مرفوض</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="publishStatus">حالة النشر:</label>
+            <select id="publishStatus" formControlName="publishStatus">
+              <option [ngValue]="null">جميع الحالات</option>
+              <option [ngValue]="1">منشور</option>
+              <option [ngValue]="2">غير منشور</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="cityId">المدينة:</label>
+            <select id="cityId" formControlName="cityId" [disabled]="loadingCities">
+              <option [value]="null">جميع المدن</option>
+              <option *ngFor="let city of cities" [value]="city.id">{{ city.name }}</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="categoryId">الفئة:</label>
+            <select id="categoryId" formControlName="categoryId" [disabled]="loadingCategories">
+              <option [value]="null">جميع الفئات</option>
+              <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="subCategoryId">الفئة الفرعية:</label>
+            <select id="subCategoryId" formControlName="subCategoryId" [disabled]="loadingSubCategories || !filterForm.get('categoryId')?.value">
+              <option [value]="null">جميع الفئات الفرعية</option>
+              <option *ngFor="let subCategory of subCategories" [value]="subCategory.id">{{ subCategory.name }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filters-actions">
+          <button type="button" class="btn-secondary" (click)="resetFilters()">
+            إعادة تعيين
+          </button>
+          <button type="button" class="btn-primary" (click)="applyFilters()">
+            تطبيق التصفية
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Table View -->
+  <div *ngIf="viewMode === 'table'">
+    <app-unified-table
+      [columns]="columns"
+      [data]="searchTerm ? filteredViolations : violations"
+      [loading]="loading"
+      [actions]="actions"
+      [pageSize]="pageSize"
+      [serverSidePagination]="!searchTerm"
+      [currentPageNumber]="currentPage"
+      [totalPagesCount]="totalPages"
+      [totalCount]="searchTerm ? filteredViolations.length : totalCount"
+      emptyMessage="لا توجد بلاغات خاصة"
+      (rowClick)="viewDetails($event)"
+      (pageChange)="onPageChange($event)"
+      (searchChange)="onSearchChange($event)"
+    ></app-unified-table>
+  </div>
+
+  <!-- Cards View -->
+  <div *ngIf="viewMode === 'cards'" class="violations-cards-view">
+    <!-- Search Box for Cards View -->
+    <div class="cards-search-box">
+      <div class="search-box">
+        <input
+          type="text"
+          [value]="searchTerm"
+          (input)="onSearchChange($any($event.target).value)"
+          placeholder="بحث في البلاغات..."
+          class="search-input"
+        />
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+      </div>
+    </div>
+    
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>جاري تحميل البلاغات...</p>
+    </div>
+    <div *ngIf="!loading && (searchTerm ? filteredViolations : violations).length === 0" class="empty-state">
+      <p>{{ searchTerm ? 'لا توجد نتائج للبحث' : 'لا توجد بلاغات خاصة' }}</p>
+    </div>
+    <div *ngIf="!loading && (searchTerm ? filteredViolations : violations).length > 0" class="violations-grid">
+      <div *ngFor="let violation of (searchTerm ? filteredViolations : violations)" class="violation-card">
+        <div class="card-header">
+          <div class="card-title-section">
+            <h3 class="card-title">بلاغ #{{ violation.id }}</h3>
+            <div class="card-badges">
+              <span class="card-badge" 
+                [class.badge-pending]="violation.acceptanceStatus === AcceptanceStatus.Pending" 
+                [class.badge-approved]="violation.acceptanceStatus === AcceptanceStatus.Approved" 
+                [class.badge-rejected]="violation.acceptanceStatus === AcceptanceStatus.Rejected">
+                {{ getAcceptanceStatusLabel(violation.acceptanceStatus) }}
+              </span>
+              <span class="card-badge" 
+                [class.badge-published]="violation.publishStatus === PublishStatus.Publish" 
+                [class.badge-unpublished]="violation.publishStatus === PublishStatus.NotPublish">
+                {{ getPublishStatusLabel(violation.publishStatus) }}
+              </span>
+            </div>
+          </div>
+          <div class="card-actions-header">
+            <button
+              *ngIf="permissionService.hasPermission('PrivateViolation.Read') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-view"
+              (click)="viewDetails(violation); $event.stopPropagation()"
+              title="عرض التفاصيل"
+            >
+              <lucide-icon [img]="Eye" [size]="16"></lucide-icon>
+            </button>
+            <button
+              *ngIf="(permissionService.hasPermission('PrivateViolation.Approve') || permissionService.isSuperAdmin()) && violation.acceptanceStatus === AcceptanceStatus.Pending"
+              type="button"
+              class="card-action-icon btn-approve"
+              (click)="approveViolation(violation); $event.stopPropagation()"
+              title="موافقة"
+            >
+              <lucide-icon [img]="CheckCircle" [size]="16"></lucide-icon>
+            </button>
+            <button
+              *ngIf="(permissionService.hasPermission('PrivateViolation.Reject') || permissionService.isSuperAdmin()) && violation.acceptanceStatus === AcceptanceStatus.Pending"
+              type="button"
+              class="card-action-icon btn-reject"
+              (click)="rejectViolation(violation); $event.stopPropagation()"
+              title="رفض"
+            >
+              <lucide-icon [img]="XCircle" [size]="16"></lucide-icon>
+            </button>
+            <button
+              *ngIf="(permissionService.hasPermission('PrivateViolation.Publish') || permissionService.isSuperAdmin()) && violation.acceptanceStatus === AcceptanceStatus.Approved && violation.publishStatus === PublishStatus.NotPublish"
+              type="button"
+              class="card-action-icon btn-publish"
+              (click)="publishViolation(violation); $event.stopPropagation()"
+              title="نشر"
+            >
+              <lucide-icon [img]="Upload" [size]="16"></lucide-icon>
+            </button>
+            <button
+              *ngIf="(permissionService.hasPermission('PrivateViolation.Unpublish') || permissionService.isSuperAdmin()) && violation.publishStatus === PublishStatus.Publish"
+              type="button"
+              class="card-action-icon btn-unpublish"
+              (click)="unpublishViolation(violation); $event.stopPropagation()"
+              title="إلغاء النشر"
+            >
+              <lucide-icon [img]="Download" [size]="16"></lucide-icon>
+            </button>
+            <button
+              *ngIf="permissionService.hasPermission('PrivateViolation.Delete') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-delete"
+              (click)="deleteViolation(violation); $event.stopPropagation()"
+              title="حذف"
+            >
+              <lucide-icon [img]="Trash2" [size]="16"></lucide-icon>
+            </button>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="card-field">
+            <span class="field-label">المدينة:</span>
+            <span class="field-value">{{ violation.cityName || 'غير محدد' }}</span>
+          </div>
+          <div class="card-field">
+            <span class="field-label">الفئة:</span>
+            <span class="field-value">{{ violation.categoryName || 'غير محدد' }}</span>
+          </div>
+          <div class="card-field">
+            <span class="field-label">الفئة الفرعية:</span>
+            <span class="field-value">{{ violation.subCategoryName || 'غير محدد' }}</span>
+          </div>
+          <div class="card-field">
+            <span class="field-label">تاريخ الحادثة:</span>
+            <span class="field-value">{{ violation.violationDate | date:'medium' }}</span>
+          </div>
+          <div class="card-field">
+            <span class="field-label">الموقع:</span>
+            <span class="field-value">{{ violation.location || 'غير محدد' }}</span>
+          </div>
+          <div class="card-field">
+            <span class="field-label">أنشئ بواسطة:</span>
+            <span class="field-value">{{ violation.createdByUserName || 'غير محدد' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Details Modal -->
+  <app-modal
+    [show]="showDetailsModal"
+    title="تفاصيل البلاغ"
+    size="lg"
+    (close)="closeDetailsModal()"
+  >
+    <div *ngIf="selectedViolation" class="violation-details">
+      <div class="details-section">
+        <h3 class="section-title">المعلومات الأساسية</h3>
+        <div class="details-grid">
+          <div class="detail-item">
+            <span class="detail-label">رقم البلاغ:</span>
+            <span class="detail-value">#{{ selectedViolation.id }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">المدينة:</span>
+            <span class="detail-value">{{ selectedViolation.cityName || 'غير محدد' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">الفئة:</span>
+            <span class="detail-value">{{ selectedViolation.categoryName || 'غير محدد' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">الفئة الفرعية:</span>
+            <span class="detail-value">{{ selectedViolation.subCategoryName || 'غير محدد' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">تاريخ الحادثة:</span>
+            <span class="detail-value">{{ selectedViolation.violationDate | date:'medium' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">الموقع:</span>
+            <span class="detail-value">{{ selectedViolation.location || 'غير محدد' }}</span>
+          </div>
+          <div class="detail-item full-width">
+            <span class="detail-label">الوصف:</span>
+            <span class="detail-value">{{ selectedViolation.description || 'لا يوجد وصف' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Personal Information -->
+      <div class="details-section" *ngIf="selectedViolation.personalName || selectedViolation.personalCity">
+        <h3 class="section-title">معلومات الضحية/الشخص</h3>
+        <div class="details-grid">
+          <div class="detail-item" *ngIf="selectedViolation.personalName">
+            <span class="detail-label">الاسم:</span>
+            <span class="detail-value">{{ selectedViolation.personalName }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.personalCity">
+            <span class="detail-label">مدينة الإقامة:</span>
+            <span class="detail-value">{{ selectedViolation.personalCity }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.personalAddress">
+            <span class="detail-label">العنوان:</span>
+            <span class="detail-value">{{ selectedViolation.personalAddress }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.personalAge">
+            <span class="detail-label">العمر:</span>
+            <span class="detail-value">{{ selectedViolation.personalAge }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.personalDateOfBirth">
+            <span class="detail-label">تاريخ الميلاد:</span>
+            <span class="detail-value">{{ selectedViolation.personalDateOfBirth | date:'medium' }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.personalEducation">
+            <span class="detail-label">المستوى التعليمي:</span>
+            <span class="detail-value">{{ selectedViolation.personalEducation }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.gender">
+            <span class="detail-label">الجنس:</span>
+            <span class="detail-value">{{ selectedViolation.gender === 1 ? 'ذكر' : 'أنثى' }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.maritalStatus">
+            <span class="detail-label">الحالة الاجتماعية:</span>
+            <span class="detail-value">{{ selectedViolation.maritalStatus }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.work">
+            <span class="detail-label">العمل:</span>
+            <span class="detail-value">{{ selectedViolation.work }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.hasDisability">
+            <span class="detail-label">لديه إعاقة:</span>
+            <span class="detail-value">{{ selectedViolation.hasDisability ? 'نعم' : 'لا' }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.disabilityType">
+            <span class="detail-label">نوع الإعاقة:</span>
+            <span class="detail-value">{{ selectedViolation.disabilityType }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Contact Information -->
+      <div class="details-section" *ngIf="selectedViolation.contactEmail || selectedViolation.contactPhone">
+        <h3 class="section-title">معلومات الاتصال</h3>
+        <div class="details-grid">
+          <div class="detail-item" *ngIf="selectedViolation.contactEmail">
+            <span class="detail-label">البريد الإلكتروني:</span>
+            <span class="detail-value">{{ selectedViolation.contactEmail }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.contactPhone">
+            <span class="detail-label">رقم الهاتف:</span>
+            <span class="detail-value">{{ selectedViolation.contactPhone }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Question Answers -->
+      <div class="details-section" *ngIf="selectedViolation.questionAnswers && selectedViolation.questionAnswers.length > 0">
+        <h3 class="section-title">الإجابات على الأسئلة</h3>
+        <div class="question-answers-list">
+          <div *ngFor="let answer of selectedViolation.questionAnswers" class="question-answer-item">
+            <div class="question-text">{{ answer.questionText || 'سؤال #' + answer.questionId }}</div>
+            <div class="answer-value">{{ answer.answerValue || 'لا توجد إجابة' }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attachments -->
+      <div class="details-section" *ngIf="selectedViolation.attachments && selectedViolation.attachments.length > 0">
+        <h3 class="section-title">المرفقات</h3>
+        <div class="attachments-grid">
+          <div *ngFor="let attachment of selectedViolation.attachments" class="attachment-item">
+            <img 
+              *ngIf="isImage(attachment.fileType)" 
+              [src]="getAttachmentUrl(attachment.filePath)" 
+              [alt]="attachment.fileName"
+              (click)="openAttachment(attachment.filePath)"
+              class="attachment-image"
+            />
+            <div 
+              *ngIf="!isImage(attachment.fileType)" 
+              class="attachment-file"
+              (click)="openAttachment(attachment.filePath)"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+              <span>{{ attachment.fileName }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status Information -->
+      <div class="details-section">
+        <h3 class="section-title">حالة البلاغ</h3>
+        <div class="details-grid">
+          <div class="detail-item">
+            <span class="detail-label">حالة الموافقة:</span>
+            <span class="detail-badge" 
+              [class.badge-pending]="selectedViolation.acceptanceStatus === AcceptanceStatus.Pending" 
+              [class.badge-approved]="selectedViolation.acceptanceStatus === AcceptanceStatus.Approved" 
+              [class.badge-rejected]="selectedViolation.acceptanceStatus === AcceptanceStatus.Rejected">
+              {{ getAcceptanceStatusLabel(selectedViolation.acceptanceStatus) }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">حالة النشر:</span>
+            <span class="detail-badge" 
+              [class.badge-published]="selectedViolation.publishStatus === PublishStatus.Publish" 
+              [class.badge-unpublished]="selectedViolation.publishStatus === PublishStatus.NotPublish">
+              {{ getPublishStatusLabel(selectedViolation.publishStatus) }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Additional Information -->
+      <div class="details-section">
+        <h3 class="section-title">معلومات إضافية</h3>
+        <div class="details-grid">
+          <div class="detail-item">
+            <span class="detail-label">تاريخ الإنشاء:</span>
+            <span class="detail-value">{{ selectedViolation.creationDate | date:'medium' }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.createdByUserName">
+            <span class="detail-label">أنشئ بواسطة:</span>
+            <span class="detail-value">{{ selectedViolation.createdByUserName }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div footer>
+      <button type="button" class="btn-secondary" (click)="closeDetailsModal()">
+        إغلاق
+      </button>
+    </div>
+  </app-modal>
+</div>

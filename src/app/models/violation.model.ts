@@ -3,6 +3,7 @@ import { CategoryDto } from './category.model';
 import { SubCategoryDto } from './subcategory.model';
 import { UserDto } from './user-management.model';
 import { QuestionAnswer } from './question.model';
+import { PrivateViolationRole, Gender } from './published-violation.model';
 
 // Violation Type Enum
 export enum ViolationType {
@@ -24,8 +25,15 @@ export enum PublishStatus {
 }
 
 export interface QuestionAnswerDto {
+  id?: number;
+  privateViolationId?: number;
   questionId: number;
+  questionText?: string;
+  questionType?: number;
   answerValue: string;
+  isActive?: boolean;
+  creationDate?: Date;
+  createdBy?: string;
 }
 
 export interface AttachmentDto {
@@ -88,9 +96,30 @@ export interface AddPrivateViolationDto {
   violationDate: Date | string;
   location: string;
   description: string;
-  isWitness: boolean;
+  // Personal/Victim Information
+  personalName?: string;
+  personalCity?: string;
+  personalAddress?: string;
+  personalAge?: number;
+  personalDateOfBirth?: Date | string;
+  personalEducation?: string;
+  hasDisability?: boolean;
+  disabilityType?: string;
+  gender?: Gender;
+  maritalStatus?: string;
+  work?: string;
+  // Contact Information
+  contactEmail?: string;
+  contactPhone?: string;
+  // Role
+  role: PrivateViolationRole;
+  otherRoleText?: string;
+  // Publish Settings
+  showPersonalInfoInPublish: boolean;
+  // Question Answers
   questionAnswers: QuestionAnswerDto[];
-  attachments: AttachmentDto[];
+  // Attachments
+  attachments: PrivateViolationAttachmentInputDto[];
 }
 
 export interface UpdatePublicViolationDto {
@@ -119,13 +148,112 @@ export interface UpdatePrivateViolationDto {
   violationDate: Date | string;
   location: string;
   description: string;
-  isWitness?: boolean;
+  // Personal/Victim Information
+  personalName?: string;
+  personalCity?: string;
+  personalAddress?: string;
+  personalAge?: number;
+  personalDateOfBirth?: Date | string;
+  personalEducation?: string;
+  hasDisability?: boolean;
+  disabilityType?: string;
+  gender?: Gender;
+  maritalStatus?: string;
+  work?: string;
+  // Contact Information
+  contactEmail?: string;
+  contactPhone?: string;
+  // Role
+  role: PrivateViolationRole;
+  otherRoleText?: string;
+  // Publish Settings
+  showPersonalInfoInPublish: boolean;
+  // Question Answers
   questionAnswers: QuestionAnswerDto[];
-  attachments: AttachmentDto[];
+  // Attachments
+  attachments: PrivateViolationAttachmentInputDto[];
 }
 
 // Legacy interface for backward compatibility
 export interface UpdateViolationDto extends UpdatePrivateViolationDto {}
+
+// Private Violation DTO (matching backend PrivateViolationDto)
+export interface PrivateViolationDto {
+  id: number;
+  cityId: number;
+  cityName?: string;
+  categoryId: number;
+  categoryName?: string;
+  subCategoryId: number;
+  subCategoryName?: string;
+  violationDate: Date | string;
+  location: string;
+  description: string;
+  // Personal/Victim Information
+  personalName?: string;
+  personalCity?: string;
+  personalAddress?: string;
+  personalAge?: number;
+  personalDateOfBirth?: Date | string;
+  personalEducation?: string;
+  hasDisability?: boolean;
+  disabilityType?: string;
+  gender?: Gender;
+  maritalStatus?: string;
+  work?: string;
+  // Contact Information
+  contactEmail?: string;
+  contactPhone?: string;
+  // Role
+  role: PrivateViolationRole;
+  otherRoleText?: string;
+  // Publish Settings
+  showPersonalInfoInPublish: boolean;
+  // Created By
+  createdByUserId?: string;
+  createdByUserName?: string;
+  // Status
+  acceptanceStatus: AcceptanceStatus;
+  publishStatus: PublishStatus;
+  // Question Answers
+  questionAnswers: QuestionAnswerDto[];
+  // Attachments
+  attachments: PrivateViolationAttachmentDto[];
+  // Base entity fields
+  isActive: boolean;
+  creationDate: Date | string;
+  createdBy?: string;
+}
+
+// Private Violation Attachment DTOs
+export interface PrivateViolationAttachmentInputDto {
+  fileName: string;
+  filePath: string;
+  fileType: string;
+  fileSize?: number;
+}
+
+export interface PrivateViolationAttachmentDto {
+  id: number;
+  privateViolationId: number;
+  fileName: string;
+  filePath: string;
+  fileType: string;
+  fileSize?: number;
+  isActive: boolean;
+  creationDate: Date | string;
+  createdBy?: string;
+}
+
+// Private Violation Filter
+export interface PrivateViolationFilter {
+  acceptanceStatus?: AcceptanceStatus;
+  publishStatus?: PublishStatus;
+  cityId?: number;
+  categoryId?: number;
+  subCategoryId?: number;
+  createdByUserId?: string;
+}
 
 export interface ViolationFilter {
   violationType?: ViolationType;

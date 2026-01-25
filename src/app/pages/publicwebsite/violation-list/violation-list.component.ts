@@ -1,8 +1,9 @@
 import { Component, OnInit } from '@angular/core';
-import { ViolationService } from '../../../services/violation.service';
+import { PublishedViolationService } from '../../../services/published-violation.service';
 import { CategoryService } from '../../../services/category.service';
-import { ViolationDto, AcceptanceStatus, getAcceptanceStatusLabel } from '../../../models/violation.model';
+import { PublishedViolationDto, PublishedViolationFilter, PublishedAttachmentDto } from '../../../models/published-violation.model';
 import { CategoryDto } from '../../../models/category.model';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-violation-list',
@@ -10,15 +11,15 @@ import { CategoryDto } from '../../../models/category.model';
   styleUrls: ['./violation-list.component.scss']
 })
 export class ViolationListComponent implements OnInit {
-  violations: ViolationDto[] = [];
-  filteredViolations: ViolationDto[] = [];
+  violations: PublishedViolationDto[] = [];
+  filteredViolations: PublishedViolationDto[] = [];
   categories: CategoryDto[] = [];
-  statusFilter: AcceptanceStatus | 'all' = 'all';
-  categoryFilter: number | 'all' = 'all';
+  categoryFilter: number | string | 'all' = 'all';
   loading = true;
+  totalPublishedCount: number = 0;
 
   constructor(
-    private violationService: ViolationService,
+    private publishedViolationService: PublishedViolationService,
     private categoryService: CategoryService
   ) {}
 
@@ -28,10 +29,10 @@ export class ViolationListComponent implements OnInit {
   }
 
   loadCategories(): void {
-    this.categoryService.getAllCategories(true).subscribe({
+    this.categoryService.getPublicLookup().subscribe({
       next: (response) => {
         if (response.success && response.data) {
-          this.categories = Array.isArray(response.data) ? response.data : response.data.items || [];
+          this.categories = Array.isArray(response.data) ? response.data : [];
         }
       },
       error: (error: any) => {
@@ -42,10 +43,21 @@ export class ViolationListComponent implements OnInit {
 
   loadViolations(): void {
     this.loading = true;
-    this.violationService.getAllViolations(undefined, undefined, true).subscribe({
+    this.publishedViolationService.getAllPublishedViolations(undefined, undefined).subscribe({
       next: (response) => {
         if (response.success && response.data) {
-          this.violations = Array.isArray(response.data) ? response.data : response.data.items || [];
+          // Check if data is paginated response
+          if (response.data && typeof response.data === 'object' && 'items' in response.data) {
+            const paginatedData = response.data as any;
+            this.violations = paginatedData.items || [];
+            this.totalPublishedCount = paginatedData.totalCount || 0;
+          } else if (Array.isArray(response.data)) {
+            this.violations = response.data;
+            this.totalPublishedCount = response.data.length;
+          } else {
+            this.violations = [];
+            this.totalPublishedCount = 0;
+          }
           this.applyFilters();
         }
         this.loading = false;
@@ -58,18 +70,50 @@ export class ViolationListComponent implements OnInit {
   }
 
   applyFilters(): void {
-    this.filteredViolations = this.violations.filter((v: ViolationDto) => {
-      const statusMatch = this.statusFilter === 'all' || v.acceptanceStatus === this.statusFilter;
-      const categoryMatch = this.categoryFilter === 'all' || v.categoryId === this.categoryFilter;
-      return statusMatch && categoryMatch;
+    this.filteredViolations = this.violations.filter((v: PublishedViolationDto) => {
+      if (this.categoryFilter === 'all') {
+        return true;
+      }
+      // Convert categoryFilter to number for comparison (select returns string)
+      const filterCategoryId = typeof this.categoryFilter === 'string' 
+        ? Number(this.categoryFilter) 
+        : this.categoryFilter;
+      return v.categoryId === filterCategoryId;
     });
   }
 
-  getCountByStatus(status: AcceptanceStatus): number {
-    return this.violations.filter((v: ViolationDto) => v.acceptanceStatus === status).length;
+  getLocation(violation: PublishedViolationDto): string {
+    // Public violations use address, Private violations use location
+    return violation.violationType === 'Public' 
+      ? (violation.address || 'غير محدد')
+      : (violation.location || 'غير محدد');
   }
 
-  getStatusLabel(status: AcceptanceStatus): string {
-    return getAcceptanceStatusLabel(status);
+  isImage(fileType: string): boolean {
+    if (!fileType) return false;
+    const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', '.png', '.jpg', '.jpeg', '.gif', '.webp'];
+    return imageTypes.some(type => fileType.toLowerCase().includes(type.toLowerCase()));
+  }
+
+  getAttachmentUrl(filePath: string): string {
+    if (!filePath) return '';
+    // If filePath already contains http/https, return as is
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      return filePath;
+    }
+    // Otherwise, construct full URL from API base URL
+    const baseUrl = environment.apiUrl.replace('/api', '');
+    return `${baseUrl}${filePath.startsWith('/') ? '' : '/'}${filePath}`;
+  }
+
+  openAttachment(attachment: PublishedAttachmentDto): void {
+    const url = this.getAttachmentUrl(attachment.filePath);
+    if (url) {
+      window.open(url, '_blank');
+    }
+  }
+
+  getCountByCategory(categoryId: number): number {
+    return this.violations.filter((v: PublishedViolationDto) => v.categoryId === categoryId).length;
   }
 }

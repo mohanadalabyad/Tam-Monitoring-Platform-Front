@@ -1,17 +1,14 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators, FormArray } from '@angular/forms';
-import { ViolationService } from '../../../services/violation.service';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { PublicViolationService } from '../../../services/public-violation.service';
 import { CityService } from '../../../services/city.service';
 import { CategoryService } from '../../../services/category.service';
 import { SubCategoryService } from '../../../services/subcategory.service';
-import { QuestionService } from '../../../services/question.service';
 import { ToasterService } from '../../../services/toaster.service';
-import { FileUploadService } from '../../../services/file-upload.service';
-import { AddPublicViolationDto, QuestionAnswerDto, AttachmentDto } from '../../../models/violation.model';
+import { PublicViolationType } from '../../../models/public-violation.model';
 import { CityDto } from '../../../models/city.model';
 import { CategoryDto } from '../../../models/category.model';
 import { SubCategoryDto } from '../../../models/subcategory.model';
-import { QuestionDto, QuestionFilter } from '../../../models/question.model';
 
 @Component({
   selector: 'app-report-violation',
@@ -20,18 +17,13 @@ import { QuestionDto, QuestionFilter } from '../../../models/question.model';
 })
 export class ReportViolationComponent implements OnInit {
   currentStep = 1;
-  totalSteps = 5;
+  totalSteps = 4; // Reduced from 5 to 4 (removed questions step)
   violationForm!: FormGroup;
-  questionsForm!: FormGroup;
   
   // Data
   cities: CityDto[] = [];
   categories: CategoryDto[] = [];
-  subCategories: SubCategoryDto[] = [];
   filteredSubCategories: SubCategoryDto[] = [];
-  questions: QuestionDto[] = [];
-  sortedQuestions: QuestionDto[] = [];
-  filteredQuestions: QuestionDto[] = [];
   
   // File upload
   attachments: File[] = [];
@@ -42,69 +34,56 @@ export class ReportViolationComponent implements OnInit {
   submitting = false;
   submitted = false;
   submittedViolationId: number | null = null;
-  maxDate: string = new Date().toISOString().split('T')[0]; // For date picker max attribute
-  
-  // Print view
-  showPrintView = false;
-  printViewHtml = '';
-  loadingPrintView = false;
+  maxDate: string = new Date().toISOString().slice(0, 16); // For datetime-local picker (YYYY-MM-DDTHH:mm)
+
+  // PublicViolationType enum for template
+  PublicViolationType = PublicViolationType;
 
   constructor(
     private fb: FormBuilder,
-    private violationService: ViolationService,
+    private publicViolationService: PublicViolationService,
     private cityService: CityService,
     private categoryService: CategoryService,
     private subCategoryService: SubCategoryService,
-    private questionService: QuestionService,
-    private toasterService: ToasterService,
-    private fileUploadService: FileUploadService
+    private toasterService: ToasterService
   ) {}
 
   ngOnInit(): void {
     this.initForms();
     this.loadCities();
     this.loadCategories();
-    // Don't load questions on init - wait for category selection
   }
 
   initForms(): void {
-    // Main form
+    // Main form - updated to match backend structure
     this.violationForm = this.fb.group({
       cityId: ['', Validators.required],
       categoryId: ['', Validators.required],
       subCategoryId: ['', Validators.required],
       violationDate: ['', Validators.required],
-      location: ['', Validators.required],
+      address: ['', Validators.required], // Changed from location
       description: ['', Validators.required],
-      isWitness: [false],
-      contactPreference: ['', Validators.required],
-      email: [''],
-      phone: [''],
-      personalInfoVisible: [false],
-      personalInfo: ['']
+      violationType: [PublicViolationType.Victim, Validators.required], // Changed from isWitness
+      canContact: [false], // Changed from contactPreference
+      email: ['']
     });
-
-    // Questions form
-    this.questionsForm = this.fb.group({});
 
     // Watch category changes
     this.violationForm.get('categoryId')?.valueChanges.subscribe(categoryId => {
       this.onCategoryChange(categoryId);
-      // Load questions for selected category
-      this.loadQuestions(categoryId);
     });
 
-    // Watch contact preference changes
-    this.violationForm.get('contactPreference')?.valueChanges.subscribe(preference => {
-      this.updateContactFields(preference);
+    // Watch canContact changes to validate email
+    this.violationForm.get('canContact')?.valueChanges.subscribe(canContact => {
+      this.updateEmailField(canContact);
     });
   }
 
   loadCities(): void {
-    this.cityService.getAllCities(undefined, undefined, true).subscribe({
+    this.cityService.getPublicLookup().subscribe({
       next: (response) => {
         if (response.success && response.data) {
-          this.cities = Array.isArray(response.data) ? response.data : response.data.items || [];
+          this.cities = Array.isArray(response.data) ? response.data : [];
         }
       },
       error: (error) => {
@@ -115,10 +94,10 @@ export class ReportViolationComponent implements OnInit {
   }
 
   loadCategories(): void {
-    this.categoryService.getAllCategories(true).subscribe({
+    this.categoryService.getPublicLookup().subscribe({
       next: (response) => {
         if (response.success && response.data) {
-          this.categories = Array.isArray(response.data) ? response.data : response.data.items || [];
+          this.categories = Array.isArray(response.data) ? response.data : [];
         }
       },
       error: (error) => {
@@ -129,19 +108,23 @@ export class ReportViolationComponent implements OnInit {
   }
 
   loadSubCategories(categoryId?: number): void {
-    if (categoryId) {
-      // Use filter to get subcategories by categoryId
-      const filter = { categoryId: Number(categoryId) }; // Ensure it's a number
-      this.subCategoryService.getAllSubCategoriesWithFilter(filter, undefined, undefined, true).subscribe({
+    if (categoryId && categoryId > 0) {
+      // Use public lookup endpoint with categoryId query parameter
+      this.subCategoryService.getPublicLookup(Number(categoryId)).subscribe({
         next: (response) => {
           if (response.success && response.data) {
-            const subCategories = Array.isArray(response.data) ? response.data : response.data.items || [];
-            this.filteredSubCategories = subCategories;
+            this.filteredSubCategories = Array.isArray(response.data) ? response.data : [];
+            // Reset subcategory selection when category changes
+            this.violationForm.patchValue({ subCategoryId: '' });
+          } else {
+            this.filteredSubCategories = [];
             this.violationForm.patchValue({ subCategoryId: '' });
           }
         },
         error: (error) => {
           console.error('Error loading subcategories:', error);
+          this.filteredSubCategories = [];
+          this.violationForm.patchValue({ subCategoryId: '' });
           this.toasterService.showError('حدث خطأ أثناء تحميل الفئات الفرعية');
         }
       });
@@ -151,63 +134,19 @@ export class ReportViolationComponent implements OnInit {
     }
   }
 
-  loadQuestions(categoryId?: number | string): void {
-    // Convert to number if it's a string (from form)
-    const categoryIdNum = typeof categoryId === 'string' ? Number(categoryId) : categoryId;
-    
-    if (!categoryIdNum) {
-      // No category selected, clear questions
-      this.filteredQuestions = [];
-      this.sortedQuestions = [];
-      // Remove all question controls
-      Object.keys(this.questionsForm.controls).forEach(key => {
-        if (key.startsWith('question_')) {
-          this.questionsForm.removeControl(key);
-        }
-      });
+  onCategoryChange(categoryId: number | string | null): void {
+    // Handle empty string, null, or undefined
+    if (!categoryId || categoryId === '' || categoryId === null) {
+      this.filteredSubCategories = [];
+      this.violationForm.patchValue({ subCategoryId: '' });
       return;
     }
 
-    // POST /api/Question/filter with body: { categoryId, isActive: true }
-    const filter: QuestionFilter = { 
-      categoryId: categoryIdNum,
-      isActive: true // Only active questions for violation forms
-    };
-    // Pass isActive in body, not as query param (backend expects it in body)
-    this.questionService.getAllQuestionsWithFilter(filter, undefined, undefined, undefined).subscribe({
-      next: (response) => {
-        if (response.success && response.data) {
-          const questions = Array.isArray(response.data) ? response.data : response.data.items || [];
-          this.filteredQuestions = questions;
-          // Sort by order
-          this.sortedQuestions = [...questions].sort((a, b) => a.order - b.order);
-          
-          // Rebuild form controls for filtered questions
-          // Remove old controls
-          Object.keys(this.questionsForm.controls).forEach(key => {
-            if (key.startsWith('question_')) {
-              this.questionsForm.removeControl(key);
-            }
-          });
-          
-          // Build form controls for questions
-          this.sortedQuestions.forEach(question => {
-            const validators = question.isRequired ? [Validators.required] : [];
-            this.questionsForm.addControl(`question_${question.id}`, this.fb.control('', validators));
-          });
-        }
-      },
-      error: (error) => {
-        console.error('Error loading questions:', error);
-        this.toasterService.showError('حدث خطأ أثناء تحميل الأسئلة');
-      }
-    });
-  }
-
-  onCategoryChange(categoryId: number | string): void {
     // Convert to number if it's a string (from form)
     const categoryIdNum = typeof categoryId === 'string' ? Number(categoryId) : categoryId;
-    if (categoryIdNum) {
+    
+    // Check if it's a valid number (not NaN and greater than 0)
+    if (categoryIdNum && !isNaN(categoryIdNum) && categoryIdNum > 0) {
       this.loadSubCategories(categoryIdNum);
     } else {
       this.filteredSubCategories = [];
@@ -215,24 +154,17 @@ export class ReportViolationComponent implements OnInit {
     }
   }
 
-  updateContactFields(preference: string): void {
+  updateEmailField(canContact: boolean): void {
     const emailControl = this.violationForm.get('email');
-    const phoneControl = this.violationForm.get('phone');
     
-    if (preference === 'email' || preference === 'both') {
+    if (canContact) {
       emailControl?.setValidators([Validators.required, Validators.email]);
     } else {
       emailControl?.clearValidators();
-    }
-    
-    if (preference === 'phone' || preference === 'both') {
-      phoneControl?.setValidators([Validators.required]);
-    } else {
-      phoneControl?.clearValidators();
+      emailControl?.setValue('');
     }
     
     emailControl?.updateValueAndValidity();
-    phoneControl?.updateValueAndValidity();
   }
 
   onFileSelected(event: Event): void {
@@ -303,7 +235,7 @@ export class ReportViolationComponent implements OnInit {
     
     switch (this.currentStep) {
       case 1: // Basic Information
-        const basicFields = ['cityId', 'categoryId', 'subCategoryId', 'violationDate', 'location', 'description'];
+        const basicFields = ['cityId', 'categoryId', 'subCategoryId', 'violationDate', 'address', 'description', 'violationType'];
         basicFields.forEach(field => {
           const control = this.violationForm.get(field);
           if (control && control.invalid) {
@@ -313,47 +245,18 @@ export class ReportViolationComponent implements OnInit {
         });
         break;
         
-      case 2: // Questions
-        // Only validate if there are questions for the selected category
-        if (this.sortedQuestions.length > 0) {
-          this.sortedQuestions.forEach(question => {
-            if (question.isRequired) {
-              const control = this.questionsForm.get(`question_${question.id}`);
-              if (control && control.invalid) {
-                control.markAsTouched();
-                isValid = false;
-              }
-            }
-          });
-        }
-        // If no questions, step is valid (can proceed)
-        break;
-        
-      case 3: // Contact Information
-        const contactFields = ['contactPreference'];
-        contactFields.forEach(field => {
-          const control = this.violationForm.get(field);
-          if (control && control.invalid) {
-            control.markAsTouched();
-            isValid = false;
-          }
-        });
-        
-        const preference = this.violationForm.get('contactPreference')?.value;
-        if (preference === 'email' || preference === 'both') {
+      case 2: // Contact Information
+        const canContact = this.violationForm.get('canContact')?.value;
+        if (canContact) {
           const emailControl = this.violationForm.get('email');
           if (emailControl && emailControl.invalid) {
             emailControl.markAsTouched();
             isValid = false;
           }
         }
-        if (preference === 'phone' || preference === 'both') {
-          const phoneControl = this.violationForm.get('phone');
-          if (phoneControl && phoneControl.invalid) {
-            phoneControl.markAsTouched();
-            isValid = false;
-          }
-        }
+        break;
+        
+      case 3: // Attachments (no validation needed, optional)
         break;
     }
     
@@ -369,97 +272,44 @@ export class ReportViolationComponent implements OnInit {
       return;
     }
 
-    if (this.violationForm.invalid || this.questionsForm.invalid) {
+    if (this.violationForm.invalid) {
       this.toasterService.showWarning('يرجى ملء جميع الحقول المطلوبة');
       return;
     }
 
     this.submitting = true;
 
-    // Build question answers
-    const questionAnswers: QuestionAnswerDto[] = [];
-    this.sortedQuestions.forEach(question => {
-      const answer = this.questionsForm.get(`question_${question.id}`)?.value;
-      if (answer !== null && answer !== undefined && answer !== '') {
-        questionAnswers.push({
-          questionId: question.id,
-          answerValue: String(answer)
-        });
+    // Format violation date for backend (DateTime format)
+    const violationDate = this.violationForm.value.violationDate;
+    // If datetime-local, convert to ISO string format
+    const formattedDate = violationDate ? new Date(violationDate).toISOString() : new Date().toISOString();
+
+    // Call service with FormData (backend handles file upload)
+    this.publicViolationService.createPublicViolation(
+      Number(this.violationForm.value.cityId),
+      Number(this.violationForm.value.categoryId),
+      Number(this.violationForm.value.subCategoryId),
+      Number(this.violationForm.value.violationType),
+      formattedDate,
+      this.violationForm.value.address,
+      this.violationForm.value.description,
+      Boolean(this.violationForm.value.canContact),
+      this.violationForm.value.canContact && this.violationForm.value.email 
+        ? this.violationForm.value.email 
+        : undefined,
+      this.attachments
+    ).subscribe({
+      next: (violation) => {
+        this.submitted = true;
+        this.submittedViolationId = violation.id;
+        this.submitting = false;
+          this.toasterService.showSuccess('تم إرسال البلاغ بنجاح', 'نجاح');
+      },
+      error: (error) => {
+        console.error('Error submitting violation:', error);
+        this.submitting = false;
+          this.toasterService.showError(error.message || 'حدث خطأ أثناء إرسال البلاغ');
       }
-    });
-
-    // Upload files first, then submit violation
-    this.uploadFiles().then(attachments => {
-      // Build violation data with proper type conversions
-      const violationData: AddPublicViolationDto = {
-        cityId: Number(this.violationForm.value.cityId),
-        categoryId: Number(this.violationForm.value.categoryId),
-        subCategoryId: Number(this.violationForm.value.subCategoryId),
-        violationDate: this.violationForm.value.violationDate,
-        location: this.violationForm.value.location,
-        description: this.violationForm.value.description,
-        isWitness: Boolean(this.violationForm.value.isWitness),
-        contactPreference: this.violationForm.value.contactPreference || undefined,
-        email: this.violationForm.value.email || undefined,
-        phone: this.violationForm.value.phone || undefined,
-        personalInfoVisible: Boolean(this.violationForm.value.personalInfoVisible),
-        personalInfo: this.violationForm.value.personalInfoVisible && this.violationForm.value.personalInfo 
-          ? JSON.stringify(this.violationForm.value.personalInfo) 
-          : undefined,
-        questionAnswers: questionAnswers,
-        attachments: attachments
-      };
-
-      this.violationService.createPublicViolation(violationData).subscribe({
-        next: (violation) => {
-          this.submitted = true;
-          this.submittedViolationId = violation.id;
-          this.submitting = false;
-          this.toasterService.showSuccess('تم إرسال التقرير بنجاح', 'نجاح');
-        },
-        error: (error) => {
-          console.error('Error submitting violation:', error);
-          this.submitting = false;
-          this.toasterService.showError(error.message || 'حدث خطأ أثناء إرسال التقرير');
-        }
-      });
-    }).catch(error => {
-      this.submitting = false;
-      this.toasterService.showError(error.message || 'حدث خطأ أثناء رفع الملفات');
-    });
-  }
-
-  /**
-   * Upload files and return attachment DTOs
-   */
-  private uploadFiles(): Promise<AttachmentDto[]> {
-    return new Promise((resolve, reject) => {
-      if (this.attachments.length === 0) {
-        resolve([]);
-        return;
-      }
-
-      // Upload all files in parallel using forkJoin
-      this.fileUploadService.uploadFiles(this.attachments).subscribe({
-        next: (uploadResults) => {
-          const results: AttachmentDto[] = uploadResults.map((uploadResult, index) => {
-            const file = this.attachments[index];
-            const fileType = file.type.startsWith('image/') ? 'image' : 'video';
-            
-            return {
-              fileName: uploadResult.fileName,
-              filePath: uploadResult.url,
-              fileType: fileType,
-              fileSize: file.size
-            };
-          });
-          
-          resolve(results);
-        },
-        error: (error) => {
-          reject(error);
-        }
-      });
     });
   }
 
@@ -468,50 +318,9 @@ export class ReportViolationComponent implements OnInit {
     this.submittedViolationId = null;
     this.currentStep = 1;
     this.violationForm.reset();
-    this.questionsForm.reset();
+    this.violationForm.patchValue({ violationType: PublicViolationType.Victim });
     this.attachments = [];
     this.attachmentPreviews = [];
-  }
-
-  getPrintUrl(): string {
-    if (this.submittedViolationId) {
-      // For public violations, print URL should work without authentication
-      // The violation was created as public, so it should be accessible
-      return this.violationService.getPrintViewUrl(this.submittedViolationId);
-    }
-    return '';
-  }
-
-  openPrintView(): void {
-    if (!this.submittedViolationId) {
-      return;
-    }
-
-    this.loadingPrintView = true;
-    this.showPrintView = true;
-    this.printViewHtml = '';
-
-    this.violationService.getPrintViewHtml(this.submittedViolationId).subscribe({
-      next: (html) => {
-        this.printViewHtml = html;
-        this.loadingPrintView = false;
-      },
-      error: (error) => {
-        console.error('Error loading print view:', error);
-        this.loadingPrintView = false;
-        this.toasterService.showError(error.message || 'حدث خطأ أثناء تحميل صفحة الطباعة');
-        this.closePrintView();
-      }
-    });
-  }
-
-  closePrintView(): void {
-    this.showPrintView = false;
-    this.printViewHtml = '';
-  }
-
-  printCurrentView(): void {
-    window.print();
   }
 
   isFieldInvalid(form: FormGroup, fieldName: string): boolean {
@@ -519,7 +328,71 @@ export class ReportViolationComponent implements OnInit {
     return !!(field && field.invalid && (field.dirty || field.touched));
   }
 
-  getQuestionControlName(questionId: number): string {
-    return `question_${questionId}`;
+  // Helper methods for review section
+  getSelectedCityName(): string {
+    const cityId = this.violationForm.get('cityId')?.value;
+    if (!cityId) return 'غير محدد';
+    // Convert to number for comparison (form values are strings)
+    const cityIdNum = Number(cityId);
+    const city = this.cities.find(c => c.id === cityIdNum);
+    return city?.name || 'غير محدد';
+  }
+
+  getSelectedCategoryName(): string {
+    const categoryId = this.violationForm.get('categoryId')?.value;
+    if (!categoryId) return 'غير محدد';
+    // Convert to number for comparison (form values are strings)
+    const categoryIdNum = Number(categoryId);
+    const category = this.categories.find(c => c.id === categoryIdNum);
+    return category?.name || 'غير محدد';
+  }
+
+  getSelectedSubCategoryName(): string {
+    const subCategoryId = this.violationForm.get('subCategoryId')?.value;
+    if (!subCategoryId) return 'غير محدد';
+    // Convert to number for comparison (form values are strings)
+    const subCategoryIdNum = Number(subCategoryId);
+    const subCategory = this.filteredSubCategories.find(c => c.id === subCategoryIdNum);
+    return subCategory?.name || 'غير محدد';
+  }
+
+  getViolationDateValue(): string {
+    const date = this.violationForm.get('violationDate')?.value;
+    if (!date) return 'غير محدد';
+    try {
+      // Handle datetime-local format (YYYY-MM-DDTHH:mm)
+      const dateObj = new Date(date);
+      if (isNaN(dateObj.getTime())) return 'غير محدد';
+      return dateObj.toLocaleString('ar-EG', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return 'غير محدد';
+    }
+  }
+
+  getAddressValue(): string {
+    return this.violationForm.get('address')?.value || 'غير محدد';
+  }
+
+  getDescriptionValue(): string {
+    return this.violationForm.get('description')?.value || 'غير محدد';
+  }
+
+  getViolationTypeLabel(): string {
+    const type = this.violationForm.get('violationType')?.value;
+    return type === PublicViolationType.Victim ? 'صاحب البلاغ' : 'شاهد';
+  }
+
+  getEmailValue(): string {
+    return this.violationForm.get('email')?.value || '';
+  }
+
+  getCanContactValue(): boolean {
+    return this.violationForm.get('canContact')?.value || false;
   }
 }

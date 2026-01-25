@@ -218,24 +218,6 @@
   }
 }
 
-.login-footer {
-  text-align: center;
-  padding-top: var(--spacing-xl);
-  border-top: 1px solid var(--border-light);
-}
-
-.demo-info {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  line-height: var(--line-height-relaxed);
-  
-  strong {
-    color: var(--text-primary);
-    display: block;
-    margin-bottom: var(--spacing-xs);
-  }
-}
-
 /* Responsive */
 @media (max-width: 767px) {
   .login-page {

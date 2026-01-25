@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-import { ViolationService } from '../../../services/violation.service';
+import { StatisticsService } from '../../../services/statistics.service';
 import { UserService } from '../../../services/user.service';
-import { ViolationDto, AcceptanceStatus, getAcceptanceStatusLabel } from '../../../models/violation.model';
 import { UserDto } from '../../../models/user-management.model';
 
 @Component({
@@ -11,14 +10,17 @@ import { UserDto } from '../../../models/user-management.model';
 })
 export class StatisticsComponent implements OnInit {
   totalViolations = 0;
-  pendingViolations = 0;
-  resolvedViolations = 0;
+  publishedViolations = 0;
+  underReviewViolations = 0;
   totalUsers = 0;
-  recentViolations: ViolationDto[] = [];
   loading = true;
 
+  // Chart data
+  pieChartData: { label: string; value: number; percentage: number; color: string }[] = [];
+  barChartData: { label: string; value: number; percentage: number; color: string }[] = [];
+
   constructor(
-    private violationService: ViolationService,
+    private statisticsService: StatisticsService,
     private userService: UserService
   ) {}
 
@@ -29,22 +31,22 @@ export class StatisticsComponent implements OnInit {
   loadStatistics(): void {
     this.loading = true;
     
-    // Load violations
-    this.violationService.getAllViolations(undefined, undefined, true).subscribe({
+    // Load violation statistics from new API
+    this.statisticsService.getStatistics().subscribe({
       next: (response) => {
         if (response.success && response.data) {
-          const violations: ViolationDto[] = Array.isArray(response.data) 
-            ? response.data 
-            : response.data.items || [];
+          this.totalViolations = response.data.totalViolations || 0;
+          this.publishedViolations = response.data.publishedViolations || 0;
+          this.underReviewViolations = response.data.underReviewViolations || 0;
           
-          this.totalViolations = violations.length;
-          this.pendingViolations = violations.filter((v: ViolationDto) => v.acceptanceStatus === AcceptanceStatus.Pending).length;
-          this.resolvedViolations = violations.filter((v: ViolationDto) => v.acceptanceStatus === AcceptanceStatus.Approved).length;
-          this.recentViolations = violations.slice(0, 5);
+          // Calculate chart data
+          this.calculatePieChartData();
+          this.calculateBarChartData();
         }
       },
       error: (error: any) => {
-        console.error('Error loading violations:', error);
+        console.error('Error loading statistics:', error);
+        this.loading = false;
       }
     });
 
@@ -73,7 +75,92 @@ export class StatisticsComponent implements OnInit {
     });
   }
 
-  getStatusLabel(status: AcceptanceStatus): string {
-    return getAcceptanceStatusLabel(status);
+  calculatePieChartData(): void {
+    const total = this.publishedViolations + this.underReviewViolations;
+    if (total === 0) {
+      this.pieChartData = [];
+      return;
+    }
+
+    this.pieChartData = [
+      {
+        label: 'منشور',
+        value: this.publishedViolations,
+        percentage: (this.publishedViolations / total) * 100,
+        color: this.getChartColor(0)
+      },
+      {
+        label: 'قيد المراجعة',
+        value: this.underReviewViolations,
+        percentage: (this.underReviewViolations / total) * 100,
+        color: this.getChartColor(1)
+      }
+    ];
+  }
+
+  calculateBarChartData(): void {
+    const maxValue = Math.max(this.totalViolations, this.publishedViolations, this.underReviewViolations);
+    if (maxValue === 0) {
+      this.barChartData = [];
+      return;
+    }
+
+    this.barChartData = [
+      {
+        label: 'إجمالي البلاغات',
+        value: this.totalViolations,
+        percentage: (this.totalViolations / maxValue) * 100,
+        color: this.getChartColor(0)
+      },
+      {
+        label: 'منشور',
+        value: this.publishedViolations,
+        percentage: (this.publishedViolations / maxValue) * 100,
+        color: this.getChartColor(1)
+      },
+      {
+        label: 'قيد المراجعة',
+        value: this.underReviewViolations,
+        percentage: (this.underReviewViolations / maxValue) * 100,
+        color: this.getChartColor(2)
+      }
+    ];
+  }
+
+  getChartColor(index: number): string {
+    const colors = [
+      'var(--primary-color)',
+      'var(--success-color)',
+      'var(--warning-color)',
+      'var(--info-color)',
+      'var(--danger-color)'
+    ];
+    return colors[index % colors.length];
+  }
+
+  // Calculate pie chart path for SVG
+  getPieChartPath(index: number): string {
+    if (this.pieChartData.length === 0) return '';
+    
+    const data = this.pieChartData[index];
+    const total = this.pieChartData.reduce((sum, d) => sum + d.percentage, 0);
+    const startAngle = this.pieChartData.slice(0, index).reduce((sum, d) => sum + (d.percentage / 100) * 360, 0);
+    const endAngle = startAngle + (data.percentage / 100) * 360;
+    
+    const radius = 80;
+    const centerX = 100;
+    const centerY = 100;
+    
+    const startRad = (startAngle - 90) * (Math.PI / 180);
+    const endRad = (endAngle - 90) * (Math.PI / 180);
+    
+    const x1 = centerX + radius * Math.cos(startRad);
+    const y1 = centerY + radius * Math.sin(startRad);
+    const x2 = centerX + radius * Math.cos(endRad);
+    const y2 = centerY + radius * Math.sin(endRad);
+    
+    const largeArcFlag = data.percentage > 50 ? 1 : 0;
+    
+    return `M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
   }
 }

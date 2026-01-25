@@ -136,4 +136,39 @@ export class SubCategoryService {
         })
       );
   }
+
+  /**
+   * Get public lookup - active subcategories filtered by categoryId (no pagination, AllowAnonymous)
+   * @param categoryId Optional category ID to filter subcategories
+   */
+  getPublicLookup(categoryId?: number): Observable<ApiResponse<SubCategoryDto[]>> {
+    let params = new HttpParams();
+    if (categoryId !== undefined && categoryId !== null) {
+      params = params.set('categoryId', categoryId.toString());
+    }
+
+    return this.http.get<ApiResponse<SubCategoryDto[]>>(`${this.apiUrl}/public/lookup`, { params })
+      .pipe(
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          // Ensure data is always an array
+          if (Array.isArray(response.data)) {
+            return response;
+          }
+          // If data is paginated, extract items
+          if (response.data && typeof response.data === 'object' && 'items' in response.data) {
+            return {
+              ...response,
+              data: (response.data as any).items || []
+            };
+          }
+          return {
+            ...response,
+            data: []
+          };
+        })
+      );
+  }
 }
