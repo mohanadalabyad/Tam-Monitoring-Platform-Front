@@ -773,6 +773,84 @@
             }
           }
           
+          .question-radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+            padding: var(--spacing-sm) 0;
+            
+            .question-radio-option {
+              display: flex;
+              align-items: center;
+              gap: var(--spacing-sm);
+              cursor: default;
+              font-size: var(--font-size-base);
+              padding: var(--spacing-xs) 0;
+              
+              input[type="radio"] {
+                width: 20px;
+                height: 20px;
+                cursor: default;
+                opacity: 1;
+                flex-shrink: 0;
+                
+                &:disabled {
+                  cursor: default;
+                  opacity: 1;
+                  
+                  @media print {
+                    border: 2px solid #000;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                  }
+                }
+              }
+              
+              span {
+                color: var(--text-primary);
+                line-height: 1.5;
+              }
+            }
+            
+            .question-other-option-group {
+              margin-top: var(--spacing-sm);
+              padding: var(--spacing-sm);
+              background: #f9f9f9;
+              border: 1px solid #e0e0e0;
+              border-radius: 4px;
+              
+              .question-radio-option {
+                margin-bottom: var(--spacing-xs);
+              }
+              
+              .question-other-input {
+                margin-top: var(--spacing-xs);
+                width: 100%;
+                padding: 8px 10px;
+                border: 1px solid #bbb;
+                border-radius: 4px;
+                font-size: 14px;
+                font-family: 'Arial', 'Tahoma', sans-serif;
+                background: var(--white);
+                color: var(--text-primary);
+                
+                &:disabled {
+                  cursor: text;
+                  opacity: 1;
+                  background: var(--white);
+                  color: var(--text-primary);
+                  
+                  @media print {
+                    border: 1px solid #000;
+                    background: transparent;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                  }
+                }
+              }
+            }
+          }
+          
           .question-checkbox-group {
             display: flex;
             flex-direction: column;
@@ -810,6 +888,44 @@
               span {
                 color: var(--text-primary);
                 line-height: 1.5;
+              }
+            }
+            
+            .question-other-option-group {
+              margin-top: var(--spacing-sm);
+              padding: var(--spacing-sm);
+              background: #f9f9f9;
+              border: 1px solid #e0e0e0;
+              border-radius: 4px;
+              
+              .question-checkbox-option {
+                margin-bottom: var(--spacing-xs);
+              }
+              
+              .question-other-input {
+                margin-top: var(--spacing-xs);
+                width: 100%;
+                padding: 8px 10px;
+                border: 1px solid #bbb;
+                border-radius: 4px;
+                font-size: 14px;
+                font-family: 'Arial', 'Tahoma', sans-serif;
+                background: var(--white);
+                color: var(--text-primary);
+                
+                &:disabled {
+                  cursor: text;
+                  opacity: 1;
+                  background: var(--white);
+                  color: var(--text-primary);
+                  
+                  @media print {
+                    border: 1px solid #000;
+                    background: transparent;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                  }
+                }
               }
             }
           }

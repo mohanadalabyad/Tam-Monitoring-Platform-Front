@@ -205,6 +205,7 @@
         <div class="document-section">
           <h3 class="section-title">الحقول الأساسية للتقرير</h3>
           <form [formGroup]="documentForm" class="base-fields-form">
+            <!-- Basic Information Section -->
             <div class="base-fields-grid">
               <div class="field-item">
                 <label class="field-label">المدينة *</label>
@@ -217,9 +218,20 @@
               </div>
               
               <div class="field-item">
-                <label class="field-label">الموقع *</label>
+                <label class="field-label">الفئة *</label>
                 <div class="field-value-placeholder">
-                  <input type="text" class="field-input" formControlName="location" />
+                  <input type="text" class="field-input" [value]="selectedCategoryForQuestions?.name" disabled />
+                  <input type="hidden" formControlName="categoryId" />
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">الفئة الفرعية *</label>
+                <div class="field-value-placeholder">
+                  <select class="field-select" formControlName="subCategoryId">
+                    <option value="">اختر الفئة الفرعية</option>
+                    <option *ngFor="let subCategory of subCategories" [value]="subCategory.id">{{ subCategory.name }}</option>
+                  </select>
                 </div>
               </div>
               
@@ -231,52 +243,147 @@
               </div>
               
               <div class="field-item">
+                <label class="field-label">الموقع *</label>
+                <div class="field-value-placeholder">
+                  <input type="text" class="field-input" formControlName="location" />
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">الصفة *</label>
+                <div class="field-value-placeholder">
+                  <select class="field-select" formControlName="role">
+                    <option [ngValue]="PrivateViolationRole.Witness">شاهد</option>
+                    <option [ngValue]="PrivateViolationRole.DirectVictim">ضحية مباشرة</option>
+                    <option [ngValue]="PrivateViolationRole.InstitutionRepresentative">ممثل مؤسسة</option>
+                    <option [ngValue]="PrivateViolationRole.Other">أخرى</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="field-item" *ngIf="documentForm.get('role')?.value === PrivateViolationRole.Other">
+                <label class="field-label">تحديد الصفة *</label>
+                <div class="field-value-placeholder">
+                  <input type="text" class="field-input" formControlName="otherRoleText" placeholder="أدخل الصفة" />
+                </div>
+              </div>
+              
+              <div class="field-item full-width">
                 <label class="field-label">الوصف *</label>
                 <div class="field-value-placeholder">
                   <textarea class="field-textarea" rows="3" formControlName="description"></textarea>
                 </div>
               </div>
+            </div>
+            
+            <!-- Personal/Victim Information Section -->
+            <div class="base-fields-grid" style="margin-top: 20px;">
+              <h4 class="subsection-title">معلومات الضحية/الشخص</h4>
               
               <div class="field-item">
-                <label class="field-label">هل أنت شاهد على الحادثة؟</label>
+                <label class="field-label">الاسم</label>
                 <div class="field-value-placeholder">
-                  <div class="yesno-group">
-                    <label class="yesno-option">
-                      <input type="radio" name="isWitness" formControlName="isWitness" [value]="true" />
-                      <span>نعم</span>
-                    </label>
-                    <label class="yesno-option">
-                      <input type="radio" name="isWitness" formControlName="isWitness" [value]="false" />
-                      <span>لا</span>
-                    </label>
-                  </div>
+                  <input type="text" class="field-input" formControlName="personalName" />
                 </div>
               </div>
               
               <div class="field-item">
-                <label class="field-label">تفضيل الاتصال</label>
+                <label class="field-label">مدينة الإقامة</label>
                 <div class="field-value-placeholder">
-                  <select class="field-select" formControlName="contactPreference">
-                    <option value="">اختر طريقة الاتصال</option>
-                    <option value="email">البريد الإلكتروني</option>
-                    <option value="phone">الهاتف</option>
-                    <option value="both">كلاهما</option>
-                    <option value="none">لا شيء</option>
+                  <input type="text" class="field-input" formControlName="personalCity" />
+                </div>
+              </div>
+              
+              <div class="field-item full-width">
+                <label class="field-label">العنوان</label>
+                <div class="field-value-placeholder">
+                  <input type="text" class="field-input" formControlName="personalAddress" />
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">العمر</label>
+                <div class="field-value-placeholder">
+                  <input type="number" class="field-input" formControlName="personalAge" min="0" />
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">تاريخ الميلاد</label>
+                <div class="field-value-placeholder">
+                  <input type="date" class="field-input" formControlName="personalDateOfBirth" />
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">المستوى التعليمي</label>
+                <div class="field-value-placeholder">
+                  <input type="text" class="field-input" formControlName="personalEducation" />
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">الجنس</label>
+                <div class="field-value-placeholder">
+                  <select class="field-select" formControlName="gender">
+                    <option [ngValue]="null">اختر الجنس</option>
+                    <option [ngValue]="Gender.Male">ذكر</option>
+                    <option [ngValue]="Gender.Female">أنثى</option>
                   </select>
                 </div>
               </div>
               
               <div class="field-item">
+                <label class="field-label">الحالة الاجتماعية</label>
+                <div class="field-value-placeholder">
+                  <input type="text" class="field-input" formControlName="maritalStatus" />
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">العمل</label>
+                <div class="field-value-placeholder">
+                  <input type="text" class="field-input" formControlName="work" />
+                </div>
+              </div>
+              
+              <div class="field-item">
+                <label class="field-label">
+                  <input type="checkbox" formControlName="hasDisability" />
+                  <span style="margin-right: 8px;">لديه إعاقة</span>
+                </label>
+              </div>
+              
+              <div class="field-item full-width" *ngIf="documentForm.get('hasDisability')?.value">
+                <label class="field-label">نوع الإعاقة</label>
+                <div class="field-value-placeholder">
+                  <input type="text" class="field-input" formControlName="disabilityType" />
+                </div>
+              </div>
+              
+              <div class="field-item full-width">
+                <label class="field-label">
+                  <input type="checkbox" formControlName="showPersonalInfoInPublish" />
+                  <span style="margin-right: 8px;">عرض المعلومات الشخصية عند النشر</span>
+                </label>
+              </div>
+            </div>
+            
+            <!-- Contact Information Section -->
+            <div class="base-fields-grid" style="margin-top: 20px;">
+              <h4 class="subsection-title">معلومات الاتصال</h4>
+              
+              <div class="field-item">
                 <label class="field-label">البريد الإلكتروني</label>
                 <div class="field-value-placeholder">
-                  <input type="email" class="field-input" formControlName="email" />
+                  <input type="email" class="field-input" formControlName="contactEmail" />
                 </div>
               </div>
               
               <div class="field-item">
                 <label class="field-label">رقم الهاتف</label>
                 <div class="field-value-placeholder">
-                  <input type="tel" class="field-input" formControlName="phone" />
+                  <input type="tel" class="field-input" formControlName="contactPhone" />
                 </div>
               </div>
             </div>
@@ -332,12 +439,47 @@
                   </div>
                 </div>
 
-                <!-- MultipleChoice (Type 4) - Checkboxes -->
-                <div *ngIf="question.questionType === QuestionType.MultipleChoice" class="question-checkbox-group">
+                <!-- MultipleChoice (Type 4) - Conditional rendering based on hasMultiSelect -->
+                <!-- Single Selection (Radio Buttons) -->
+                <div *ngIf="question.questionType === QuestionType.MultipleChoice && !question.hasMultiSelect" class="question-radio-group">
+                  <label *ngFor="let option of getQuestionOptions(question)" class="question-radio-option">
+                    <input type="radio" disabled [name]="'radio-' + question.id" [value]="option" />
+                    <span>{{ option }}</span>
+                  </label>
+                  <!-- Other Option -->
+                  <div *ngIf="question.hasOtherOption" class="question-other-option-group">
+                    <label class="question-radio-option">
+                      <input type="radio" disabled [name]="'radio-' + question.id" value="__OTHER__" />
+                      <span>{{ question.otherOptionText || 'أخرى' }}</span>
+                    </label>
+                    <input
+                      type="text"
+                      disabled
+                      class="question-input question-other-input"
+                      [placeholder]="'أدخل ' + (question.otherOptionText || 'أخرى')"
+                    />
+                  </div>
+                </div>
+
+                <!-- Multiple Selection (Checkboxes) -->
+                <div *ngIf="question.questionType === QuestionType.MultipleChoice && question.hasMultiSelect" class="question-checkbox-group">
                   <label *ngFor="let option of getQuestionOptions(question)" class="question-checkbox-option">
                     <input type="checkbox" disabled [name]="'checkbox-' + question.id" [value]="option" />
                     <span>{{ option }}</span>
                   </label>
+                  <!-- Other Option -->
+                  <div *ngIf="question.hasOtherOption" class="question-other-option-group">
+                    <label class="question-checkbox-option">
+                      <input type="checkbox" disabled [name]="'checkbox-' + question.id" value="__OTHER__" />
+                      <span>{{ question.otherOptionText || 'أخرى' }}</span>
+                    </label>
+                    <input
+                      type="text"
+                      disabled
+                      class="question-input question-other-input"
+                      [placeholder]="'أدخل ' + (question.otherOptionText || 'أخرى')"
+                    />
+                  </div>
                 </div>
 
                 <!-- Date (Type 5) -->

@@ -3,12 +3,15 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { CategoryService } from '../../../services/category.service';
 import { QuestionService } from '../../../services/question.service';
 import { CityService } from '../../../services/city.service';
+import { SubCategoryService } from '../../../services/subcategory.service';
 import { ToasterService } from '../../../services/toaster.service';
 import { PermissionCheckService } from '../../../services/permission-check.service';
 import { ConfirmationDialogService } from '../../../services/confirmation-dialog.service';
 import { CategoryDto, AddCategoryDto, UpdateCategoryDto } from '../../../models/category.model';
 import { QuestionDto, QuestionFilter, QuestionType, getQuestionTypeLabel } from '../../../models/question.model';
 import { CityDto } from '../../../models/city.model';
+import { SubCategoryDto } from '../../../models/subcategory.model';
+import { PrivateViolationRole, Gender, getPrivateViolationRoleLabel, getGenderLabel } from '../../../models/published-violation.model';
 import { TableColumn, TableAction } from '../../../components/unified-table/unified-table.component';
 import { ViewMode } from '../../../components/view-toggle/view-toggle.component';
 import { Pencil, Trash2, FolderPlus, Power, PowerOff, FileText } from 'lucide-angular';
@@ -34,7 +37,12 @@ export class CategoriesManagementComponent implements OnInit {
   categoryQuestions: QuestionDto[] = [];
   loadingQuestions = false;
   cities: CityDto[] = [];
+  subCategories: SubCategoryDto[] = [];
   documentForm!: FormGroup;
+  
+  // Enums for document form
+  PrivateViolationRole = PrivateViolationRole;
+  Gender = Gender;
 
   columns: TableColumn[] = [
     { key: 'name', label: 'الاسم', sortable: true, filterable: false },
@@ -66,6 +74,7 @@ export class CategoriesManagementComponent implements OnInit {
     private categoryService: CategoryService,
     private questionService: QuestionService,
     private cityService: CityService,
+    private subCategoryService: SubCategoryService,
     private toasterService: ToasterService,
     public permissionService: PermissionCheckService,
     private confirmationService: ConfirmationDialogService,
@@ -295,6 +304,13 @@ export class CategoriesManagementComponent implements OnInit {
     
     // Initialize document form
     this.initDocumentForm();
+    
+    // Set categoryId in form (it's already selected)
+    if (this.documentForm) {
+      this.documentForm.patchValue({ categoryId: category.id });
+      // Load subcategories for this category
+      this.loadSubCategories(category.id);
+    }
 
     // Load questions filtered by category
     const filter: QuestionFilter = {
@@ -332,21 +348,70 @@ export class CategoriesManagementComponent implements OnInit {
       }
     });
   }
+  
+  /**
+   * Load subcategories for selected category
+   */
+  loadSubCategories(categoryId: number): void {
+    this.subCategoryService.getPublicLookup(categoryId).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.subCategories = Array.isArray(response.data) ? response.data : [];
+        }
+      },
+      error: (error) => {
+        console.error('Error loading subcategories:', error);
+        this.subCategories = [];
+      }
+    });
+  }
 
   /**
-   * Initialize document form for base fields
+   * Initialize document form for base fields (matching private violation structure)
    */
   initDocumentForm(): void {
     this.documentForm = this.fb.group({
+      // Basic Information
       cityId: [''],
-      location: [''],
+      categoryId: [''],
+      subCategoryId: [''],
       violationDate: [''],
+      location: [''],
       description: [''],
-      isWitness: [false],
-      contactPreference: [''],
-      email: [''],
-      phone: ['']
+      role: [PrivateViolationRole.Witness],
+      otherRoleText: [''],
+      // Personal/Victim Information
+      personalName: [''],
+      personalCity: [''],
+      personalAddress: [''],
+      personalAge: [''],
+      personalDateOfBirth: [''],
+      personalEducation: [''],
+      hasDisability: [false],
+      disabilityType: [''],
+      gender: [null],
+      maritalStatus: [''],
+      work: [''],
+      // Contact Information
+      contactEmail: [''],
+      contactPhone: [''],
+      // Publish Settings
+      showPersonalInfoInPublish: [false]
     });
+  }
+  
+  /**
+   * Get role label for display
+   */
+  getRoleLabel(role: PrivateViolationRole): string {
+    return getPrivateViolationRoleLabel(role);
+  }
+  
+  /**
+   * Get gender label for display
+   */
+  getGenderLabel(gender: Gender): string {
+    return getGenderLabel(gender);
   }
 
   /**
@@ -356,6 +421,7 @@ export class CategoriesManagementComponent implements OnInit {
     this.showQuestionsDocument = false;
     this.selectedCategoryForQuestions = null;
     this.categoryQuestions = [];
+    this.subCategories = [];
     if (this.documentForm) {
       this.documentForm.reset();
     }
