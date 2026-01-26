@@ -150,6 +150,34 @@
     (close)="closeModal()"
   >
     <form [formGroup]="violationForm" *ngIf="showModal">
+      <!-- Draft Restoration Banner -->
+      <div class="draft-banner" *ngIf="hasDraft && !editingViolation">
+        <div class="draft-banner-content">
+          <div class="draft-info">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            <div class="draft-text">
+              <strong>لديك مسودة محفوظة</strong>
+              <span class="draft-timestamp" *ngIf="draftTimestamp">
+                من {{ draftTimestamp | date:'short' }}
+              </span>
+            </div>
+          </div>
+          <div class="draft-actions">
+            <button type="button" class="btn-draft-restore" (click)="loadDraft()">
+              استعادة المسودة
+            </button>
+            <button type="button" class="btn-draft-clear" (click)="startFresh()">
+              بدء جديد
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Steps Indicator -->
       <div class="steps-indicator">
         <div 
@@ -308,13 +336,13 @@
           </div>
 
           <div class="form-group col-6">
-            <label for="personalCity">مدينة الإقامة</label>
-            <input
-              type="text"
-              id="personalCity"
-              formControlName="personalCity"
-              placeholder="مدينة الإقامة"
-            />
+            <label for="personalCityId">مدينة الإقامة</label>
+            <select id="personalCityId" formControlName="personalCityId">
+              <option [ngValue]="null">اختر مدينة الإقامة</option>
+              <option *ngFor="let city of cities" [ngValue]="city.id">
+                {{ city.name }}
+              </option>
+            </select>
           </div>
         </div>
 
@@ -354,13 +382,13 @@
 
         <div class="form-row">
           <div class="form-group col-6">
-            <label for="personalEducation">المستوى التعليمي</label>
-            <input
-              type="text"
-              id="personalEducation"
-              formControlName="personalEducation"
-              placeholder="المستوى التعليمي"
-            />
+            <label for="personalEducationId">المستوى التعليمي</label>
+            <select id="personalEducationId" formControlName="personalEducationId">
+              <option [ngValue]="null">اختر المستوى التعليمي</option>
+              <option *ngFor="let level of educationLevels" [ngValue]="level.id">
+                {{ level.name }}
+              </option>
+            </select>
           </div>
 
           <div class="form-group col-6">
@@ -439,6 +467,40 @@
         <h2 class="step-title">معلومات الاتصال</h2>
         <div class="form-section">
         <div class="form-row">
+          <div class="form-group col-12">
+            <label class="checkbox-wrapper">
+              <input
+                type="checkbox"
+                formControlName="canBeContacted"
+              />
+              <span>يمكن الاتصال به</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group col-6">
+            <label for="contactName">اسم جهة الاتصال</label>
+            <input
+              type="text"
+              id="contactName"
+              formControlName="contactName"
+              placeholder="اسم جهة الاتصال"
+            />
+          </div>
+
+          <div class="form-group col-6">
+            <label for="contactAddress">عنوان جهة الاتصال</label>
+            <input
+              type="text"
+              id="contactAddress"
+              formControlName="contactAddress"
+              placeholder="عنوان جهة الاتصال"
+            />
+          </div>
+        </div>
+
+        <div class="form-row">
           <div class="form-group col-6">
             <label for="contactEmail">البريد الإلكتروني</label>
             <input
@@ -461,6 +523,17 @@
               formControlName="contactPhone"
               placeholder="رقم الهاتف"
             />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group col-6">
+            <label for="preferredContactMethod">طريقة الاتصال المفضلة</label>
+            <select id="preferredContactMethod" formControlName="preferredContactMethod">
+              <option [ngValue]="null">اختر طريقة الاتصال المفضلة</option>
+              <option [ngValue]="PreferredContactMethod.Phone">هاتف</option>
+              <option [ngValue]="PreferredContactMethod.Email">بريد إلكتروني</option>
+            </select>
           </div>
         </div>
         </div>
@@ -611,11 +684,11 @@
               </div>
               <div class="review-value">{{ violationForm.get('personalName')?.value }}</div>
             </div>
-            <div class="review-item" *ngIf="violationForm.get('personalCity')?.value">
+            <div class="review-item" *ngIf="violationForm.get('personalCityId')?.value">
               <div class="review-label">
                 <strong>مدينة الإقامة:</strong>
               </div>
-              <div class="review-value">{{ violationForm.get('personalCity')?.value }}</div>
+              <div class="review-value">{{ getPersonalCityValue() }}</div>
             </div>
             <div class="review-item" *ngIf="violationForm.get('personalAddress')?.value">
               <div class="review-label">
@@ -635,11 +708,11 @@
               </div>
               <div class="review-value">{{ getPersonalDateOfBirthValue() }}</div>
             </div>
-            <div class="review-item" *ngIf="violationForm.get('personalEducation')?.value">
+            <div class="review-item" *ngIf="violationForm.get('personalEducationId')?.value">
               <div class="review-label">
                 <strong>المستوى التعليمي:</strong>
               </div>
-              <div class="review-value">{{ violationForm.get('personalEducation')?.value }}</div>
+              <div class="review-value">{{ getPersonalEducationValue() }}</div>
             </div>
             <div class="review-item" *ngIf="violationForm.get('gender')?.value">
               <div class="review-label">
@@ -672,6 +745,24 @@
               <div class="review-value">{{ violationForm.get('disabilityType')?.value }}</div>
             </div>
             <!-- Contact Information -->
+            <div class="review-item" *ngIf="violationForm.get('canBeContacted')?.value">
+              <div class="review-label">
+                <strong>يمكن الاتصال به:</strong>
+              </div>
+              <div class="review-value">نعم</div>
+            </div>
+            <div class="review-item" *ngIf="violationForm.get('contactName')?.value">
+              <div class="review-label">
+                <strong>اسم جهة الاتصال:</strong>
+              </div>
+              <div class="review-value">{{ violationForm.get('contactName')?.value }}</div>
+            </div>
+            <div class="review-item" *ngIf="violationForm.get('contactAddress')?.value">
+              <div class="review-label">
+                <strong>عنوان جهة الاتصال:</strong>
+              </div>
+              <div class="review-value">{{ violationForm.get('contactAddress')?.value }}</div>
+            </div>
             <div class="review-item" *ngIf="violationForm.get('contactEmail')?.value">
               <div class="review-label">
                 <strong>البريد الإلكتروني:</strong>
@@ -683,6 +774,12 @@
                 <strong>رقم الهاتف:</strong>
               </div>
               <div class="review-value">{{ violationForm.get('contactPhone')?.value }}</div>
+            </div>
+            <div class="review-item" *ngIf="violationForm.get('preferredContactMethod')?.value">
+              <div class="review-label">
+                <strong>طريقة الاتصال المفضلة:</strong>
+              </div>
+              <div class="review-value">{{ getPreferredContactMethodLabel(violationForm.get('preferredContactMethod')?.value) }}</div>
             </div>
             <!-- Question Answers -->
             <div class="review-item review-item-full" *ngIf="sortedQuestions.length > 0">
@@ -777,11 +874,18 @@
               </div>
               <div class="review-value">{{ originalViolationData.personalName }}</div>
             </div>
-            <div class="review-item" *ngIf="originalViolationData.personalCity">
+            <div class="review-item" *ngIf="originalViolationData.personalCityId || originalViolationData.personalCity">
               <div class="review-label">
                 <strong>مدينة الإقامة:</strong>
               </div>
-              <div class="review-value">{{ originalViolationData.personalCity }}</div>
+              <div class="review-value">
+                <span *ngIf="originalViolationData.personalCityId">
+                  {{ getCityNameById(originalViolationData.personalCityId) }}
+                </span>
+                <span *ngIf="!originalViolationData.personalCityId && originalViolationData.personalCity">
+                  {{ originalViolationData.personalCity }}
+                </span>
+              </div>
             </div>
             <div class="review-item" *ngIf="originalViolationData.personalAddress">
               <div class="review-label">
@@ -801,11 +905,11 @@
               </div>
               <div class="review-value">{{ originalViolationData.personalDateOfBirth | date:'medium' }}</div>
             </div>
-            <div class="review-item" *ngIf="originalViolationData.personalEducation">
+            <div class="review-item" *ngIf="originalViolationData.personalEducationId">
               <div class="review-label">
                 <strong>المستوى التعليمي:</strong>
               </div>
-              <div class="review-value">{{ originalViolationData.personalEducation }}</div>
+              <div class="review-value">{{ originalViolationData.personalEducationName || 'غير محدد' }}</div>
             </div>
             <div class="review-item" *ngIf="originalViolationData.gender">
               <div class="review-label">
@@ -838,6 +942,24 @@
               <div class="review-value">{{ originalViolationData.disabilityType }}</div>
             </div>
             <!-- Contact Information -->
+            <div class="review-item" *ngIf="originalViolationData.canBeContacted">
+              <div class="review-label">
+                <strong>يمكن الاتصال به:</strong>
+              </div>
+              <div class="review-value">نعم</div>
+            </div>
+            <div class="review-item" *ngIf="originalViolationData.contactName">
+              <div class="review-label">
+                <strong>اسم جهة الاتصال:</strong>
+              </div>
+              <div class="review-value">{{ originalViolationData.contactName }}</div>
+            </div>
+            <div class="review-item" *ngIf="originalViolationData.contactAddress">
+              <div class="review-label">
+                <strong>عنوان جهة الاتصال:</strong>
+              </div>
+              <div class="review-value">{{ originalViolationData.contactAddress }}</div>
+            </div>
             <div class="review-item" *ngIf="originalViolationData.contactEmail">
               <div class="review-label">
                 <strong>البريد الإلكتروني:</strong>
@@ -849,6 +971,12 @@
                 <strong>رقم الهاتف:</strong>
               </div>
               <div class="review-value">{{ originalViolationData.contactPhone }}</div>
+            </div>
+            <div class="review-item" *ngIf="originalViolationData.preferredContactMethod">
+              <div class="review-label">
+                <strong>طريقة الاتصال المفضلة:</strong>
+              </div>
+              <div class="review-value">{{ getPreferredContactMethodLabel(originalViolationData.preferredContactMethod) }}</div>
             </div>
             <!-- Question Answers -->
             <div class="review-item review-item-full" *ngIf="originalViolationData.questionAnswers && originalViolationData.questionAnswers.length > 0">
@@ -906,6 +1034,14 @@
           [disabled]="loading"
         >
           {{ editingViolation ? 'حفظ التغييرات' : 'إضافة' }}
+        </button>
+        <button
+          type="button"
+          class="btn-draft"
+          (click)="saveDraft()"
+          *ngIf="!editingViolation"
+        >
+          حفظ كمسودة
         </button>
         <button
           type="button"
@@ -969,16 +1105,23 @@
       </div>
 
       <!-- Personal Information -->
-      <div class="details-section" *ngIf="selectedViolation.personalName || selectedViolation.personalCity">
+      <div class="details-section" *ngIf="selectedViolation.personalName || selectedViolation.personalCityId || selectedViolation.personalCity">
         <h3 class="section-title">معلومات الضحية/الشخص</h3>
         <div class="details-grid">
           <div class="detail-item" *ngIf="selectedViolation.personalName">
             <span class="detail-label">الاسم:</span>
             <span class="detail-value">{{ selectedViolation.personalName }}</span>
           </div>
-          <div class="detail-item" *ngIf="selectedViolation.personalCity">
+          <div class="detail-item" *ngIf="selectedViolation.personalCityId || selectedViolation.personalCity">
             <span class="detail-label">مدينة الإقامة:</span>
-            <span class="detail-value">{{ selectedViolation.personalCity }}</span>
+            <span class="detail-value">
+              <span *ngIf="selectedViolation.personalCityId">
+                {{ getCityNameById(selectedViolation.personalCityId) }}
+              </span>
+              <span *ngIf="!selectedViolation.personalCityId && selectedViolation.personalCity">
+                {{ selectedViolation.personalCity }}
+              </span>
+            </span>
           </div>
           <div class="detail-item" *ngIf="selectedViolation.personalAddress">
             <span class="detail-label">العنوان:</span>
@@ -992,9 +1135,9 @@
             <span class="detail-label">تاريخ الميلاد:</span>
             <span class="detail-value">{{ selectedViolation.personalDateOfBirth | date:'medium' }}</span>
           </div>
-          <div class="detail-item" *ngIf="selectedViolation.personalEducation">
+          <div class="detail-item" *ngIf="selectedViolation.personalEducationId">
             <span class="detail-label">المستوى التعليمي:</span>
-            <span class="detail-value">{{ selectedViolation.personalEducation }}</span>
+            <span class="detail-value">{{ selectedViolation.personalEducationName || 'غير محدد' }}</span>
           </div>
           <div class="detail-item" *ngIf="selectedViolation.gender">
             <span class="detail-label">الجنس:</span>
@@ -1020,9 +1163,21 @@
       </div>
 
       <!-- Contact Information -->
-      <div class="details-section" *ngIf="selectedViolation.contactEmail || selectedViolation.contactPhone">
+      <div class="details-section" *ngIf="selectedViolation.canBeContacted || selectedViolation.contactName || selectedViolation.contactAddress || selectedViolation.contactEmail || selectedViolation.contactPhone || selectedViolation.preferredContactMethod">
         <h3 class="section-title">معلومات الاتصال</h3>
         <div class="details-grid">
+          <div class="detail-item" *ngIf="selectedViolation.canBeContacted">
+            <span class="detail-label">يمكن الاتصال به:</span>
+            <span class="detail-value">نعم</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.contactName">
+            <span class="detail-label">اسم جهة الاتصال:</span>
+            <span class="detail-value">{{ selectedViolation.contactName }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.contactAddress">
+            <span class="detail-label">عنوان جهة الاتصال:</span>
+            <span class="detail-value">{{ selectedViolation.contactAddress }}</span>
+          </div>
           <div class="detail-item" *ngIf="selectedViolation.contactEmail">
             <span class="detail-label">البريد الإلكتروني:</span>
             <span class="detail-value">{{ selectedViolation.contactEmail }}</span>
@@ -1030,6 +1185,10 @@
           <div class="detail-item" *ngIf="selectedViolation.contactPhone">
             <span class="detail-label">رقم الهاتف:</span>
             <span class="detail-value">{{ selectedViolation.contactPhone }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.preferredContactMethod">
+            <span class="detail-label">طريقة الاتصال المفضلة:</span>
+            <span class="detail-value">{{ getPreferredContactMethodLabel(selectedViolation.preferredContactMethod) }}</span>
           </div>
         </div>
       </div>

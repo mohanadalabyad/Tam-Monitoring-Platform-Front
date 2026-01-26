@@ -33,6 +33,8 @@ import { CitiesManagementComponent } from './pages/dashboard/cities-management/c
 import { PublicViolationsManagementComponent } from './pages/dashboard/public-violations-management/public-violations-management.component';
 import { MyPrivateViolationsComponent } from './pages/dashboard/my-private-violations/my-private-violations.component';
 import { PrivateViolationsManagementComponent } from './pages/dashboard/private-violations-management/private-violations-management.component';
+import { SettingsManagementComponent } from './pages/dashboard/settings-management/settings-management.component';
+import { EducationLevelsManagementComponent } from './pages/dashboard/education-levels-management/education-levels-management.component';
 
 // Shared components
 import { UnifiedTableComponent } from './components/unified-table/unified-table.component';
@@ -77,6 +79,8 @@ import { HasPermissionDirective } from './directives/has-permission.directive';
     PublicViolationsManagementComponent,
     MyPrivateViolationsComponent,
     PrivateViolationsManagementComponent,
+    SettingsManagementComponent,
+    EducationLevelsManagementComponent,
     UnifiedCardComponent,
     ModalComponent,
     ToasterComponent,

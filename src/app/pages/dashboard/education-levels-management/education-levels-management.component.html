@@ -1,0 +1,147 @@
+<div class="education-levels-management-page">
+  <div class="page-header">
+    <div>
+      <h1>إدارة المستويات التعليمية</h1>
+      <p>إدارة وعرض جميع المستويات التعليمية</p>
+    </div>
+    <div class="header-actions">
+      <app-view-toggle
+        [storageKey]="'education-levels-view-mode'"
+        [defaultView]="'table'"
+        (viewChange)="onViewChange($event)"
+      ></app-view-toggle>
+      <button class="btn-primary" (click)="openAddModal()" *hasPermission="'EducationLevel.Create'">
+        <lucide-icon [img]="FolderPlus" [size]="18"></lucide-icon>
+        إضافة مستوى تعليمي جديد
+      </button>
+    </div>
+  </div>
+
+  <!-- Toolbar with Results Counter -->
+  <div class="toolbar" *ngIf="!loading">
+    <div class="toolbar-left">
+      <div class="results-info">
+        <span class="results-count">
+          <strong>{{ educationLevels.length }}</strong> مستوى تعليمي
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table View -->
+  <div *ngIf="viewMode === 'table'">
+    <app-unified-table
+      [columns]="columns"
+      [data]="educationLevels"
+      [loading]="loading"
+      [actions]="actions"
+      [pageSize]="10"
+      emptyMessage="لا توجد مستويات تعليمية"
+      (rowClick)="editEducationLevel($event)"
+    ></app-unified-table>
+  </div>
+
+  <!-- Cards View -->
+  <div *ngIf="viewMode === 'cards'" class="education-levels-cards-view">
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>جاري تحميل المستويات التعليمية...</p>
+    </div>
+    <div *ngIf="!loading && educationLevels.length === 0" class="empty-state">
+      <p>لا توجد مستويات تعليمية</p>
+    </div>
+    <div *ngIf="!loading && educationLevels.length > 0" class="education-levels-grid">
+      <div *ngFor="let educationLevel of educationLevels" class="education-level-card">
+        <div class="card-header">
+          <div class="card-title-section">
+            <h3 class="card-title">{{ educationLevel.name }}</h3>
+          </div>
+          <div class="card-actions-header" (click)="$event.stopPropagation()">
+            <button
+              *ngIf="permissionService.hasPermission('EducationLevel.Update') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-edit"
+              (click)="editEducationLevel(educationLevel); $event.stopPropagation()"
+              title="تعديل"
+            >
+              <lucide-icon [img]="Pencil" [size]="16"></lucide-icon>
+            </button>
+            <button
+              *ngIf="permissionService.hasPermission('EducationLevel.Delete') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-delete"
+              (click)="deleteEducationLevel(educationLevel); $event.stopPropagation()"
+              title="حذف"
+            >
+              <lucide-icon [img]="Trash2" [size]="16"></lucide-icon>
+            </button>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="status-toggle">
+            <span class="status-label">الحالة:</span>
+            <button
+              *ngIf="permissionService.hasPermission('EducationLevel.ToggleActivity') || permissionService.isSuperAdmin()"
+              type="button"
+              class="toggle-btn-card"
+              [class.active]="educationLevel.isActive"
+              [class.toggling]="isToggling(educationLevel.id)"
+              [disabled]="isToggling(educationLevel.id)"
+              (click)="toggleEducationLevelActivity(educationLevel, $event)"
+              [title]="educationLevel.isActive ? 'إلغاء التفعيل' : 'تفعيل'"
+            >
+              <lucide-icon 
+                [img]="educationLevel.isActive ? Power : PowerOff" 
+                [size]="16"
+              ></lucide-icon>
+              <span>{{ educationLevel.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </button>
+            <span
+              *ngIf="!(permissionService.hasPermission('EducationLevel.ToggleActivity') || permissionService.isSuperAdmin())"
+              class="status-readonly"
+              [class.active]="educationLevel.isActive"
+            >
+              <lucide-icon 
+                [img]="educationLevel.isActive ? Power : PowerOff" 
+                [size]="16"
+              ></lucide-icon>
+              <span>{{ educationLevel.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-modal
+    [show]="showModal"
+    [title]="modalTitle"
+    size="md"
+    (close)="closeModal()"
+  >
+    <form [formGroup]="educationLevelForm" #educationLevelFormRef="ngForm">
+      <div class="form-group">
+        <label for="name">اسم المستوى التعليمي *</label>
+        <input
+          type="text"
+          id="name"
+          formControlName="name"
+          [class.invalid]="isFieldInvalid('name')"
+          placeholder="أدخل اسم المستوى التعليمي"
+        />
+        <div class="error-message" *ngIf="isFieldInvalid('name')">
+          اسم المستوى التعليمي مطلوب
+        </div>
+      </div>
+    </form>
+    
+    <div footer>
+      <button type="button" class="btn-secondary" (click)="closeModal()">
+        إلغاء
+      </button>
+      <button type="button" class="btn-primary" (click)="saveEducationLevel()">
+        {{ editingEducationLevel ? 'حفظ التغييرات' : 'إضافة' }}
+      </button>
+    </div>
+  </app-modal>
+</div>

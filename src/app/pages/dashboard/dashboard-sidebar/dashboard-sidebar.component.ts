@@ -25,28 +25,10 @@ export class DashboardSidebarComponent implements OnInit {
       route: '/dashboard'
     },
     {
-      label: 'الفئات',
-      icon: 'M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z',
-      route: '/dashboard/categories',
-      permission: 'Category.Read'
-    },
-    {
-      label: 'الفئات الفرعية',
-      icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10',
-      route: '/dashboard/subcategories',
-      permission: 'SubCategory.Read'
-    },
-    {
-      label: 'الأسئلة',
-      icon: 'M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-      route: '/dashboard/questions',
-      permission: 'Question.Read'
-    },
-    {
-      label: 'المدن',
-      icon: 'M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z',
-      route: '/dashboard/cities',
-      permission: 'City.Read'
+      label: 'الإعدادات',
+      icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z',
+      route: '/dashboard/settings',
+      permission: 'Settings' // Special permission check handled in isMenuItemVisible
     },
     {
       label: 'البلاغات العامة',
@@ -65,24 +47,6 @@ export class DashboardSidebarComponent implements OnInit {
       icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
       route: '/dashboard/private-violations',
       permission: 'PrivateViolation.Read'
-    },
-    {
-      label: 'المستخدمون',
-      icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
-      route: '/dashboard/users',
-      permission: 'User.Read'
-    },
-    {
-      label: 'الأدوار',
-      icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z',
-      route: '/dashboard/roles',
-      permission: 'Role.Read'
-    },
-    {
-      label: 'الصلاحيات',
-      icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z',
-      route: '/dashboard/permissions',
-      permission: 'Permission.Read'
     }
   ];
 
@@ -119,6 +83,21 @@ export class DashboardSidebarComponent implements OnInit {
     // Super admin sees everything
     if (this.permissionService.isSuperAdmin()) {
       return true;
+    }
+
+    // Special handling for Settings menu item
+    // Settings should be visible if user has ANY of the settings permissions
+    if (item.permission === 'Settings') {
+      return this.permissionService.hasAnyPermission([
+        'City.Read',
+        'User.Read',
+        'Role.Read',
+        'Permission.Read',
+        'Category.Read',
+        'SubCategory.Read',
+        'Question.Read',
+        'EducationLevel.Read'
+      ]);
     }
 
     // Check permission using the full permission string (e.g., "User.Read")

@@ -421,7 +421,7 @@ export class QuestionsManagementComponent implements OnInit {
           next: (updatedQuestion) => {
             this.toasterService.showSuccess('تم تحديث السؤال بنجاح');
             this.closeModal();
-            this.loadQuestions(); // Reload data from backend
+            this.loadQuestions(); 
           },
           error: (error) => {
             this.toasterService.showError(error.message || 'حدث خطأ أثناء تحديث السؤال');

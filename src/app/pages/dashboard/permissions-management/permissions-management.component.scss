@@ -283,19 +283,19 @@
         word-wrap: break-word;
         
         &.code-chip {
-          display: inline-block;
-          background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-          border: 1px solid #bae6fd;
-          padding: var(--spacing-xs) var(--spacing-sm);
-          border-radius: var(--radius-md);
-          font-size: var(--font-size-sm);
-          color: var(--primary-color);
-          font-weight: var(--font-weight-medium);
-          font-family: 'Courier New', monospace;
-          max-width: 100%;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
+          background: transparent !important;
+          border: none !important;
+          padding: 0 !important;
+          border-radius: 0 !important;
+          font-size: var(--font-size-base) !important;
+          color: var(--text-primary) !important;
+          font-weight: var(--font-weight-normal) !important;
+          font-family: var(--font-family-primary) !important;
+          max-width: none !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+          white-space: normal !important;
+          display: inline !important;
         }
       }
     }
@@ -492,6 +492,57 @@
   color: var(--danger-color);
   font-size: var(--font-size-sm);
   margin-top: var(--spacing-xs);
+}
+
+// Override code-chip and group-chip styling - make them look like regular text
+::ng-deep {
+  .code-chip {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    font-size: var(--font-size-sm) !important;
+    color: var(--text-primary) !important;
+    font-weight: var(--font-weight-normal) !important;
+    font-family: var(--font-family-primary) !important;
+    max-width: none !important;
+  }
+  
+  .has-code-chip .code-chip,
+  td.has-code-chip .code-chip {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    font-size: var(--font-size-sm) !important;
+    color: var(--text-primary) !important;
+    font-weight: var(--font-weight-normal) !important;
+    font-family: var(--font-family-primary) !important;
+    max-width: none !important;
+  }
+  
+  .group-chip {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    font-size: var(--font-size-sm) !important;
+    color: var(--text-primary) !important;
+    font-weight: var(--font-weight-normal) !important;
+    font-family: var(--font-family-primary) !important;
+  }
+  
+  .has-group-chip .group-chip,
+  td.has-group-chip .group-chip {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    font-size: var(--font-size-sm) !important;
+    color: var(--text-primary) !important;
+    font-weight: var(--font-weight-normal) !important;
+    font-family: var(--font-family-primary) !important;
+  }
 }
 
 .btn-primary {

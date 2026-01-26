@@ -3,7 +3,7 @@ import { CategoryDto } from './category.model';
 import { SubCategoryDto } from './subcategory.model';
 import { UserDto } from './user-management.model';
 import { QuestionAnswer } from './question.model';
-import { PrivateViolationRole, Gender } from './published-violation.model';
+import { PrivateViolationRole, Gender, PreferredContactMethod } from './published-violation.model';
 
 // Violation Type Enum
 export enum ViolationType {
@@ -98,11 +98,11 @@ export interface AddPrivateViolationDto {
   description: string;
   // Personal/Victim Information
   personalName?: string;
-  personalCity?: string;
+  personalCityId?: number;
   personalAddress?: string;
   personalAge?: number;
   personalDateOfBirth?: Date | string;
-  personalEducation?: string;
+  personalEducationId?: number;
   hasDisability?: boolean;
   disabilityType?: string;
   gender?: Gender;
@@ -111,6 +111,10 @@ export interface AddPrivateViolationDto {
   // Contact Information
   contactEmail?: string;
   contactPhone?: string;
+  canBeContacted?: boolean;
+  contactName?: string;
+  contactAddress?: string;
+  preferredContactMethod?: PreferredContactMethod;
   // Role
   role: PrivateViolationRole;
   otherRoleText?: string;
@@ -150,11 +154,11 @@ export interface UpdatePrivateViolationDto {
   description: string;
   // Personal/Victim Information
   personalName?: string;
-  personalCity?: string;
+  personalCityId?: number;
   personalAddress?: string;
   personalAge?: number;
   personalDateOfBirth?: Date | string;
-  personalEducation?: string;
+  personalEducationId?: number;
   hasDisability?: boolean;
   disabilityType?: string;
   gender?: Gender;
@@ -163,6 +167,10 @@ export interface UpdatePrivateViolationDto {
   // Contact Information
   contactEmail?: string;
   contactPhone?: string;
+  canBeContacted?: boolean;
+  contactName?: string;
+  contactAddress?: string;
+  preferredContactMethod?: PreferredContactMethod;
   // Role
   role: PrivateViolationRole;
   otherRoleText?: string;
@@ -191,11 +199,14 @@ export interface PrivateViolationDto {
   description: string;
   // Personal/Victim Information
   personalName?: string;
-  personalCity?: string;
+  personalCityId?: number;
+  personalCityName?: string;
+  personalCity?: string; // Legacy field for backward compatibility
   personalAddress?: string;
   personalAge?: number;
   personalDateOfBirth?: Date | string;
-  personalEducation?: string;
+  personalEducationId?: number;
+  personalEducationName?: string;
   hasDisability?: boolean;
   disabilityType?: string;
   gender?: Gender;
@@ -204,6 +215,10 @@ export interface PrivateViolationDto {
   // Contact Information
   contactEmail?: string;
   contactPhone?: string;
+  canBeContacted?: boolean;
+  contactName?: string;
+  contactAddress?: string;
+  preferredContactMethod?: PreferredContactMethod;
   // Role
   role: PrivateViolationRole;
   otherRoleText?: string;

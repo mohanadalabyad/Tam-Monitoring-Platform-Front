@@ -5,6 +5,7 @@ import { CityService } from '../../../services/city.service';
 import { CategoryService } from '../../../services/category.service';
 import { SubCategoryService } from '../../../services/subcategory.service';
 import { QuestionService } from '../../../services/question.service';
+import { EducationLevelService } from '../../../services/education-level.service';
 import { ToasterService } from '../../../services/toaster.service';
 import { PermissionCheckService } from '../../../services/permission-check.service';
 import { ConfirmationDialogService } from '../../../services/confirmation-dialog.service';
@@ -25,10 +26,11 @@ import { QuestionDto, QuestionFilter, QuestionType } from '../../../models/quest
 import { CityDto } from '../../../models/city.model';
 import { CategoryDto } from '../../../models/category.model';
 import { SubCategoryDto } from '../../../models/subcategory.model';
+import { EducationLevelDto } from '../../../models/education-level.model';
 import { TableColumn, TableAction } from '../../../components/unified-table/unified-table.component';
 import { ViewMode } from '../../../components/view-toggle/view-toggle.component';
 import { Eye, Pencil, Trash2, Plus, CheckCircle, XCircle } from 'lucide-angular';
-import { PrivateViolationRole, Gender, getPrivateViolationRoleLabel, getGenderLabel } from '../../../models/published-violation.model';
+import { PrivateViolationRole, Gender, PreferredContactMethod, getPrivateViolationRoleLabel, getGenderLabel, getPreferredContactMethodLabel } from '../../../models/published-violation.model';
 import { environment } from '../../../../environments/environment';
 
 interface AttachmentPreview {
@@ -36,6 +38,23 @@ interface AttachmentPreview {
   preview: string;
   uploaded: boolean;
   filePath?: string;
+}
+
+interface DraftData {
+  violationForm: any; // Form values
+  questionsForm: any; // Question answers as key-value pairs
+  attachmentPreviews: Array<{
+    preview: string; // Base64 preview if image
+    fileName: string;
+    fileSize: number;
+    fileType: string;
+    uploaded: boolean;
+    filePath?: string;
+  }>;
+  currentStep: number;
+  timestamp: string; // ISO date string
+  categoryId?: number; // To reload questions
+  subCategoryId?: number; // To reload subcategories
 }
 
 @Component({
@@ -66,6 +85,7 @@ export class MyPrivateViolationsComponent implements OnInit {
   cities: CityDto[] = [];
   categories: CategoryDto[] = [];
   subCategories: SubCategoryDto[] = [];
+  educationLevels: EducationLevelDto[] = [];
   filteredQuestions: QuestionDto[] = [];
   sortedQuestions: QuestionDto[] = [];
   loadingQuestions = false;
@@ -73,6 +93,11 @@ export class MyPrivateViolationsComponent implements OnInit {
   // File upload
   attachments: File[] = [];
   attachmentPreviews: AttachmentPreview[] = [];
+
+  // Draft management
+  hasDraft: boolean = false;
+  draftTimestamp: Date | null = null;
+  draftExplicitlySaved: boolean = false;
 
   // Pagination
   currentPage = 1;
@@ -85,6 +110,7 @@ export class MyPrivateViolationsComponent implements OnInit {
   PublishStatus = PublishStatus;
   PrivateViolationRole = PrivateViolationRole;
   Gender = Gender;
+  PreferredContactMethod = PreferredContactMethod;
 
   columns: TableColumn[] = [
     { key: 'id', label: 'ID', sortable: true, filterable: false },
@@ -133,6 +159,7 @@ export class MyPrivateViolationsComponent implements OnInit {
     private categoryService: CategoryService,
     private subCategoryService: SubCategoryService,
     private questionService: QuestionService,
+    private educationLevelService: EducationLevelService,
     private toasterService: ToasterService,
     public permissionService: PermissionCheckService,
     private confirmationService: ConfirmationDialogService,
@@ -150,6 +177,7 @@ export class MyPrivateViolationsComponent implements OnInit {
     this.initForms();
     this.loadLookupData();
     this.loadViolations();
+    this.checkDraft();
     setTimeout(() => {
       this.setupActions();
     }, 0);
@@ -166,19 +194,23 @@ export class MyPrivateViolationsComponent implements OnInit {
       description: ['', Validators.required],
       // Personal/Victim Information
       personalName: [''],
-      personalCity: [''],
+      personalCityId: [null],
       personalAddress: [''],
       personalAge: [null],
       personalDateOfBirth: [''],
-      personalEducation: [''],
+      personalEducationId: [null],
       hasDisability: [false],
       disabilityType: [''],
       gender: [null],
       maritalStatus: [''],
       work: [''],
       // Contact Information
+      canBeContacted: [false],
+      contactName: [''],
+      contactAddress: [''],
       contactEmail: ['', Validators.email],
       contactPhone: [''],
+      preferredContactMethod: [null],
       // Role
       role: [PrivateViolationRole.Witness, Validators.required],
       otherRoleText: [''],
@@ -238,6 +270,7 @@ export class MyPrivateViolationsComponent implements OnInit {
   loadLookupData(): void {
     this.loadCities();
     this.loadCategories();
+    this.loadEducationLevels();
   }
 
   loadCities(): void {
@@ -262,6 +295,19 @@ export class MyPrivateViolationsComponent implements OnInit {
       },
       error: (error) => {
         console.error('Error loading categories:', error);
+      }
+    });
+  }
+
+  loadEducationLevels(): void {
+    this.educationLevelService.getPublicLookup().subscribe({
+      next: (response: any) => {
+        if (response.success && response.data) {
+          this.educationLevels = Array.isArray(response.data) ? response.data : [];
+        }
+      },
+      error: (error: any) => {
+        console.error('Error loading education levels:', error);
       }
     });
   }
@@ -512,6 +558,11 @@ export class MyPrivateViolationsComponent implements OnInit {
     this.editingViolation = null;
     this.originalViolationData = null;
     this.currentStep = 1;
+    this.draftExplicitlySaved = false;
+    
+    // Check for existing draft
+    this.checkDraft();
+    
     this.violationForm.reset({
       role: PrivateViolationRole.Witness,
       showPersonalInfoInPublish: false,
@@ -559,18 +610,22 @@ export class MyPrivateViolationsComponent implements OnInit {
           location: fullViolation.location,
           description: fullViolation.description,
           personalName: fullViolation.personalName || '',
-          personalCity: fullViolation.personalCity || '',
+          personalCityId: fullViolation.personalCityId || null,
           personalAddress: fullViolation.personalAddress || '',
           personalAge: fullViolation.personalAge || null,
           personalDateOfBirth: fullViolation.personalDateOfBirth ? new Date(fullViolation.personalDateOfBirth).toISOString().split('T')[0] : '',
-          personalEducation: fullViolation.personalEducation || '',
+          personalEducationId: fullViolation.personalEducationId || null,
           hasDisability: fullViolation.hasDisability || false,
           disabilityType: fullViolation.disabilityType || '',
           gender: fullViolation.gender || null,
           maritalStatus: fullViolation.maritalStatus || '',
           work: fullViolation.work || '',
+          canBeContacted: fullViolation.canBeContacted || false,
+          contactName: fullViolation.contactName || '',
+          contactAddress: fullViolation.contactAddress || '',
           contactEmail: fullViolation.contactEmail || '',
           contactPhone: fullViolation.contactPhone || '',
+          preferredContactMethod: fullViolation.preferredContactMethod || null,
           role: fullViolation.role,
           otherRoleText: fullViolation.otherRoleText || '',
           showPersonalInfoInPublish: fullViolation.showPersonalInfoInPublish || false
@@ -849,18 +904,22 @@ export class MyPrivateViolationsComponent implements OnInit {
         location: formValue.location,
         description: formValue.description,
         personalName: formValue.personalName || undefined,
-        personalCity: formValue.personalCity || undefined,
+        personalCityId: formValue.personalCityId ? Number(formValue.personalCityId) : undefined,
         personalAddress: formValue.personalAddress || undefined,
         personalAge: formValue.personalAge ? Number(formValue.personalAge) : undefined,
         personalDateOfBirth: formValue.personalDateOfBirth || undefined,
-        personalEducation: formValue.personalEducation || undefined,
+        personalEducationId: formValue.personalEducationId ? Number(formValue.personalEducationId) : undefined,
         hasDisability: formValue.hasDisability || undefined,
         disabilityType: formValue.disabilityType || undefined,
         gender: formValue.gender !== null && formValue.gender !== undefined ? Number(formValue.gender) : undefined,
         maritalStatus: formValue.maritalStatus || undefined,
         work: formValue.work || undefined,
+        canBeContacted: formValue.canBeContacted !== undefined ? formValue.canBeContacted : undefined,
+        contactName: formValue.contactName || undefined,
+        contactAddress: formValue.contactAddress || undefined,
         contactEmail: formValue.contactEmail || undefined,
         contactPhone: formValue.contactPhone || undefined,
+        preferredContactMethod: formValue.preferredContactMethod !== null && formValue.preferredContactMethod !== undefined ? Number(formValue.preferredContactMethod) : undefined,
         role: Number(formValue.role),
         otherRoleText: formValue.otherRoleText || undefined,
         showPersonalInfoInPublish: formValue.showPersonalInfoInPublish || false,
@@ -871,7 +930,9 @@ export class MyPrivateViolationsComponent implements OnInit {
       this.privateViolationService.updatePrivateViolation(updateDto).subscribe({
         next: () => {
           this.toasterService.showSuccess('تم تحديث البلاغ بنجاح');
-          this.closeModal();
+          this.clearDraft(); // Clear draft after successful save
+          this.draftExplicitlySaved = false;
+          this.closeModalInternal();
           this.loadViolations();
         },
         error: (error) => {
@@ -890,18 +951,22 @@ export class MyPrivateViolationsComponent implements OnInit {
         location: formValue.location,
         description: formValue.description,
         personalName: formValue.personalName || undefined,
-        personalCity: formValue.personalCity || undefined,
+        personalCityId: formValue.personalCityId ? Number(formValue.personalCityId) : undefined,
         personalAddress: formValue.personalAddress || undefined,
         personalAge: formValue.personalAge ? Number(formValue.personalAge) : undefined,
         personalDateOfBirth: formValue.personalDateOfBirth || undefined,
-        personalEducation: formValue.personalEducation || undefined,
+        personalEducationId: formValue.personalEducationId ? Number(formValue.personalEducationId) : undefined,
         hasDisability: formValue.hasDisability || undefined,
         disabilityType: formValue.disabilityType || undefined,
         gender: formValue.gender !== null && formValue.gender !== undefined ? Number(formValue.gender) : undefined,
         maritalStatus: formValue.maritalStatus || undefined,
         work: formValue.work || undefined,
+        canBeContacted: formValue.canBeContacted !== undefined ? formValue.canBeContacted : undefined,
+        contactName: formValue.contactName || undefined,
+        contactAddress: formValue.contactAddress || undefined,
         contactEmail: formValue.contactEmail || undefined,
         contactPhone: formValue.contactPhone || undefined,
+        preferredContactMethod: formValue.preferredContactMethod !== null && formValue.preferredContactMethod !== undefined ? Number(formValue.preferredContactMethod) : undefined,
         role: Number(formValue.role),
         otherRoleText: formValue.otherRoleText || undefined,
         showPersonalInfoInPublish: formValue.showPersonalInfoInPublish || false,
@@ -912,7 +977,8 @@ export class MyPrivateViolationsComponent implements OnInit {
       this.privateViolationService.createPrivateViolation(addDto).subscribe({
         next: () => {
           this.toasterService.showSuccess('تم إضافة البلاغ بنجاح');
-          this.closeModal();
+          this.clearDraft(); // Clear draft after successful save
+          this.closeModalInternal();
           this.loadViolations();
         },
         error: (error) => {
@@ -966,18 +1032,20 @@ export class MyPrivateViolationsComponent implements OnInit {
   }
 
   closeModal(): void {
-    this.showModal = false;
-    this.editingViolation = null;
-    this.originalViolationData = null;
-    this.currentStep = 1;
-    this.violationForm.reset();
-    this.questionsForm.reset();
-    this.clearQuestionControls();
-    this.attachments = [];
-    this.attachmentPreviews = [];
-    this.filteredQuestions = [];
-    this.sortedQuestions = [];
-    this.loading = false;
+    // Don't prompt when editing existing violation (only for new violations)
+    if (this.editingViolation) {
+      this.closeModalInternal();
+      return;
+    }
+
+    // Check if form has any data entered
+    if (this.hasFormData() && !this.draftExplicitlySaved) {
+      // Show confirmation dialog
+      this.promptSaveDraftOnClose();
+    } else {
+      // No data or draft was already saved, just close
+      this.closeModalInternal();
+    }
   }
 
   // Step management methods
@@ -1317,7 +1385,10 @@ export class MyPrivateViolationsComponent implements OnInit {
   }
 
   getPersonalCityValue(): string {
-    return this.violationForm.get('personalCity')?.value || '';
+    const cityId = this.violationForm.get('personalCityId')?.value;
+    if (!cityId) return '';
+    const city = this.cities.find(c => c.id === cityId);
+    return city ? city.name : '';
   }
 
   getPersonalAddressValue(): string {
@@ -1339,7 +1410,21 @@ export class MyPrivateViolationsComponent implements OnInit {
   }
 
   getPersonalEducationValue(): string {
-    return this.violationForm.get('personalEducation')?.value || '';
+    const educationId = this.violationForm.get('personalEducationId')?.value;
+    if (!educationId) return '';
+    const education = this.educationLevels.find(e => e.id === educationId);
+    return education ? education.name : '';
+  }
+
+  getCityNameById(cityId: number): string {
+    if (!cityId) return '';
+    const city = this.cities.find(c => c.id === cityId);
+    return city ? city.name : '';
+  }
+
+  getPreferredContactMethodLabel(method: PreferredContactMethod | null | undefined): string {
+    if (!method) return '';
+    return getPreferredContactMethodLabel(method);
   }
 
   getGenderValue(): string {
@@ -1452,10 +1537,10 @@ export class MyPrivateViolationsComponent implements OnInit {
     
     // Check personal information
     if (formValue.personalName !== (original.personalName || '') ||
-        formValue.personalCity !== (original.personalCity || '') ||
+        formValue.personalCityId !== (original.personalCityId || null) ||
         formValue.personalAddress !== (original.personalAddress || '') ||
         formValue.personalAge !== (original.personalAge || null) ||
-        formValue.personalEducation !== (original.personalEducation || '') ||
+        formValue.personalEducationId !== (original.personalEducationId || null) ||
         formValue.gender !== (original.gender || null) ||
         formValue.maritalStatus !== (original.maritalStatus || '') ||
         formValue.work !== (original.work || '') ||
@@ -1465,8 +1550,12 @@ export class MyPrivateViolationsComponent implements OnInit {
     }
     
     // Check contact information
-    if (formValue.contactEmail !== (original.contactEmail || '') ||
-        formValue.contactPhone !== (original.contactPhone || '')) {
+    if (formValue.canBeContacted !== (original.canBeContacted || false) ||
+        formValue.contactName !== (original.contactName || '') ||
+        formValue.contactAddress !== (original.contactAddress || '') ||
+        formValue.contactEmail !== (original.contactEmail || '') ||
+        formValue.contactPhone !== (original.contactPhone || '') ||
+        formValue.preferredContactMethod !== (original.preferredContactMethod || null)) {
       return true;
     }
     
@@ -1508,5 +1597,267 @@ export class MyPrivateViolationsComponent implements OnInit {
     }
     
     return false;
+  }
+
+  // Draft Management Methods
+  getDraftKey(): string {
+    const currentUser = this.authService.getCurrentUser();
+    const userId = currentUser?.id || 'anonymous';
+    return `private_violation_draft_${userId}`;
+  }
+
+  checkDraft(): void {
+    const draftKey = this.getDraftKey();
+    const draftStr = localStorage.getItem(draftKey);
+    if (draftStr) {
+      try {
+        const draft: DraftData = JSON.parse(draftStr);
+        this.hasDraft = true;
+        this.draftTimestamp = new Date(draft.timestamp);
+      } catch (error) {
+        console.error('Error parsing draft data:', error);
+        this.clearDraft();
+      }
+    } else {
+      this.hasDraft = false;
+      this.draftTimestamp = null;
+    }
+  }
+
+  hasFormData(): boolean {
+    // Check violationForm for any non-empty values (excluding defaults)
+    const formValue = this.violationForm.value;
+    const defaultValues = {
+      role: PrivateViolationRole.Witness,
+      showPersonalInfoInPublish: false,
+      hasDisability: false
+    };
+
+    // Check if any field has a value different from default/empty
+    const hasViolationFormData = Object.keys(formValue).some(key => {
+      const value = formValue[key];
+      const defaultValue = defaultValues[key as keyof typeof defaultValues];
+      
+      if (value === null || value === undefined || value === '') {
+        return false;
+      }
+      
+      if (defaultValue !== undefined && value === defaultValue) {
+        return false; // It's just the default value
+      }
+      
+      return true;
+    });
+
+    // Check questionsForm for any answers
+    const hasQuestionAnswers = Object.keys(this.questionsForm.controls).some(key => {
+      const control = this.questionsForm.get(key);
+      return control && control.value && String(control.value).trim() !== '';
+    });
+
+    // Check if attachments or attachmentPreviews have items
+    const hasAttachments = this.attachments.length > 0 || this.attachmentPreviews.length > 0;
+
+    return hasViolationFormData || hasQuestionAnswers || hasAttachments;
+  }
+
+  saveDraft(): void {
+    try {
+      const formValue = this.violationForm.value;
+      
+      // Collect question answers
+      const questionsFormData: { [key: string]: any } = {};
+      Object.keys(this.questionsForm.controls).forEach(key => {
+        const control = this.questionsForm.get(key);
+        if (control && control.value) {
+          questionsFormData[key] = control.value;
+        }
+      });
+
+      // Convert attachmentPreviews to serializable format
+      const attachmentPreviewsData = this.attachmentPreviews.map(preview => ({
+        preview: preview.preview, // Base64 preview if image
+        fileName: preview.file?.name || 'file',
+        fileSize: preview.file?.size || 0,
+        fileType: preview.file?.type || 'application/octet-stream',
+        uploaded: preview.uploaded,
+        filePath: preview.filePath
+      }));
+
+      const draftData: DraftData = {
+        violationForm: formValue,
+        questionsForm: questionsFormData,
+        attachmentPreviews: attachmentPreviewsData,
+        currentStep: this.currentStep,
+        timestamp: new Date().toISOString(),
+        categoryId: formValue.categoryId ? Number(formValue.categoryId) : undefined,
+        subCategoryId: formValue.subCategoryId ? Number(formValue.subCategoryId) : undefined
+      };
+
+      const draftKey = this.getDraftKey();
+      localStorage.setItem(draftKey, JSON.stringify(draftData));
+      
+      this.hasDraft = true;
+      this.draftTimestamp = new Date();
+      this.draftExplicitlySaved = true;
+      
+      this.toasterService.showSuccess('تم حفظ المسودة بنجاح');
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      if (error instanceof DOMException && error.name === 'QuotaExceededError') {
+        this.toasterService.showError('لا يمكن حفظ المسودة: مساحة التخزين المحلية ممتلئة');
+      } else {
+        this.toasterService.showError('حدث خطأ أثناء حفظ المسودة');
+      }
+    }
+  }
+
+  loadDraft(): void {
+    const draftKey = this.getDraftKey();
+    const draftStr = localStorage.getItem(draftKey);
+    
+    if (!draftStr) {
+      return;
+    }
+
+    try {
+      const draft: DraftData = JSON.parse(draftStr);
+      
+      // Restore violationForm values
+      this.violationForm.patchValue(draft.violationForm, { emitEvent: false });
+      
+      // Load category/subcategory if needed to trigger question loading
+      if (draft.categoryId) {
+        this.loadSubCategories(draft.categoryId, true);
+        this.loadQuestions(draft.categoryId, false);
+        
+        // Set subCategoryId after subcategories are loaded
+        if (draft.subCategoryId) {
+          setTimeout(() => {
+            const subCategoryControl = this.violationForm.get('subCategoryId');
+            if (subCategoryControl) {
+              subCategoryControl.enable();
+              subCategoryControl.setValue(draft.subCategoryId, { emitEvent: false });
+            }
+          }, 300);
+        }
+      }
+
+      // Restore questionsForm after questions are loaded
+      if (draft.questionsForm && Object.keys(draft.questionsForm).length > 0) {
+        // Wait for questions to be loaded, then restore answers
+        const restoreAnswers = () => {
+          // Check if all question controls exist
+          const allControlsExist = Object.keys(draft.questionsForm).every(key => {
+            return this.questionsForm.get(key) !== null;
+          });
+
+          if (allControlsExist && this.sortedQuestions.length > 0) {
+            this.questionsForm.patchValue(draft.questionsForm, { emitEvent: true });
+            // Mark controls as touched and dirty
+            Object.keys(draft.questionsForm).forEach(key => {
+              const control = this.questionsForm.get(key);
+              if (control) {
+                control.markAsTouched();
+                control.markAsDirty();
+              }
+            });
+            this.cdr.detectChanges();
+          } else {
+            // Retry after a short delay if controls don't exist yet
+            setTimeout(restoreAnswers, 300);
+          }
+        };
+        
+        // Start restoring after questions are loaded
+        setTimeout(restoreAnswers, 1500);
+      }
+
+      // Restore attachmentPreviews metadata (user will need to re-upload files)
+      this.attachmentPreviews = draft.attachmentPreviews.map(att => ({
+        file: null,
+        preview: att.preview,
+        uploaded: att.uploaded,
+        filePath: att.filePath
+      }));
+      this.attachments = []; // Files cannot be restored
+
+      // Restore currentStep
+      this.currentStep = draft.currentStep || 1;
+      
+      this.draftExplicitlySaved = false; // So user can save again if needed
+      
+      // Show notification about file re-upload requirement
+      if (draft.attachmentPreviews.length > 0) {
+        this.toasterService.showWarning('يرجى إعادة رفع الملفات المرفقة', 'ملاحظة');
+      }
+    } catch (error) {
+      console.error('Error loading draft:', error);
+      this.toasterService.showError('حدث خطأ أثناء تحميل المسودة');
+      this.clearDraft();
+    }
+  }
+
+  clearDraft(): void {
+    const draftKey = this.getDraftKey();
+    localStorage.removeItem(draftKey);
+    this.hasDraft = false;
+    this.draftTimestamp = null;
+    this.draftExplicitlySaved = false;
+  }
+
+  startFresh(): void {
+    this.clearDraft();
+    this.checkDraft();
+    this.violationForm.reset({
+      role: PrivateViolationRole.Witness,
+      showPersonalInfoInPublish: false,
+      hasDisability: false
+    });
+    this.questionsForm.reset();
+    this.clearQuestionControls();
+    this.attachments = [];
+    this.attachmentPreviews = [];
+    this.currentStep = 1;
+    this.filteredQuestions = [];
+    this.sortedQuestions = [];
+    this.loadingQuestions = false;
+  }
+
+  promptSaveDraftOnClose(): void {
+    this.confirmationService.show({
+      title: 'حفظ المسودة',
+      message: 'لديك تغييرات غير محفوظة. هل تريد حفظها كمسودة؟',
+      confirmText: 'حفظ كمسودة',
+      cancelText: 'إغلاق بدون حفظ',
+      type: 'warning'
+    }).then(confirmed => {
+      if (confirmed) {
+        this.saveDraft();
+        this.closeModalInternal();
+      } else {
+        this.closeModalInternal();
+      }
+    });
+  }
+
+  private closeModalInternal(): void {
+    this.showModal = false;
+    this.editingViolation = null;
+    this.originalViolationData = null;
+    this.currentStep = 1;
+    this.violationForm.reset({
+      role: PrivateViolationRole.Witness,
+      showPersonalInfoInPublish: false,
+      hasDisability: false
+    });
+    this.questionsForm.reset();
+    this.clearQuestionControls();
+    this.attachments = [];
+    this.attachmentPreviews = [];
+    this.filteredQuestions = [];
+    this.sortedQuestions = [];
+    this.loading = false;
+    this.draftExplicitlySaved = false;
   }
 }

@@ -1,4 +1,4 @@
-.cities-management-page {
+.education-levels-management-page {
   animation: fadeIn 0.3s var(--transition-timing);
 }
 
@@ -14,6 +14,19 @@
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
+  }
+  
+  h1 {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-extrabold);
+    color: var(--secondary-color);
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  p {
+    color: var(--text-secondary);
+    font-size: var(--font-size-base);
+    margin: 0;
   }
 }
 
@@ -46,7 +59,7 @@
   }
 }
 
-.cities-cards-view {
+.education-levels-cards-view {
   .loading-state,
   .empty-state {
     text-align: center;
@@ -68,13 +81,13 @@
     }
   }
 
-  .cities-grid {
+  .education-levels-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: var(--spacing-lg);
   }
   
-  .city-card {
+  .education-level-card {
     background: var(--white);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
@@ -152,34 +165,6 @@
             transform: translateY(-2px);
             box-shadow: var(--shadow-sm);
           }
-        }
-      }
-    }
-    
-    .card-content {
-      padding: var(--spacing-lg);
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-md);
-      
-      .card-field {
-        display: flex;
-        flex-direction: column;
-        gap: var(--spacing-xs);
-        
-        .field-label {
-          font-size: var(--font-size-xs);
-          font-weight: var(--font-weight-bold);
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-        }
-        
-        .field-value {
-          font-size: var(--font-size-base);
-          color: var(--text-primary);
-          word-wrap: break-word;
         }
       }
     }
@@ -276,18 +261,31 @@
   }
 }
 
-.page-header {
-  h1 {
-    font-size: var(--font-size-2xl);
-    font-weight: var(--font-weight-extrabold);
-    color: var(--secondary-color);
-    margin-bottom: var(--spacing-xs);
+// Override code-chip styling for names - make it look like regular text
+::ng-deep {
+  .code-chip {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    font-size: var(--font-size-sm) !important;
+    color: var(--text-primary) !important;
+    font-weight: var(--font-weight-normal) !important;
+    font-family: var(--font-family-primary) !important;
+    max-width: none !important;
   }
   
-  p {
-    color: var(--text-secondary);
-    font-size: var(--font-size-base);
-    margin: 0;
+  .has-code-chip .code-chip,
+  td.has-code-chip .code-chip {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    font-size: var(--font-size-sm) !important;
+    color: var(--text-primary) !important;
+    font-weight: var(--font-weight-normal) !important;
+    font-family: var(--font-family-primary) !important;
+    max-width: none !important;
   }
 }
 
@@ -347,8 +345,7 @@
     font-size: var(--font-size-sm);
   }
   
-  input,
-  textarea {
+  input {
     padding: var(--spacing-md);
     border: 2px solid var(--border-light);
     border-radius: var(--radius-md);
@@ -366,143 +363,12 @@
       border-color: var(--danger-color);
     }
   }
-  
-  textarea {
-    resize: vertical;
-    min-height: 80px;
-    font-family: 'Courier New', monospace;
-  }
-  
-  .form-help-text {
-    font-size: var(--font-size-sm);
-    color: var(--text-secondary);
-    margin-bottom: var(--spacing-md);
-    line-height: var(--line-height-relaxed);
-  }
-  
-  // Map Container
-  .map-container {
-    width: 100%;
-    height: 400px;
-    min-height: 400px;
-    border: 2px solid var(--border-light);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    margin-bottom: var(--spacing-md);
-    background: var(--light-bg);
-    
-    // Leaflet map styles
-    :global {
-      .leaflet-container {
-        height: 100%;
-        width: 100%;
-        font-family: var(--font-family-primary);
-      }
-      
-      .leaflet-control-geocoder {
-        border-radius: var(--radius-md);
-        box-shadow: var(--shadow-md);
-        
-        .leaflet-control-geocoder-form {
-          input {
-            border-radius: var(--radius-md);
-            padding: var(--spacing-sm) var(--spacing-md);
-            font-family: var(--font-family-primary);
-          }
-        }
-      }
-    }
-  }
-  
-  // Coordinates Display
-  .coordinates-display {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm) var(--spacing-md);
-    background: var(--light-bg);
-    border-radius: var(--radius-md);
-    margin-bottom: var(--spacing-md);
-    font-size: var(--font-size-sm);
-    
-    .coordinate-label {
-      font-weight: var(--font-weight-semibold);
-      color: var(--text-secondary);
-    }
-    
-    .coordinate-value {
-      font-family: 'Courier New', monospace;
-      color: var(--primary-color);
-      font-weight: var(--font-weight-medium);
-    }
-  }
-  
-  // Radius Input Group
-  .radius-input-group {
-    display: flex;
-    flex-direction: column;
-    margin-top: var(--spacing-md);
-    
-    label {
-      margin-bottom: var(--spacing-sm);
-      font-weight: var(--font-weight-semibold);
-      color: var(--text-primary);
-      font-size: var(--font-size-sm);
-    }
-    
-    input[type="number"] {
-      padding: var(--spacing-md);
-      border: 2px solid var(--border-light);
-      border-radius: var(--radius-md);
-      font-size: var(--font-size-base);
-      font-family: var(--font-family-primary);
-      transition: all var(--transition-base) var(--transition-timing);
-      
-      &:focus {
-        outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(91, 56, 114, 0.1);
-      }
-      
-      &.invalid {
-        border-color: var(--danger-color);
-      }
-    }
-  }
 }
 
 .error-message {
   color: var(--danger-color);
   font-size: var(--font-size-sm);
   margin-top: var(--spacing-xs);
-}
-
-// Override code-chip styling for names - make it look like regular text
-::ng-deep {
-  .code-chip {
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
-    font-size: var(--font-size-sm) !important;
-    color: var(--text-primary) !important;
-    font-weight: var(--font-weight-normal) !important;
-    font-family: var(--font-family-primary) !important;
-    max-width: none !important;
-  }
-  
-  .has-code-chip .code-chip,
-  td.has-code-chip .code-chip {
-    background: transparent !important;
-    border: none !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
-    font-size: var(--font-size-sm) !important;
-    color: var(--text-primary) !important;
-    font-weight: var(--font-weight-normal) !important;
-    font-family: var(--font-family-primary) !important;
-    max-width: none !important;
-  }
 }
 
 @keyframes spin {
@@ -531,7 +397,7 @@
     }
   }
   
-  .cities-grid {
+  .education-levels-grid {
     grid-template-columns: 1fr;
   }
 }

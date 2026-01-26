@@ -5,13 +5,53 @@
       <p>عرض جميع الحوادث المبلغ عنها وحالتها الحالية</p>
     </div>
 
-    <div class="filters">
-      <div class="filter-group">
-        <label for="categoryFilter">تصفية حسب الفئة:</label>
-        <select id="categoryFilter" [(ngModel)]="categoryFilter" (change)="applyFilters()">
-          <option value="all">جميع الفئات</option>
-          <option *ngFor="let cat of categories" [value]="cat.id">{{ cat.name }}</option>
-        </select>
+    <!-- Filters Section -->
+    <div class="filters-section">
+      <div class="filters-header" (click)="showFilters = !showFilters">
+        <span>التصفية</span>
+        <svg [class.rotated]="showFilters" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 9l6 6 6-6"/>
+        </svg>
+      </div>
+      <div class="filters-content" *ngIf="showFilters">
+        <form [formGroup]="filterForm">
+          <div class="filters-grid">
+            <div class="filter-group">
+              <label for="cityId">المدينة:</label>
+              <select id="cityId" formControlName="cityId" [disabled]="loadingCities">
+                <option [ngValue]="null">جميع المدن</option>
+                <option *ngFor="let city of cities" [ngValue]="city.id">{{ city.name }}</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label for="categoryId">الفئة:</label>
+              <select id="categoryId" formControlName="categoryId">
+                <option [ngValue]="null">جميع الفئات</option>
+                <option *ngFor="let category of categories" [ngValue]="category.id">{{ category.name }}</option>
+              </select>
+            </div>
+
+            <div class="filter-group">
+              <label for="dateFrom">من تاريخ:</label>
+              <input type="date" id="dateFrom" formControlName="dateFrom">
+            </div>
+
+            <div class="filter-group">
+              <label for="dateTo">إلى تاريخ:</label>
+              <input type="date" id="dateTo" formControlName="dateTo">
+            </div>
+          </div>
+
+          <div class="filters-actions">
+            <button type="button" class="btn-secondary" (click)="resetFilters()">
+              إعادة تعيين
+            </button>
+            <button type="button" class="btn-primary" (click)="applyFilters()">
+              تطبيق التصفية
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 

@@ -19,6 +19,8 @@ import { CitiesManagementComponent } from './pages/dashboard/cities-management/c
 import { PublicViolationsManagementComponent } from './pages/dashboard/public-violations-management/public-violations-management.component';
 import { MyPrivateViolationsComponent } from './pages/dashboard/my-private-violations/my-private-violations.component';
 import { PrivateViolationsManagementComponent } from './pages/dashboard/private-violations-management/private-violations-management.component';
+import { SettingsManagementComponent } from './pages/dashboard/settings-management/settings-management.component';
+import { EducationLevelsManagementComponent } from './pages/dashboard/education-levels-management/education-levels-management.component';
 
 const routes: Routes = [
   // Public routes
@@ -93,6 +95,17 @@ const routes: Routes = [
         component: PrivateViolationsManagementComponent,
         canActivate: [PermissionGuard],
         data: { permission: 'PrivateViolation.Read' }
+      },
+      {
+        path: 'settings',
+        component: SettingsManagementComponent,
+        canActivate: [AuthGuard] // Authenticated users only, permissions checked inside component
+      },
+      {
+        path: 'education-levels',
+        component: EducationLevelsManagementComponent,
+        canActivate: [PermissionGuard],
+        data: { permission: 'EducationLevel.Read' }
       }
     ]
   },

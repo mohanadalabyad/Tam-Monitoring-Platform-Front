@@ -280,90 +280,25 @@
             <p class="section-description">تصفح الحوادث المبلغ عنها حسب الموقع الجغرافي</p>
           </div>
           <div class="map-container">
-            <div class="palestine-map">
-              <!-- خريطة فلسطين بخلفية CSS -->
-              <div class="map-background"></div>
-              
-              <div class="map-overlay-content">
-                <!-- النقاط التفاعلية على الخريطة -->
-                
-                <div class="city-dot" style="top: 45%; left: 48%;" data-city="القدس" title="القدس - {{jerusalemIncidents}} حادثة">
-                  <span class="dot dot-high"></span>
-                  <span class="city-name">القدس</span>
-                </div>
-                
-                <div class="city-dot" style="top: 40%; left: 45%;" data-city="رام الله" title="رام الله - {{ramallahIncidents}} حادثة">
-                  <span class="dot dot-medium"></span>
-                  <span class="city-name">رام الله</span>
-                </div>
-                
-                <div class="city-dot" style="top: 32%; left: 47%;" data-city="نابلس" title="نابلس - {{nablusIncidents}} حادثة">
-                  <span class="dot dot-medium"></span>
-                  <span class="city-name">نابلس</span>
-                </div>
-                
-                <div class="city-dot" style="top: 50%; left: 48%;" data-city="بيت لحم" title="بيت لحم - {{bethlehemIncidents}} حادثة">
-                  <span class="dot dot-low"></span>
-                  <span class="city-name">بيت لحم</span>
-                </div>
-                
-                <div class="city-dot" style="top: 58%; left: 46%;" data-city="الخليل" title="الخليل - {{hebronIncidents}} حادثة">
-                  <span class="dot dot-medium"></span>
-                  <span class="city-name">الخليل</span>
-                </div>
-                
-                <div class="city-dot" style="top: 25%; left: 47%;" data-city="جنين" title="جنين - {{jeninIncidents}} حادثة">
-                  <span class="dot dot-low"></span>
-                  <span class="city-name">جنين</span>
-                </div>
-                
-                <div class="city-dot" style="top: 75%; left: 25%;" data-city="غزة" title="غزة - {{gazaIncidents}} حادثة">
-                  <span class="dot dot-high"></span>
-                  <span class="city-name">غزة</span>
-                </div>
-                
-                <div class="city-dot" style="top: 42%; left: 22%;" data-city="يافا" title="يافا - {{jaffaIncidents}} حادثة">
-                  <span class="dot dot-low"></span>
-                  <span class="city-name">يافا</span>
-                </div>
-                
-                <div class="city-dot" style="top: 18%; left: 28%;" data-city="حيفا" title="حيفا - {{haifaIncidents}} حادثة">
-                  <span class="dot dot-medium"></span>
-                  <span class="city-name">حيفا</span>
-                </div>
-              </div>
-              
-              <div class="map-legend">
-                <div class="legend-title">كثافة الحوادث</div>
-                <div class="legend-items">
-                  <div class="legend-item">
-                    <div class="legend-color high"></div>
-                    <span>عالية جداً</span>
-                  </div>
-                  <div class="legend-item">
-                    <div class="legend-color medium"></div>
-                    <span>متوسطة</span>
-                  </div>
-                  <div class="legend-item">
-                    <div class="legend-color low"></div>
-                    <span>منخفضة</span>
-                  </div>
-                </div>
-              </div>
+            <!-- Leaflet Map Container -->
+            <div id="city-statistics-map" class="city-statistics-map" *ngIf="!loadingStatistics"></div>
+            <div *ngIf="loadingStatistics" class="map-loading">
+              <div class="spinner"></div>
+              <p>جاري تحميل الخريطة...</p>
             </div>
             
             <div class="map-stats-summary">
               <div class="map-stat-card">
                 <div class="stat-icon-map">📊</div>
                 <div class="stat-info">
-                  <div class="stat-number-large">{{ totalMapIncidents }}</div>
-                  <div class="stat-label-map">إجمالي الحوادث المسجلة</div>
+                  <div class="stat-number-large">{{ totalReports }}</div>
+                  <div class="stat-label-map">إجمالي البلاغات المسجلة</div>
                 </div>
               </div>
               <div class="map-stat-card">
                 <div class="stat-icon-map">🏙️</div>
                 <div class="stat-info">
-                  <div class="stat-number-large">26</div>
+                  <div class="stat-number-large">{{ cityStatistics.length }}</div>
                   <div class="stat-label-map">مدينة على الخريطة</div>
                 </div>
               </div>
@@ -371,7 +306,7 @@
                 <div class="stat-icon-map">📍</div>
                 <div class="stat-info">
                   <div class="stat-number-large">{{ publishedReports }}</div>
-                  <div class="stat-label-map">حوادث منشورة ومحدثة</div>
+                  <div class="stat-label-map">بلاغات منشورة ومحدثة</div>
                 </div>
               </div>
             </div>

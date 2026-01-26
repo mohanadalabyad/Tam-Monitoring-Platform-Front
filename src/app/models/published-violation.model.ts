@@ -31,12 +31,21 @@ export interface PublishedViolationDto {
   personalAddress?: string;
   personalAge?: number;
   personalDateOfBirth?: Date;
-  personalEducation?: string;
+  personalEducationId?: number;
+  personalEducationName?: string;
   hasDisability?: boolean;
   disabilityType?: string;
   gender?: Gender;
   maritalStatus?: string;
   work?: string;
+  
+  // Contact Information (only for PrivateViolations when ShowPersonalInfoInPublish)
+  canBeContacted?: boolean;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  contactAddress?: string;
+  preferredContactMethod?: PreferredContactMethod;
   
   // Question Answers (only for PrivateViolations)
   questionAnswers?: PublishedQuestionAnswerDto[];
@@ -48,6 +57,21 @@ export interface PublishedViolationDto {
   isActive: boolean;
   creationDate: Date;
   createdBy?: string;
+}
+
+// Preferred Contact Method Enum
+export enum PreferredContactMethod {
+  Phone = 1,
+  Email = 2
+}
+
+// Helper function for PreferredContactMethod
+export function getPreferredContactMethodLabel(method: PreferredContactMethod): string {
+  const labels: { [key: number]: string } = {
+    1: 'هاتف',
+    2: 'بريد إلكتروني'
+  };
+  return labels[method] || 'غير معروف';
 }
 
 export interface PublishedQuestionAnswerDto {
@@ -69,6 +93,8 @@ export interface PublishedViolationFilter {
   cityId?: number;
   categoryId?: number;
   subCategoryId?: number;
+  dateFrom?: string; // ISO date string
+  dateTo?: string; // ISO date string
 }
 
 // Enums for Private Violation

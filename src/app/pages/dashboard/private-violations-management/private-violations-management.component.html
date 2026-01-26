@@ -297,9 +297,9 @@
             <span class="detail-label">تاريخ الميلاد:</span>
             <span class="detail-value">{{ selectedViolation.personalDateOfBirth | date:'medium' }}</span>
           </div>
-          <div class="detail-item" *ngIf="selectedViolation.personalEducation">
+          <div class="detail-item" *ngIf="selectedViolation.personalEducationId">
             <span class="detail-label">المستوى التعليمي:</span>
-            <span class="detail-value">{{ selectedViolation.personalEducation }}</span>
+            <span class="detail-value">{{ selectedViolation.personalEducationName || 'غير محدد' }}</span>
           </div>
           <div class="detail-item" *ngIf="selectedViolation.gender">
             <span class="detail-label">الجنس:</span>

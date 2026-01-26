@@ -1,0 +1,32 @@
+<div class="settings-page">
+  <div class="page-header">
+    <h1>الإعدادات</h1>
+    <p>إدارة إعدادات النظام</p>
+  </div>
+
+  <div class="settings-grid" *ngIf="visibleCards.length > 0">
+    <div
+      *ngFor="let card of visibleCards"
+      class="settings-card"
+      (click)="navigateToCard(card)"
+    >
+      <div class="card-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path [attr.d]="card.icon"/>
+        </svg>
+      </div>
+      <div class="card-content">
+        <h3 class="card-title">{{ card.label }}</h3>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty-state" *ngIf="visibleCards.length === 0">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    <p>ليس لديك صلاحية للوصول إلى أي إعدادات</p>
+  </div>
+</div>
