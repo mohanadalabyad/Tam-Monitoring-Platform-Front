@@ -30,6 +30,7 @@ import { QuestionsManagementComponent } from './pages/dashboard/questions-manage
 import { RolesManagementComponent } from './pages/dashboard/roles-management/roles-management.component';
 import { PermissionsManagementComponent } from './pages/dashboard/permissions-management/permissions-management.component';
 import { CitiesManagementComponent } from './pages/dashboard/cities-management/cities-management.component';
+import { FollowUpStatusesManagementComponent } from './pages/dashboard/follow-up-statuses-management/follow-up-statuses-management.component';
 import { PublicViolationsManagementComponent } from './pages/dashboard/public-violations-management/public-violations-management.component';
 import { MyPrivateViolationsComponent } from './pages/dashboard/my-private-violations/my-private-violations.component';
 import { PrivateViolationsManagementComponent } from './pages/dashboard/private-violations-management/private-violations-management.component';
@@ -76,17 +77,18 @@ import { HasPermissionDirective } from './directives/has-permission.directive';
     RolesManagementComponent,
     PermissionsManagementComponent,
     CitiesManagementComponent,
+    FollowUpStatusesManagementComponent,
     PublicViolationsManagementComponent,
     MyPrivateViolationsComponent,
     PrivateViolationsManagementComponent,
     SettingsManagementComponent,
     EducationLevelsManagementComponent,
     UnifiedCardComponent,
-    ModalComponent,
     ToasterComponent,
     DynamicFormComponent,
     DynamicQuestionComponent,
-    HasPermissionDirective
+    HasPermissionDirective,
+    ModalComponent
   ],
   imports: [
     BrowserModule,

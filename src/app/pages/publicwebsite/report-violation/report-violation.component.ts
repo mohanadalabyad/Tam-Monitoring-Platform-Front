@@ -185,7 +185,7 @@ export class ReportViolationComponent implements OnInit {
         
         this.attachments.push(file);
         
-        // Create preview for images
+        // Create preview for images and videos
         if (file.type.startsWith('image/')) {
           const reader = new FileReader();
           reader.onload = (e) => {
@@ -195,6 +195,13 @@ export class ReportViolationComponent implements OnInit {
             });
           };
           reader.readAsDataURL(file);
+        } else if (file.type.startsWith('video/')) {
+          // Create object URL for video preview
+          const videoUrl = URL.createObjectURL(file);
+          this.attachmentPreviews.push({
+            file: file,
+            preview: videoUrl
+          });
         } else {
           this.attachmentPreviews.push({
             file: file,
@@ -206,6 +213,11 @@ export class ReportViolationComponent implements OnInit {
   }
 
   removeAttachment(index: number): void {
+    const preview = this.attachmentPreviews[index];
+    // Clean up object URL if it's a video
+    if (preview && preview.preview && preview.file.type.startsWith('video/') && preview.preview.startsWith('blob:')) {
+      URL.revokeObjectURL(preview.preview);
+    }
     this.attachments.splice(index, 1);
     this.attachmentPreviews.splice(index, 1);
   }
@@ -314,6 +326,12 @@ export class ReportViolationComponent implements OnInit {
   }
 
   resetForm(): void {
+    // Clean up object URLs for videos
+    this.attachmentPreviews.forEach(preview => {
+      if (preview.preview && preview.file.type.startsWith('video/') && preview.preview.startsWith('blob:')) {
+        URL.revokeObjectURL(preview.preview);
+      }
+    });
     this.submitted = false;
     this.submittedViolationId = null;
     this.currentStep = 1;

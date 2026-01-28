@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { PublicViolationService } from '../../../services/public-violation.service';
+import { ViolationFollowUpService } from '../../../services/violation-follow-up.service';
+import { FollowUpStatusService } from '../../../services/follow-up-status.service';
 import { CityService } from '../../../services/city.service';
 import { CategoryService } from '../../../services/category.service';
 import { SubCategoryService } from '../../../services/subcategory.service';
@@ -17,12 +19,14 @@ import {
   getVerificationStatusLabel,
   getPublishStatusLabel
 } from '../../../models/public-violation.model';
+import { ViolationFollowUpDto, AddViolationFollowUpDto } from '../../../models/violation-follow-up.model';
+import { FollowUpStatusDto } from '../../../models/follow-up-status.model';
 import { CityDto } from '../../../models/city.model';
 import { CategoryDto } from '../../../models/category.model';
 import { SubCategoryDto } from '../../../models/subcategory.model';
 import { TableColumn, TableAction } from '../../../components/unified-table/unified-table.component';
 import { ViewMode } from '../../../components/view-toggle/view-toggle.component';
-import { Eye, Pencil, Trash2, CheckCircle, XCircle, Upload, Download } from 'lucide-angular';
+import { Eye, Pencil, Trash2, CheckCircle, XCircle, Upload, Download, ClipboardList } from 'lucide-angular';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -41,6 +45,12 @@ export class PublicViolationsManagementComponent implements OnInit {
   editingViolation: PublicViolationDto | null = null;
   showDetailsModal = false;
   selectedViolation: PublicViolationDto | null = null;
+  showFollowUpModal = false;
+  selectedViolationForFollowUp: PublicViolationDto | null = null;
+  followUpForm!: FormGroup;
+  followUps: ViolationFollowUpDto[] = [];
+  followUpStatuses: FollowUpStatusDto[] = [];
+  loadingFollowUps = false;
   showFilters = false;
   searchTerm: string = '';
   
@@ -107,9 +117,12 @@ export class PublicViolationsManagementComponent implements OnInit {
   XCircle = XCircle;
   Upload = Upload;
   Download = Download;
+  ClipboardList = ClipboardList;
 
   constructor(
     private publicViolationService: PublicViolationService,
+    private violationFollowUpService: ViolationFollowUpService,
+    private followUpStatusService: FollowUpStatusService,
     private cityService: CityService,
     private categoryService: CategoryService,
     private subCategoryService: SubCategoryService,
@@ -126,6 +139,7 @@ export class PublicViolationsManagementComponent implements OnInit {
     }
     this.initForms();
     this.loadLookupData();
+    this.loadFollowUpStatuses();
     this.loadPublicViolations();
     setTimeout(() => {
       this.setupActions();
@@ -146,6 +160,11 @@ export class PublicViolationsManagementComponent implements OnInit {
 
     this.descriptionForm = this.fb.group({
       description: ['', Validators.required]
+    });
+
+    this.followUpForm = this.fb.group({
+      followUpStatusId: ['', Validators.required],
+      note: ['', Validators.required]
     });
 
     // Watch category changes to reload subcategories
@@ -238,6 +257,17 @@ export class PublicViolationsManagementComponent implements OnInit {
         action: (row) => this.editDescription(row),
         class: 'btn-edit',
         variant: 'warning',
+        showLabel: false
+      });
+    }
+
+    if (this.permissionService.hasPermission('ViolationFollowUp', 'Create') || this.permissionService.isSuperAdmin()) {
+      this.actions.push({
+        label: 'إضافة Follow-up',
+        icon: ClipboardList,
+        action: (row) => this.openFollowUpModal(row),
+        class: 'btn-info',
+        variant: 'info',
         showLabel: false
       });
     }
@@ -438,8 +468,19 @@ export class PublicViolationsManagementComponent implements OnInit {
   }
 
   viewDetails(violation: PublicViolationDto): void {
-    this.selectedViolation = violation;
-    this.showDetailsModal = true;
+    // Load full violation details to ensure we have all fields including attachments
+    this.publicViolationService.getPublicViolationById(violation.id).subscribe({
+      next: (fullViolation) => {
+        this.selectedViolation = fullViolation;
+        this.showDetailsModal = true;
+        // TODO: Load follow-ups when ViolationFollowUp entity is implemented
+        // this.loadFollowUps();
+      },
+      error: (error) => {
+        console.error('Error loading violation details:', error);
+        this.toasterService.showError('حدث خطأ أثناء تحميل تفاصيل البلاغ');
+      }
+    });
   }
 
   closeDetailsModal(): void {
@@ -663,10 +704,93 @@ export class PublicViolationsManagementComponent implements OnInit {
     return imageTypes.some(type => fileType.toLowerCase().includes(type.toLowerCase()));
   }
 
+  isVideo(fileType: string): boolean {
+    if (!fileType) return false;
+    const videoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', '.mp4', '.webm', '.ogg', '.mov', '.avi'];
+    return videoTypes.some(type => fileType.toLowerCase().includes(type.toLowerCase()));
+  }
+
   openAttachment(filePath: string): void {
     const url = this.getAttachmentUrl(filePath);
     if (url) {
       window.open(url, '_blank');
     }
+  }
+
+  loadFollowUpStatuses(): void {
+    this.followUpStatusService.getAllFollowUpStatuses(undefined, undefined, true).subscribe({
+      next: (response: any) => {
+        if (response.success && response.data) {
+          this.followUpStatuses = Array.isArray(response.data) ? response.data : response.data.items || [];
+        }
+      },
+      error: (error: any) => {
+        console.error('Error loading follow-up statuses:', error);
+      }
+    });
+  }
+
+  openFollowUpModal(violation: PublicViolationDto): void {
+    if (!this.permissionService.hasPermission('ViolationFollowUp', 'Create') && !this.permissionService.isSuperAdmin()) {
+      this.toasterService.showWarning('ليس لديك صلاحية لإضافة Follow-up', 'صلاحية مرفوضة');
+      return;
+    }
+
+    this.selectedViolationForFollowUp = violation;
+    this.followUpForm.reset();
+    this.loadFollowUps(violation.id);
+    this.showFollowUpModal = true;
+  }
+
+  closeFollowUpModal(): void {
+    this.showFollowUpModal = false;
+    this.selectedViolationForFollowUp = null;
+    this.followUps = [];
+    this.followUpForm.reset();
+  }
+
+  loadFollowUps(violationId: number): void {
+    this.loadingFollowUps = true;
+    this.violationFollowUpService.getByViolationId(violationId, 'Public').subscribe({
+      next: (response: any) => {
+        if (response.success && response.data) {
+          this.followUps = response.data;
+        }
+        this.loadingFollowUps = false;
+      },
+      error: (error: any) => {
+        console.error('Error loading follow-ups:', error);
+        this.toasterService.showError('حدث خطأ أثناء تحميل سجل المتابعة');
+        this.loadingFollowUps = false;
+      }
+    });
+  }
+
+  saveFollowUp(): void {
+    if (!this.selectedViolationForFollowUp || this.followUpForm.invalid) {
+      return;
+    }
+
+    const dto: AddViolationFollowUpDto = {
+      violationId: this.selectedViolationForFollowUp.id,
+      violationType: 'Public',
+      followUpStatusId: this.followUpForm.get('followUpStatusId')?.value,
+      note: this.followUpForm.get('note')?.value
+    };
+
+    this.loading = true;
+    this.violationFollowUpService.addFollowUp(dto).subscribe({
+      next: () => {
+        this.toasterService.showSuccess('تم إضافة Follow-up بنجاح');
+        this.followUpForm.reset();
+        this.loadFollowUps(this.selectedViolationForFollowUp!.id);
+        this.loading = false;
+      },
+      error: (error: any) => {
+        console.error('Error adding follow-up:', error);
+        this.toasterService.showError(error.message || 'حدث خطأ أثناء إضافة Follow-up');
+        this.loading = false;
+      }
+    });
   }
 }

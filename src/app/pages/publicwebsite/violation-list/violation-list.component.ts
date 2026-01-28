@@ -3,10 +3,9 @@ import { FormBuilder, FormGroup } from '@angular/forms';
 import { PublishedViolationService } from '../../../services/published-violation.service';
 import { CategoryService } from '../../../services/category.service';
 import { CityService } from '../../../services/city.service';
-import { PublishedViolationDto, PublishedViolationFilter, PublishedAttachmentDto } from '../../../models/published-violation.model';
+import { PublishedViolationDto, PublishedViolationFilter } from '../../../models/published-violation.model';
 import { CategoryDto } from '../../../models/category.model';
 import { CityDto } from '../../../models/city.model';
-import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-violation-list',
@@ -151,30 +150,6 @@ export class ViolationListComponent implements OnInit {
   getLocation(violation: PublishedViolationDto): string {
     // Return city name instead of address/location
     return violation.cityName || 'غير محدد';
-  }
-
-  isImage(fileType: string): boolean {
-    if (!fileType) return false;
-    const imageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', '.png', '.jpg', '.jpeg', '.gif', '.webp'];
-    return imageTypes.some(type => fileType.toLowerCase().includes(type.toLowerCase()));
-  }
-
-  getAttachmentUrl(filePath: string): string {
-    if (!filePath) return '';
-    // If filePath already contains http/https, return as is
-    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-      return filePath;
-    }
-    // Otherwise, construct full URL from API base URL
-    const baseUrl = environment.apiUrl.replace('/api', '');
-    return `${baseUrl}${filePath.startsWith('/') ? '' : '/'}${filePath}`;
-  }
-
-  openAttachment(attachment: PublishedAttachmentDto): void {
-    const url = this.getAttachmentUrl(attachment.filePath);
-    if (url) {
-      window.open(url, '_blank');
-    }
   }
 
   getCountByCategory(categoryId: number): number {

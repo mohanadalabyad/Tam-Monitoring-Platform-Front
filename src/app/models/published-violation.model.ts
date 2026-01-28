@@ -1,5 +1,6 @@
 import { PublicViolationType } from './public-violation.model';
 import { QuestionType } from './question.model';
+import { MaritalStatus, getMaritalStatusLabel } from './violation.model';
 
 // Published Violation DTO - represents both Public and Private violations when published
 export interface PublishedViolationDto {
@@ -36,7 +37,7 @@ export interface PublishedViolationDto {
   hasDisability?: boolean;
   disabilityType?: string;
   gender?: Gender;
-  maritalStatus?: string;
+  maritalStatus?: MaritalStatus;
   work?: string;
   
   // Contact Information (only for PrivateViolations when ShowPersonalInfoInPublish)
@@ -128,3 +129,6 @@ export function getGenderLabel(gender: Gender): string {
   };
   return labels[gender] || 'غير معروف';
 }
+
+// Re-export marital status helper for convenience
+export { getMaritalStatusLabel };

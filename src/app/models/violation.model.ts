@@ -24,6 +24,25 @@ export enum PublishStatus {
   NotPublish = 2
 }
 
+// Marital Status Enum
+export enum MaritalStatus {
+  Married = 1,    // متزوج/ه
+  Divorced = 2,   // مطلق/ه
+  Widowed = 3,    // أرمل/ه
+  Single = 4      // عازب/عزباء
+}
+
+// Helper function to get marital status label
+export function getMaritalStatusLabel(status: MaritalStatus): string {
+  const labels: { [key: number]: string } = {
+    1: 'متزوج/ه',
+    2: 'مطلق/ه',
+    3: 'أرمل/ه',
+    4: 'عازب/عزباء'
+  };
+  return labels[status] || 'غير محدد';
+}
+
 export interface QuestionAnswerDto {
   id?: number;
   privateViolationId?: number;
@@ -95,7 +114,7 @@ export interface AddPrivateViolationDto {
   subCategoryId: number;
   violationDate: Date | string;
   location: string;
-  description: string;
+  description?: string;
   // Personal/Victim Information
   personalName?: string;
   personalCityId?: number;
@@ -106,7 +125,7 @@ export interface AddPrivateViolationDto {
   hasDisability?: boolean;
   disabilityType?: string;
   gender?: Gender;
-  maritalStatus?: string;
+  maritalStatus?: MaritalStatus;
   work?: string;
   // Contact Information
   contactEmail?: string;
@@ -151,7 +170,8 @@ export interface UpdatePrivateViolationDto {
   subCategoryId: number;
   violationDate: Date | string;
   location: string;
-  description: string;
+  description?: string;
+  publishDescription?: string;
   // Personal/Victim Information
   personalName?: string;
   personalCityId?: number;
@@ -162,7 +182,7 @@ export interface UpdatePrivateViolationDto {
   hasDisability?: boolean;
   disabilityType?: string;
   gender?: Gender;
-  maritalStatus?: string;
+  maritalStatus?: MaritalStatus;
   work?: string;
   // Contact Information
   contactEmail?: string;
@@ -196,7 +216,8 @@ export interface PrivateViolationDto {
   subCategoryName?: string;
   violationDate: Date | string;
   location: string;
-  description: string;
+  description?: string;
+  publishDescription?: string;
   // Personal/Victim Information
   personalName?: string;
   personalCityId?: number;
@@ -210,7 +231,7 @@ export interface PrivateViolationDto {
   hasDisability?: boolean;
   disabilityType?: string;
   gender?: Gender;
-  maritalStatus?: string;
+  maritalStatus?: MaritalStatus;
   work?: string;
   // Contact Information
   contactEmail?: string;
@@ -308,4 +329,9 @@ export function getPublishStatusLabel(status: PublishStatus): string {
 }
 
 // Legacy interface for backward compatibility (if needed)
+export interface UpdateDescriptionDto {
+  description?: string;
+  publishDescription?: string;
+}
+
 export interface Violation extends ViolationDto {}

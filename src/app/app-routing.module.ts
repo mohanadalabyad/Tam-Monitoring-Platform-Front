@@ -16,6 +16,7 @@ import { QuestionsManagementComponent } from './pages/dashboard/questions-manage
 import { RolesManagementComponent } from './pages/dashboard/roles-management/roles-management.component';
 import { PermissionsManagementComponent } from './pages/dashboard/permissions-management/permissions-management.component';
 import { CitiesManagementComponent } from './pages/dashboard/cities-management/cities-management.component';
+import { FollowUpStatusesManagementComponent } from './pages/dashboard/follow-up-statuses-management/follow-up-statuses-management.component';
 import { PublicViolationsManagementComponent } from './pages/dashboard/public-violations-management/public-violations-management.component';
 import { MyPrivateViolationsComponent } from './pages/dashboard/my-private-violations/my-private-violations.component';
 import { PrivateViolationsManagementComponent } from './pages/dashboard/private-violations-management/private-violations-management.component';
@@ -78,6 +79,12 @@ const routes: Routes = [
         component: CitiesManagementComponent,
         canActivate: [PermissionGuard],
         data: { permission: 'City.Read' }
+      },
+      {
+        path: 'follow-up-statuses',
+        component: FollowUpStatusesManagementComponent,
+        canActivate: [PermissionGuard],
+        data: { permission: 'FollowUpStatus.Read' }
       },
       {
         path: 'public-violations',

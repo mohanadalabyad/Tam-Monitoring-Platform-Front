@@ -9,6 +9,7 @@ import {
   PrivateViolationDto,
   AddPrivateViolationDto,
   UpdatePrivateViolationDto,
+  UpdateDescriptionDto,
   PrivateViolationFilter
 } from '../models/violation.model';
 
@@ -122,6 +123,22 @@ export class PrivateViolationService {
    */
   updatePrivateViolation(dto: UpdatePrivateViolationDto): Observable<PrivateViolationDto> {
     return this.http.put<ApiResponse<PrivateViolationDto>>(`${this.apiUrl}/${dto.id}`, dto)
+      .pipe(
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          return response.data;
+        })
+      );
+  }
+
+  /**
+   * Update description and publish description (requires PrivateViolation.Update permission)
+   * This endpoint is only for management use
+   */
+  updateDescription(id: number, dto: UpdateDescriptionDto): Observable<PrivateViolationDto> {
+    return this.http.put<ApiResponse<PrivateViolationDto>>(`${this.apiUrl}/${id}/description`, dto)
       .pipe(
         map(response => {
           if (!response.success) {

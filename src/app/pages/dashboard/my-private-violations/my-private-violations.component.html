@@ -304,17 +304,13 @@
 
         <div class="form-row">
           <div class="form-group">
-            <label for="description">الوصف *</label>
+            <label for="description">الوصف</label>
             <textarea
               id="description"
               formControlName="description"
-              [class.invalid]="isFieldInvalid('description')"
-              placeholder="أدخل وصف الحادثة"
+              placeholder="أدخل وصف الحادثة (اختياري)"
               rows="4"
             ></textarea>
-            <div class="error-message" *ngIf="isFieldInvalid('description')">
-              الوصف مطلوب
-            </div>
           </div>
         </div>
         </div>
@@ -404,12 +400,16 @@
         <div class="form-row">
           <div class="form-group col-6">
             <label for="maritalStatus">الحالة الاجتماعية</label>
-            <input
-              type="text"
+            <select
               id="maritalStatus"
               formControlName="maritalStatus"
-              placeholder="الحالة الاجتماعية"
-            />
+            >
+              <option [ngValue]="null">اختر الحالة الاجتماعية</option>
+              <option [ngValue]="MaritalStatus.Married">متزوج/ه</option>
+              <option [ngValue]="MaritalStatus.Divorced">مطلق/ه</option>
+              <option [ngValue]="MaritalStatus.Widowed">أرمل/ه</option>
+              <option [ngValue]="MaritalStatus.Single">عازب/عزباء</option>
+            </select>
           </div>
 
           <div class="form-group col-6">
@@ -600,7 +600,14 @@
               [alt]="preview.file?.name || 'attachment'"
               class="attachment-image"
             />
-            <div *ngIf="!isImage(preview.file?.type || '')" class="attachment-file-icon">
+            <video
+              *ngIf="isVideo(preview.file?.type || '')"
+              [src]="preview.preview"
+              controls
+              class="attachment-video"
+              (click)="$event.stopPropagation()"
+            ></video>
+            <div *ngIf="!isImage(preview.file?.type || '') && !isVideo(preview.file?.type || '')" class="attachment-file-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                 <polyline points="14 2 14 8 20 8"/>
@@ -921,7 +928,7 @@
               <div class="review-label">
                 <strong>الحالة الاجتماعية:</strong>
               </div>
-              <div class="review-value">{{ originalViolationData.maritalStatus }}</div>
+              <div class="review-value">{{ originalViolationData.maritalStatus ? getMaritalStatusLabel(originalViolationData.maritalStatus) : '' }}</div>
             </div>
             <div class="review-item" *ngIf="originalViolationData.work">
               <div class="review-label">
@@ -1145,7 +1152,7 @@
           </div>
           <div class="detail-item" *ngIf="selectedViolation.maritalStatus">
             <span class="detail-label">الحالة الاجتماعية:</span>
-            <span class="detail-value">{{ selectedViolation.maritalStatus }}</span>
+            <span class="detail-value">{{ selectedViolation.maritalStatus ? getMaritalStatusLabel(selectedViolation.maritalStatus) : '' }}</span>
           </div>
           <div class="detail-item" *ngIf="selectedViolation.work">
             <span class="detail-label">العمل:</span>
@@ -1280,6 +1287,84 @@
     <div footer>
       <button type="button" class="btn-secondary" (click)="closeDetailsModal()">
         إغلاق
+      </button>
+    </div>
+  </app-modal>
+
+  <!-- Follow-Up Modal -->
+  <app-modal
+    [show]="showFollowUpModal"
+    title="إضافة Follow-up"
+    size="lg"
+    (close)="closeFollowUpModal()"
+  >
+    <div *ngIf="selectedViolationForFollowUp">
+      <!-- Follow-Up History -->
+      <div class="follow-up-history" *ngIf="followUps.length > 0">
+        <h3 class="section-title">سجل المتابعة</h3>
+        <div class="history-list" *ngIf="!loadingFollowUps">
+          <div *ngFor="let followUp of followUps" class="history-item">
+            <div class="history-header">
+              <span class="history-status">{{ followUp.followUpStatusName }}</span>
+              <span class="history-date">{{ followUp.creationDate | date:'medium' }}</span>
+            </div>
+            <div class="history-note">{{ followUp.note }}</div>
+            <div class="history-user">بواسطة: {{ followUp.createdByUserName || 'غير معروف' }}</div>
+          </div>
+        </div>
+        <div *ngIf="loadingFollowUps" class="loading-state">
+          <div class="spinner"></div>
+          <p>جاري تحميل سجل المتابعة...</p>
+        </div>
+      </div>
+
+      <!-- Add New Follow-Up Form -->
+      <div class="follow-up-form">
+        <h3 class="section-title">إضافة Follow-up جديد</h3>
+        <form [formGroup]="followUpForm">
+          <div class="form-group">
+            <label for="followUpStatusId">حالة المتابعة *</label>
+            <select
+              id="followUpStatusId"
+              formControlName="followUpStatusId"
+              class="form-control"
+              [class.invalid]="followUpForm.get('followUpStatusId')?.invalid && followUpForm.get('followUpStatusId')?.touched"
+            >
+              <option [ngValue]="null">اختر حالة المتابعة</option>
+              <option *ngFor="let status of followUpStatuses" [ngValue]="status.id">
+                {{ status.name }}
+              </option>
+            </select>
+            <div class="error-message" *ngIf="followUpForm.get('followUpStatusId')?.invalid && followUpForm.get('followUpStatusId')?.touched">
+              حالة المتابعة مطلوبة
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="note">الملاحظة *</label>
+            <textarea
+              id="note"
+              formControlName="note"
+              placeholder="أدخل الملاحظة"
+              rows="4"
+              class="form-control"
+              [class.invalid]="followUpForm.get('note')?.invalid && followUpForm.get('note')?.touched"
+            ></textarea>
+            <div class="error-message" *ngIf="followUpForm.get('note')?.invalid && followUpForm.get('note')?.touched">
+              الملاحظة مطلوبة
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <div footer>
+      <button type="button" class="btn-secondary" (click)="closeFollowUpModal()">
+        إغلاق
+      </button>
+      <button type="button" class="btn-primary" (click)="saveFollowUp()" [disabled]="loading || followUpForm.invalid">
+        <span *ngIf="loading">جاري الحفظ...</span>
+        <span *ngIf="!loading">حفظ</span>
       </button>
     </div>
   </app-modal>

@@ -230,7 +230,8 @@
 
         <div class="attachments-preview" *ngIf="attachmentPreviews.length > 0">
           <div *ngFor="let preview of attachmentPreviews; let i = index" class="attachment-item">
-            <img *ngIf="preview.preview" [src]="preview.preview" alt="Preview" />
+            <img *ngIf="preview.preview && preview.file.type.startsWith('image/')" [src]="preview.preview" alt="Preview" />
+            <video *ngIf="preview.preview && preview.file.type.startsWith('video/')" [src]="preview.preview" controls class="attachment-video" (click)="$event.stopPropagation()"></video>
             <div *ngIf="!preview.preview" class="video-placeholder">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polygon points="23 7 16 12 23 17 23 7"/>

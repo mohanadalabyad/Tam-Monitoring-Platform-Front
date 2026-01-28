@@ -1,6 +1,8 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { PrivateViolationService } from '../../../services/private-violation.service';
+import { ViolationFollowUpService } from '../../../services/violation-follow-up.service';
+import { FollowUpStatusService } from '../../../services/follow-up-status.service';
 import { CityService } from '../../../services/city.service';
 import { CategoryService } from '../../../services/category.service';
 import { SubCategoryService } from '../../../services/subcategory.service';
@@ -22,6 +24,8 @@ import {
   getAcceptanceStatusLabel,
   getPublishStatusLabel
 } from '../../../models/violation.model';
+import { ViolationFollowUpDto, AddViolationFollowUpDto } from '../../../models/violation-follow-up.model';
+import { FollowUpStatusDto } from '../../../models/follow-up-status.model';
 import { QuestionDto, QuestionFilter, QuestionType } from '../../../models/question.model';
 import { CityDto } from '../../../models/city.model';
 import { CategoryDto } from '../../../models/category.model';
@@ -29,8 +33,9 @@ import { SubCategoryDto } from '../../../models/subcategory.model';
 import { EducationLevelDto } from '../../../models/education-level.model';
 import { TableColumn, TableAction } from '../../../components/unified-table/unified-table.component';
 import { ViewMode } from '../../../components/view-toggle/view-toggle.component';
-import { Eye, Pencil, Trash2, Plus, CheckCircle, XCircle } from 'lucide-angular';
+import { Eye, Pencil, Trash2, Plus, CheckCircle, XCircle, ClipboardList } from 'lucide-angular';
 import { PrivateViolationRole, Gender, PreferredContactMethod, getPrivateViolationRoleLabel, getGenderLabel, getPreferredContactMethodLabel } from '../../../models/published-violation.model';
+import { MaritalStatus, getMaritalStatusLabel } from '../../../models/violation.model';
 import { environment } from '../../../../environments/environment';
 
 interface AttachmentPreview {
@@ -75,6 +80,12 @@ export class MyPrivateViolationsComponent implements OnInit {
   originalViolationData: PrivateViolationDto | null = null;
   showDetailsModal = false;
   selectedViolation: PrivateViolationDto | null = null;
+  showFollowUpModal = false;
+  selectedViolationForFollowUp: PrivateViolationDto | null = null;
+  followUpForm!: FormGroup;
+  followUps: ViolationFollowUpDto[] = [];
+  followUpStatuses: FollowUpStatusDto[] = [];
+  loadingFollowUps = false;
   searchTerm: string = '';
 
   // Step management
@@ -152,9 +163,15 @@ export class MyPrivateViolationsComponent implements OnInit {
   Plus = Plus;
   CheckCircle = CheckCircle;
   XCircle = XCircle;
+  ClipboardList = ClipboardList;
+
+  // Enums for template
+  MaritalStatus = MaritalStatus;
 
   constructor(
     private privateViolationService: PrivateViolationService,
+    private violationFollowUpService: ViolationFollowUpService,
+    private followUpStatusService: FollowUpStatusService,
     private cityService: CityService,
     private categoryService: CategoryService,
     private subCategoryService: SubCategoryService,
@@ -176,6 +193,7 @@ export class MyPrivateViolationsComponent implements OnInit {
     }
     this.initForms();
     this.loadLookupData();
+    this.loadFollowUpStatuses();
     this.loadViolations();
     this.checkDraft();
     setTimeout(() => {
@@ -191,7 +209,7 @@ export class MyPrivateViolationsComponent implements OnInit {
       subCategoryId: [{ value: '', disabled: true }, Validators.required],
       violationDate: ['', Validators.required],
       location: ['', Validators.required],
-      description: ['', Validators.required],
+      description: [''],
       // Personal/Victim Information
       personalName: [''],
       personalCityId: [null],
@@ -202,7 +220,7 @@ export class MyPrivateViolationsComponent implements OnInit {
       hasDisability: [false],
       disabilityType: [''],
       gender: [null],
-      maritalStatus: [''],
+      maritalStatus: [null],
       work: [''],
       // Contact Information
       canBeContacted: [false],
@@ -219,6 +237,11 @@ export class MyPrivateViolationsComponent implements OnInit {
     });
 
     this.questionsForm = this.fb.group({});
+
+    this.followUpForm = this.fb.group({
+      followUpStatusId: ['', Validators.required],
+      note: ['', Validators.required]
+    });
 
     // Watch all form changes to update review section
     this.violationForm.valueChanges.subscribe(() => {
@@ -323,7 +346,7 @@ export class MyPrivateViolationsComponent implements OnInit {
       return;
     }
     this.subCategoryService.getPublicLookup(categoryId).subscribe({
-      next: (response) => {
+      next: (response: any) => {
         const subCategoryControl = this.violationForm.get('subCategoryId');
         const currentValue = preserveValue ? subCategoryControl?.value : '';
         if (response.success && response.data) {
@@ -346,7 +369,7 @@ export class MyPrivateViolationsComponent implements OnInit {
           this.violationForm.patchValue({ subCategoryId: currentValue }, { emitEvent: false });
         }
       },
-      error: (error) => {
+      error: (error: any) => {
         console.error('Error loading subcategories:', error);
         this.subCategories = [];
         const subCategoryControl = this.violationForm.get('subCategoryId');
@@ -420,15 +443,90 @@ export class MyPrivateViolationsComponent implements OnInit {
         } else {
           this.filteredQuestions = [];
           this.sortedQuestions = [];
-          this.loadingQuestions = false;
+        }
+        this.loadingQuestions = false;
+      },
+      error: (error: any) => {
+        console.error('Error loading questions:', error);
+        this.toasterService.showError('حدث خطأ أثناء تحميل الأسئلة');
+        this.loadingQuestions = false;
+      }
+    });
+  }
+
+  loadFollowUpStatuses(): void {
+    this.followUpStatusService.getAllFollowUpStatuses(undefined, undefined, true).subscribe({
+      next: (response: any) => {
+        if (response.success && response.data) {
+          this.followUpStatuses = Array.isArray(response.data) ? response.data : response.data.items || [];
         }
       },
-      error: (error) => {
-        console.error('Error loading questions:', error);
-        this.loadingQuestions = false;
-        this.filteredQuestions = [];
-        this.sortedQuestions = [];
-        this.toasterService.showError('حدث خطأ أثناء تحميل الأسئلة');
+      error: (error: any) => {
+        console.error('Error loading follow-up statuses:', error);
+      }
+    });
+  }
+
+  openFollowUpModal(violation: PrivateViolationDto): void {
+    if (!this.permissionService.hasPermission('ViolationFollowUp', 'Create') && !this.permissionService.isSuperAdmin()) {
+      this.toasterService.showWarning('ليس لديك صلاحية لإضافة Follow-up', 'صلاحية مرفوضة');
+      return;
+    }
+
+    this.selectedViolationForFollowUp = violation;
+    this.followUpForm.reset();
+    this.loadFollowUps(violation.id);
+    this.showFollowUpModal = true;
+  }
+
+  closeFollowUpModal(): void {
+    this.showFollowUpModal = false;
+    this.selectedViolationForFollowUp = null;
+    this.followUps = [];
+    this.followUpForm.reset();
+  }
+
+  loadFollowUps(violationId: number): void {
+    this.loadingFollowUps = true;
+    this.violationFollowUpService.getByViolationId(violationId, 'Private').subscribe({
+      next: (response: any) => {
+        if (response.success && response.data) {
+          this.followUps = response.data;
+        }
+        this.loadingFollowUps = false;
+      },
+      error: (error: any) => {
+        console.error('Error loading follow-ups:', error);
+        this.toasterService.showError('حدث خطأ أثناء تحميل سجل المتابعة');
+        this.loadingFollowUps = false;
+      }
+    });
+  }
+
+  saveFollowUp(): void {
+    if (!this.selectedViolationForFollowUp || this.followUpForm.invalid) {
+      return;
+    }
+
+    const dto: AddViolationFollowUpDto = {
+      violationId: this.selectedViolationForFollowUp.id,
+      violationType: 'Private',
+      followUpStatusId: this.followUpForm.get('followUpStatusId')?.value,
+      note: this.followUpForm.get('note')?.value
+    };
+
+    this.loading = true;
+    this.violationFollowUpService.addFollowUp(dto).subscribe({
+      next: () => {
+        this.toasterService.showSuccess('تم إضافة Follow-up بنجاح');
+        this.followUpForm.reset();
+        this.loadFollowUps(this.selectedViolationForFollowUp!.id);
+        this.loading = false;
+      },
+      error: (error: any) => {
+        console.error('Error adding follow-up:', error);
+        this.toasterService.showError(error.message || 'حدث خطأ أثناء إضافة Follow-up');
+        this.loading = false;
       }
     });
   }
@@ -541,6 +639,18 @@ export class MyPrivateViolationsComponent implements OnInit {
       showLabel: false,
       condition: (row) => row.acceptanceStatus === AcceptanceStatus.Pending
     });
+    
+    // Follow-Up
+    if (this.permissionService.hasPermission('ViolationFollowUp', 'Create') || this.permissionService.isSuperAdmin()) {
+      this.actions.push({
+        label: 'إضافة Follow-up',
+        icon: ClipboardList,
+        action: (row) => this.openFollowUpModal(row),
+        class: 'btn-info',
+        variant: 'info',
+        showLabel: false
+      });
+    }
   }
 
   onPageChange(page: number): void {
@@ -756,22 +866,60 @@ export class MyPrivateViolationsComponent implements OnInit {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       Array.from(input.files).forEach(file => {
+        // Validate file type
+        if (!file.type.startsWith('image/') && !file.type.startsWith('video/') && 
+            !['.pdf', '.doc', '.docx'].some(ext => file.name.toLowerCase().endsWith(ext))) {
+          this.toasterService.showWarning('يجب أن تكون الملفات صور أو فيديو أو مستندات');
+          return;
+        }
+        
+        // Validate file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          this.toasterService.showWarning('حجم الملف يجب أن يكون أقل من 10 ميجابايت');
+          return;
+        }
+        
         this.attachments.push(file);
-        const reader = new FileReader();
-        reader.onload = (e: any) => {
+        
+        // Create preview for images and videos
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (e: any) => {
+            this.attachmentPreviews.push({
+              file: file,
+              preview: e.target.result,
+              uploaded: false
+            });
+          };
+          reader.readAsDataURL(file);
+        } else if (file.type.startsWith('video/')) {
+          // Create object URL for video preview
+          const videoUrl = URL.createObjectURL(file);
           this.attachmentPreviews.push({
             file: file,
-            preview: e.target.result,
+            preview: videoUrl,
             uploaded: false
           });
-        };
-        reader.readAsDataURL(file);
+        } else {
+          // For other files (PDF, DOC, etc.), no preview
+          this.attachmentPreviews.push({
+            file: file,
+            preview: '',
+            uploaded: false
+          });
+        }
       });
     }
   }
 
   removeAttachment(index: number): void {
     const preview = this.attachmentPreviews[index];
+    
+    // Clean up object URL if it's a video
+    if (preview && preview.preview && preview.file && preview.file.type.startsWith('video/') && preview.preview.startsWith('blob:')) {
+      URL.revokeObjectURL(preview.preview);
+    }
+    
     if (preview.uploaded && preview.filePath) {
       // Existing file - just remove from preview
       this.attachmentPreviews.splice(index, 1);
@@ -1327,6 +1475,12 @@ export class MyPrivateViolationsComponent implements OnInit {
     return imageTypes.some(type => fileType.toLowerCase().includes(type.toLowerCase()));
   }
 
+  isVideo(fileType: string): boolean {
+    if (!fileType) return false;
+    const videoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', '.mp4', '.webm', '.ogg', '.mov', '.avi'];
+    return videoTypes.some(type => fileType.toLowerCase().includes(type.toLowerCase()));
+  }
+
   openAttachment(filePath: string): void {
     const url = this.getAttachmentUrl(filePath);
     if (url) {
@@ -1433,7 +1587,12 @@ export class MyPrivateViolationsComponent implements OnInit {
   }
 
   getMaritalStatusValue(): string {
-    return this.violationForm.get('maritalStatus')?.value || '';
+    const value = this.violationForm.get('maritalStatus')?.value;
+    return value ? getMaritalStatusLabel(value) : '';
+  }
+
+  getMaritalStatusLabel(status: MaritalStatus): string {
+    return getMaritalStatusLabel(status);
   }
 
   getWorkValue(): string {
@@ -1614,7 +1773,7 @@ export class MyPrivateViolationsComponent implements OnInit {
         const draft: DraftData = JSON.parse(draftStr);
         this.hasDraft = true;
         this.draftTimestamp = new Date(draft.timestamp);
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error parsing draft data:', error);
         this.clearDraft();
       }
@@ -1702,7 +1861,7 @@ export class MyPrivateViolationsComponent implements OnInit {
       this.draftExplicitlySaved = true;
       
       this.toasterService.showSuccess('تم حفظ المسودة بنجاح');
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error saving draft:', error);
       if (error instanceof DOMException && error.name === 'QuotaExceededError') {
         this.toasterService.showError('لا يمكن حفظ المسودة: مساحة التخزين المحلية ممتلئة');
@@ -1791,7 +1950,7 @@ export class MyPrivateViolationsComponent implements OnInit {
       if (draft.attachmentPreviews.length > 0) {
         this.toasterService.showWarning('يرجى إعادة رفع الملفات المرفقة', 'ملاحظة');
       }
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error loading draft:', error);
       this.toasterService.showError('حدث خطأ أثناء تحميل المسودة');
       this.clearDraft();
@@ -1807,6 +1966,13 @@ export class MyPrivateViolationsComponent implements OnInit {
   }
 
   startFresh(): void {
+    // Clean up object URLs for videos
+    this.attachmentPreviews.forEach(preview => {
+      if (preview.preview && preview.file && preview.file.type.startsWith('video/') && preview.preview.startsWith('blob:')) {
+        URL.revokeObjectURL(preview.preview);
+      }
+    });
+    
     this.clearDraft();
     this.checkDraft();
     this.violationForm.reset({

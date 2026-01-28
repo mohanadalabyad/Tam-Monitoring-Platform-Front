@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { PrivateViolationService } from '../../../services/private-violation.service';
+import { ViolationFollowUpService } from '../../../services/violation-follow-up.service';
+import { FollowUpStatusService } from '../../../services/follow-up-status.service';
 import { CityService } from '../../../services/city.service';
 import { CategoryService } from '../../../services/category.service';
 import { SubCategoryService } from '../../../services/subcategory.service';
@@ -13,14 +15,17 @@ import {
   AcceptanceStatus,
   PublishStatus,
   getAcceptanceStatusLabel,
-  getPublishStatusLabel
+  getPublishStatusLabel,
+  getMaritalStatusLabel
 } from '../../../models/violation.model';
+import { ViolationFollowUpDto, AddViolationFollowUpDto } from '../../../models/violation-follow-up.model';
+import { FollowUpStatusDto } from '../../../models/follow-up-status.model';
 import { CityDto } from '../../../models/city.model';
 import { CategoryDto } from '../../../models/category.model';
 import { SubCategoryDto } from '../../../models/subcategory.model';
 import { TableColumn, TableAction } from '../../../components/unified-table/unified-table.component';
 import { ViewMode } from '../../../components/view-toggle/view-toggle.component';
-import { Eye, Pencil, Trash2, CheckCircle, XCircle, Upload, Download } from 'lucide-angular';
+import { Eye, Pencil, Trash2, CheckCircle, XCircle, Upload, Download, ClipboardList } from 'lucide-angular';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -35,6 +40,15 @@ export class PrivateViolationsManagementComponent implements OnInit {
   viewMode: ViewMode = 'table';
   showDetailsModal = false;
   selectedViolation: PrivateViolationDto | null = null;
+  showEditDescriptionModal = false;
+  editingViolation: PrivateViolationDto | null = null;
+  editDescriptionForm!: FormGroup;
+  showFollowUpModal = false;
+  selectedViolationForFollowUp: PrivateViolationDto | null = null;
+  followUpForm!: FormGroup;
+  followUps: ViolationFollowUpDto[] = [];
+  followUpStatuses: FollowUpStatusDto[] = [];
+  loadingFollowUps = false;
   showFilters = false;
   searchTerm: string = '';
   
@@ -102,6 +116,7 @@ export class PrivateViolationsManagementComponent implements OnInit {
   XCircle = XCircle;
   Upload = Upload;
   Download = Download;
+  ClipboardList = ClipboardList;
 
   // Enums
   AcceptanceStatus = AcceptanceStatus;
@@ -109,6 +124,8 @@ export class PrivateViolationsManagementComponent implements OnInit {
 
   constructor(
     private privateViolationService: PrivateViolationService,
+    private violationFollowUpService: ViolationFollowUpService,
+    private followUpStatusService: FollowUpStatusService,
     private cityService: CityService,
     private categoryService: CategoryService,
     private subCategoryService: SubCategoryService,
@@ -125,6 +142,7 @@ export class PrivateViolationsManagementComponent implements OnInit {
     }
     this.initForms();
     this.loadLookupData();
+    this.loadFollowUpStatuses();
     this.loadViolations();
     setTimeout(() => {
       this.setupActions();
@@ -139,6 +157,16 @@ export class PrivateViolationsManagementComponent implements OnInit {
       cityId: [null],
       categoryId: [null],
       subCategoryId: [null]
+    });
+
+    this.editDescriptionForm = this.fb.group({
+      description: [''],
+      publishDescription: ['']
+    });
+
+    this.followUpForm = this.fb.group({
+      followUpStatusId: ['', Validators.required],
+      note: ['', Validators.required]
     });
 
     // Watch category changes to reload subcategories
@@ -267,6 +295,28 @@ export class PrivateViolationsManagementComponent implements OnInit {
         variant: 'warning',
         showLabel: false,
         condition: (row: PrivateViolationDto) => row.publishStatus === PublishStatus.Publish
+      });
+    }
+    
+    if (this.permissionService.hasPermission('PrivateViolation', 'Update') || this.permissionService.isSuperAdmin()) {
+      this.actions.push({
+        label: 'تعديل الوصف',
+        icon: Pencil,
+        action: (row) => this.openEditDescriptionModal(row),
+        class: 'btn-edit',
+        variant: 'info',
+        showLabel: false
+      });
+    }
+
+    if (this.permissionService.hasPermission('ViolationFollowUp', 'Create') || this.permissionService.isSuperAdmin()) {
+      this.actions.push({
+        label: 'إضافة Follow-up',
+        icon: ClipboardList,
+        action: (row) => this.openFollowUpModal(row),
+        class: 'btn-info',
+        variant: 'info',
+        showLabel: false
       });
     }
     
@@ -432,6 +482,56 @@ export class PrivateViolationsManagementComponent implements OnInit {
     this.selectedViolation = null;
   }
 
+  openEditDescriptionModal(violation: PrivateViolationDto): void {
+    if (!this.permissionService.hasPermission('PrivateViolation', 'Update') && !this.permissionService.isSuperAdmin()) {
+      this.toasterService.showWarning('ليس لديك صلاحية لتعديل الوصف', 'صلاحية مرفوضة');
+      return;
+    }
+
+    this.editingViolation = violation;
+    this.editDescriptionForm.patchValue({
+      description: violation.description || '',
+      publishDescription: violation.publishDescription || ''
+    });
+    this.showEditDescriptionModal = true;
+  }
+
+  closeEditDescriptionModal(): void {
+    this.showEditDescriptionModal = false;
+    this.editingViolation = null;
+    this.editDescriptionForm.reset();
+  }
+
+  saveDescription(): void {
+    if (!this.editingViolation || this.editDescriptionForm.invalid) {
+      return;
+    }
+
+    const dto = {
+      description: this.editDescriptionForm.get('description')?.value || null,
+      publishDescription: this.editDescriptionForm.get('publishDescription')?.value || null
+    };
+
+    this.loading = true;
+    this.privateViolationService.updateDescription(this.editingViolation.id, dto).subscribe({
+      next: (updatedViolation) => {
+        this.toasterService.showSuccess('تم تحديث الوصف بنجاح');
+        this.closeEditDescriptionModal();
+        this.loadViolations();
+        // Update selected violation if it's the same one
+        if (this.selectedViolation && this.selectedViolation.id === updatedViolation.id) {
+          this.selectedViolation = updatedViolation;
+        }
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('Error updating description:', error);
+        this.toasterService.showError(error.message || 'حدث خطأ أثناء تحديث الوصف');
+        this.loading = false;
+      }
+    });
+  }
+
   approveViolation(violation: PrivateViolationDto): void {
     if (!this.permissionService.hasPermission('PrivateViolation', 'Approve') && !this.permissionService.isSuperAdmin()) {
       this.toasterService.showWarning('ليس لديك صلاحية للموافقة على البلاغ', 'صلاحية مرفوضة');
@@ -581,6 +681,10 @@ export class PrivateViolationsManagementComponent implements OnInit {
     return getPublishStatusLabel(status);
   }
 
+  getMaritalStatusLabel(status: any): string {
+    return status ? getMaritalStatusLabel(status) : '';
+  }
+
   getAttachmentUrl(filePath: string): string {
     if (!filePath) return '';
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
@@ -601,5 +705,82 @@ export class PrivateViolationsManagementComponent implements OnInit {
     if (url) {
       window.open(url, '_blank');
     }
+  }
+
+  loadFollowUpStatuses(): void {
+    this.followUpStatusService.getAllFollowUpStatuses(undefined, undefined, true).subscribe({
+      next: (response: any) => {
+        if (response.success && response.data) {
+          this.followUpStatuses = Array.isArray(response.data) ? response.data : response.data.items || [];
+        }
+      },
+      error: (error: any) => {
+        console.error('Error loading follow-up statuses:', error);
+      }
+    });
+  }
+
+  openFollowUpModal(violation: PrivateViolationDto): void {
+    if (!this.permissionService.hasPermission('ViolationFollowUp', 'Create') && !this.permissionService.isSuperAdmin()) {
+      this.toasterService.showWarning('ليس لديك صلاحية لإضافة Follow-up', 'صلاحية مرفوضة');
+      return;
+    }
+
+    this.selectedViolationForFollowUp = violation;
+    this.followUpForm.reset();
+    this.loadFollowUps(violation.id);
+    this.showFollowUpModal = true;
+  }
+
+  closeFollowUpModal(): void {
+    this.showFollowUpModal = false;
+    this.selectedViolationForFollowUp = null;
+    this.followUps = [];
+    this.followUpForm.reset();
+  }
+
+  loadFollowUps(violationId: number): void {
+    this.loadingFollowUps = true;
+    this.violationFollowUpService.getByViolationId(violationId, 'Private').subscribe({
+      next: (response: any) => {
+        if (response.success && response.data) {
+          this.followUps = response.data;
+        }
+        this.loadingFollowUps = false;
+      },
+      error: (error: any) => {
+        console.error('Error loading follow-ups:', error);
+        this.toasterService.showError('حدث خطأ أثناء تحميل سجل المتابعة');
+        this.loadingFollowUps = false;
+      }
+    });
+  }
+
+  saveFollowUp(): void {
+    if (!this.selectedViolationForFollowUp || this.followUpForm.invalid) {
+      return;
+    }
+
+    const dto: AddViolationFollowUpDto = {
+      violationId: this.selectedViolationForFollowUp.id,
+      violationType: 'Private',
+      followUpStatusId: this.followUpForm.get('followUpStatusId')?.value,
+      note: this.followUpForm.get('note')?.value
+    };
+
+    this.loading = true;
+    this.violationFollowUpService.addFollowUp(dto).subscribe({
+      next: () => {
+        this.toasterService.showSuccess('تم إضافة Follow-up بنجاح');
+        this.followUpForm.reset();
+        this.loadFollowUps(this.selectedViolationForFollowUp!.id);
+        this.loading = false;
+      },
+      error: (error: any) => {
+        console.error('Error adding follow-up:', error);
+        this.toasterService.showError(error.message || 'حدث خطأ أثناء إضافة Follow-up');
+        this.loading = false;
+      }
+    });
   }
 }
