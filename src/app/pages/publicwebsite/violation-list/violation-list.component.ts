@@ -149,10 +149,8 @@ export class ViolationListComponent implements OnInit {
   }
 
   getLocation(violation: PublishedViolationDto): string {
-    // Public violations use address, Private violations use location
-    return violation.violationType === 'Public' 
-      ? (violation.address || 'غير محدد')
-      : (violation.location || 'غير محدد');
+    // Return city name instead of address/location
+    return violation.cityName || 'غير محدد';
   }
 
   isImage(fileType: string): boolean {

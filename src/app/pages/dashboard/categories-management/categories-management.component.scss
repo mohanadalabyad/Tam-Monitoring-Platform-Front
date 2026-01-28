@@ -1044,6 +1044,34 @@
   }
 }
 
+// Override code-chip styling for names - make it look like regular text
+::ng-deep {
+  .code-chip {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    font-size: var(--font-size-sm) !important;
+    color: var(--text-primary) !important;
+    font-weight: var(--font-weight-normal) !important;
+    font-family: var(--font-family-primary) !important;
+    max-width: none !important;
+  }
+  
+  .has-code-chip .code-chip,
+  td.has-code-chip .code-chip {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    font-size: var(--font-size-sm) !important;
+    color: var(--text-primary) !important;
+    font-weight: var(--font-weight-normal) !important;
+    font-family: var(--font-family-primary) !important;
+    max-width: none !important;
+  }
+}
+
 /* Responsive */
 @media (max-width: 767px) {
   .page-header {

@@ -73,17 +73,6 @@
         <h3 class="incident-title">{{ violation.subCategoryName || 'غير محدد' }}</h3>
         <p class="incident-desc">{{ violation.description }}</p>
         
-        <div class="incident-details">
-          <div class="detail-item" *ngIf="violation.cityName">
-            <span class="detail-label">المدينة:</span>
-            <span class="detail-value">{{ violation.cityName }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">الموقع:</span>
-            <span class="detail-value">{{ getLocation(violation) }}</span>
-          </div>
-        </div>
-        
         <div class="incident-meta">
           <span class="meta-item">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
