@@ -1,0 +1,383 @@
+<div class="website-content-edit">
+  <div *ngIf="loading" class="loading-state">
+    <p>جاري تحميل المحتوى...</p>
+  </div>
+
+  <div *ngIf="loadError && !loading" class="error-state">
+    <p>فشل تحميل المحتوى. يمكنك تعبئة الحقول أدناه ثم الحفظ.</p>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" *ngIf="!loading && moduleKey" class="content-form">
+    <!-- Header -->
+    <ng-container *ngIf="moduleKey === 'Header'">
+      <div class="form-group">
+        <label>رابط الشعار</label>
+        <input type="text" formControlName="logoUrl" class="form-control" placeholder="/logo.png" />
+      </div>
+      <div class="list-section">
+        <div class="list-header">
+          <label>روابط القائمة</label>
+          <button type="button" class="btn-add" (click)="addNavLink()">+ إضافة رابط</button>
+        </div>
+        <div class="list-items" formArrayName="navLinks">
+          <div class="list-row" *ngFor="let c of navLinksArray().controls; let i = index" [formGroupName]="i">
+            <input formControlName="label" class="form-control" placeholder="النص" />
+            <input formControlName="route" class="form-control" placeholder="المسار مثل /" />
+            <label class="checkbox-label">
+              <input type="checkbox" formControlName="isReportButton" />
+              زر الإبلاغ
+            </label>
+            <button type="button" class="btn-remove" (click)="removeNavLink(i)" title="حذف">×</button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Footer -->
+    <ng-container *ngIf="moduleKey === 'Footer'">
+      <div class="form-row">
+        <div class="form-group">
+          <label>اسم المنظمة</label>
+          <input type="text" formControlName="orgName" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label>الشعار</label>
+          <input type="text" formControlName="tagline" class="form-control" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>رابط الموقع</label>
+        <input type="url" formControlName="websiteUrl" class="form-control" placeholder="https://tam.ps" />
+      </div>
+      <div class="list-section">
+        <div class="list-header">
+          <label>روابط سريعة</label>
+          <button type="button" class="btn-add" (click)="addQuickLink()">+ إضافة رابط</button>
+        </div>
+        <div class="list-items" formArrayName="quickLinks">
+          <div class="list-row" *ngFor="let c of quickLinksArray().controls; let i = index" [formGroupName]="i">
+            <input formControlName="label" class="form-control" placeholder="النص" />
+            <input formControlName="route" class="form-control" placeholder="المسار" />
+            <button type="button" class="btn-remove" (click)="removeQuickLink(i)">×</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>البريد الإلكتروني</label>
+          <input type="email" formControlName="email" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label>الهاتف</label>
+          <input type="text" formControlName="phone" class="form-control" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>العنوان</label>
+        <input type="text" formControlName="address" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>نص حقوق النشر</label>
+        <input type="text" formControlName="copyrightText" class="form-control" />
+      </div>
+    </ng-container>
+
+    <!-- HomeHero -->
+    <ng-container *ngIf="moduleKey === 'HomeHero'">
+      <div class="form-group">
+        <label>الشارة (Badge)</label>
+        <input type="text" formControlName="badge" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>العنوان الرئيسي</label>
+        <input type="text" formControlName="titleMain" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>العنوان الفرعي</label>
+        <input type="text" formControlName="titleSub" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>الوصف</label>
+        <textarea formControlName="description" class="form-control" rows="3"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>نص الزر الأساسي</label>
+          <input type="text" formControlName="primaryButtonText" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label>رابط الزر الأساسي</label>
+          <input type="text" formControlName="primaryButtonRoute" class="form-control" />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>نص الزر الثانوي</label>
+          <input type="text" formControlName="secondaryButtonText" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label>رابط الزر الثانوي</label>
+          <input type="text" formControlName="secondaryButtonRoute" class="form-control" />
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- HomeStats, HomeIncidents, HomeMap (simple) -->
+    <ng-container *ngIf="moduleKey === 'HomeStats' || moduleKey === 'HomeIncidents' || moduleKey === 'HomeMap'">
+      <div class="form-group">
+        <label>تسمية القسم</label>
+        <input type="text" formControlName="sectionLabel" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>عنوان القسم</label>
+        <input type="text" formControlName="sectionTitle" class="form-control" />
+      </div>
+      <div class="form-group" *ngIf="moduleKey === 'HomeMap'">
+        <label>الوصف</label>
+        <textarea formControlName="description" class="form-control" rows="2"></textarea>
+      </div>
+      <ng-container *ngIf="moduleKey === 'HomeIncidents'">
+        <div class="form-group">
+          <label>نص زر عرض الكل</label>
+          <input type="text" formControlName="viewAllButtonText" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label>رابط عرض الكل</label>
+          <input type="text" formControlName="viewAllRoute" class="form-control" />
+        </div>
+      </ng-container>
+    </ng-container>
+
+    <!-- HomeFeatures -->
+    <ng-container *ngIf="moduleKey === 'HomeFeatures'">
+      <div class="form-group">
+        <label>تسمية القسم</label>
+        <input type="text" formControlName="sectionLabel" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>عنوان القسم</label>
+        <input type="text" formControlName="sectionTitle" class="form-control" />
+      </div>
+      <div class="list-section">
+        <div class="list-header">
+          <label>المميزات</label>
+          <button type="button" class="btn-add" (click)="addFeature()">+ إضافة ميزة</button>
+        </div>
+        <div class="list-items" formArrayName="features">
+          <div class="list-row list-row-col" *ngFor="let c of featuresArray().controls; let i = index" [formGroupName]="i">
+            <input formControlName="title" class="form-control" placeholder="العنوان" />
+            <textarea formControlName="description" class="form-control" rows="2" placeholder="الوصف"></textarea>
+            <button type="button" class="btn-remove" (click)="removeFeature(i)">×</button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- HomeHowItWorks -->
+    <ng-container *ngIf="moduleKey === 'HomeHowItWorks'">
+      <div class="form-group">
+        <label>تسمية القسم</label>
+        <input type="text" formControlName="sectionLabel" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>عنوان القسم</label>
+        <input type="text" formControlName="sectionTitle" class="form-control" />
+      </div>
+      <div class="list-section">
+        <div class="list-header">
+          <label>الخطوات</label>
+          <button type="button" class="btn-add" (click)="addStep()">+ إضافة خطوة</button>
+        </div>
+        <div class="list-items" formArrayName="steps">
+          <div class="list-row list-row-col" *ngFor="let c of stepsArray().controls; let i = index" [formGroupName]="i">
+            <input formControlName="title" class="form-control" placeholder="عنوان الخطوة" />
+            <textarea formControlName="description" class="form-control" rows="2" placeholder="الوصف"></textarea>
+            <button type="button" class="btn-remove" (click)="removeStep(i)">×</button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- HomeAbout -->
+    <ng-container *ngIf="moduleKey === 'HomeAbout'">
+      <div class="form-group">
+        <label>تسمية القسم</label>
+        <input type="text" formControlName="sectionLabel" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>عنوان القسم</label>
+        <input type="text" formControlName="sectionTitle" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>الوصف</label>
+        <textarea formControlName="description" class="form-control" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label>رابط الشعار</label>
+        <input type="text" formControlName="logoUrl" class="form-control" />
+      </div>
+      <div class="list-section">
+        <div class="list-header">
+          <label>قيم / نقاط</label>
+          <button type="button" class="btn-add" (click)="addValueItem()">+ إضافة</button>
+        </div>
+        <div class="list-items" formArrayName="valueItems">
+          <div class="list-row" *ngFor="let c of valueItemsArray().controls; let i = index">
+            <input [formControlName]="i" class="form-control" placeholder="النص" />
+            <button type="button" class="btn-remove" (click)="removeValueItem(i)">×</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>نص الزر</label>
+          <input type="text" formControlName="buttonText" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label>رابط الزر</label>
+          <input type="text" formControlName="buttonRoute" class="form-control" />
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- HomeCta -->
+    <ng-container *ngIf="moduleKey === 'HomeCta'">
+      <div class="form-group">
+        <label>العنوان</label>
+        <input type="text" formControlName="title" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>الوصف</label>
+        <textarea formControlName="description" class="form-control" rows="2"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>نص الزر</label>
+          <input type="text" formControlName="buttonText" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label>رابط الزر</label>
+          <input type="text" formControlName="buttonRoute" class="form-control" />
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- AboutMission -->
+    <ng-container *ngIf="moduleKey === 'AboutMission'">
+      <div class="form-group">
+        <label>عنوان الصفحة</label>
+        <input type="text" formControlName="pageTitle" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>العنوان الفرعي</label>
+        <input type="text" formControlName="pageSubtitle" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>عنوان الرسالة</label>
+        <input type="text" formControlName="missionTitle" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>نص الرسالة</label>
+        <textarea formControlName="missionText" class="form-control" rows="4"></textarea>
+      </div>
+    </ng-container>
+
+    <!-- AboutWhatWeDo -->
+    <ng-container *ngIf="moduleKey === 'AboutWhatWeDo'">
+      <div class="form-group">
+        <label>العنوان</label>
+        <input type="text" formControlName="title" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>النص التمهيدي</label>
+        <textarea formControlName="introText" class="form-control" rows="2"></textarea>
+      </div>
+      <div class="list-section">
+        <div class="list-header">
+          <label>العناصر</label>
+          <button type="button" class="btn-add" (click)="addTextItem()">+ إضافة عنصر</button>
+        </div>
+        <div class="list-items" formArrayName="items">
+          <div class="list-row" *ngFor="let c of itemsArray().controls; let i = index">
+            <input [formControlName]="i" class="form-control" placeholder="النص" />
+            <button type="button" class="btn-remove" (click)="removeTextItem(i)">×</button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- AboutHowItWorks -->
+    <ng-container *ngIf="moduleKey === 'AboutHowItWorks'">
+      <div class="form-group">
+        <label>العنوان</label>
+        <input type="text" formControlName="title" class="form-control" />
+      </div>
+      <div class="list-section">
+        <div class="list-header">
+          <label>الخطوات</label>
+          <button type="button" class="btn-add" (click)="addStep()">+ إضافة خطوة</button>
+        </div>
+        <div class="list-items" formArrayName="steps">
+          <div class="list-row list-row-col" *ngFor="let c of stepsArray().controls; let i = index" [formGroupName]="i">
+            <input formControlName="title" class="form-control" placeholder="عنوان الخطوة" />
+            <textarea formControlName="description" class="form-control" rows="2" placeholder="الوصف"></textarea>
+            <button type="button" class="btn-remove" (click)="removeStep(i)">×</button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- AboutContact -->
+    <ng-container *ngIf="moduleKey === 'AboutContact'">
+      <div class="form-group">
+        <label>العنوان</label>
+        <input type="text" formControlName="title" class="form-control" />
+      </div>
+      <div class="form-group">
+        <label>النص التمهيدي</label>
+        <textarea formControlName="introText" class="form-control" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label>رابط الموقع</label>
+        <input type="url" formControlName="websiteUrl" class="form-control" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>البريد الإلكتروني</label>
+          <input type="email" formControlName="email" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label>الهاتف</label>
+          <input type="text" formControlName="phone" class="form-control" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>الموقع / العنوان</label>
+        <input type="text" formControlName="address" class="form-control" />
+      </div>
+    </ng-container>
+
+    <!-- AboutCta -->
+    <ng-container *ngIf="moduleKey === 'AboutCta'">
+      <div class="form-group">
+        <label>العنوان</label>
+        <input type="text" formControlName="title" class="form-control" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>نص الزر</label>
+          <input type="text" formControlName="buttonText" class="form-control" />
+        </div>
+        <div class="form-group">
+          <label>رابط الزر</label>
+          <input type="text" formControlName="buttonRoute" class="form-control" />
+        </div>
+      </div>
+    </ng-container>
+
+    <div class="form-actions">
+      <button type="button" class="btn-cancel" (click)="onCancel()" [disabled]="saving">إلغاء</button>
+      <button type="submit" class="btn-save" [disabled]="saving">{{ saving ? 'جاري الحفظ...' : 'حفظ' }}</button>
+    </div>
+  </form>
+</div>

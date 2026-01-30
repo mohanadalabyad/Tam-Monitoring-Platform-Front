@@ -4,15 +4,22 @@
       <div class="logo">
         <a routerLink="/">
           <div class="logo-icon">
-            <img src="/logo.png" alt="TAM Logo">
+            <img [src]="headerContent?.logoUrl || '/logo.png'" alt="TAM Logo">
           </div>
         </a>
       </div>
       <ul class="nav-menu" [class.active]="menuActive" id="nav-menu">
-        <li><a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">الرئيسية</a></li>
-        <li><a routerLink="/violations" routerLinkActive="active">الحوادث المنشورة</a></li>
-        <li><a routerLink="/about" routerLinkActive="active">عن المنصة</a></li>
-        <li class="report-btn-nav"><a routerLink="/report" class="btn-report" routerLinkActive="active">الإبلاغ عن حادثة</a></li>
+        <ng-container *ngIf="headerContent?.navLinks?.length; else defaultNav">
+          <li *ngFor="let link of headerContent!.navLinks" [class.report-btn-nav]="link.isReportButton">
+            <a [routerLink]="link.route" routerLinkActive="active" [routerLinkActiveOptions]="{exact: link.route === '/'}" [class.btn-report]="link.isReportButton">{{ link.label }}</a>
+          </li>
+        </ng-container>
+        <ng-template #defaultNav>
+          <li><a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">الرئيسية</a></li>
+          <li><a routerLink="/violations" routerLinkActive="active">الحوادث المنشورة</a></li>
+          <li><a routerLink="/about" routerLinkActive="active">عن المنصة</a></li>
+          <li class="report-btn-nav"><a routerLink="/report" class="btn-report" routerLinkActive="active">الإبلاغ عن حادثة</a></li>
+        </ng-template>
         <li *ngIf="!isAuthenticated" class="login-btn-nav">
           <button class="btn-login-header" (click)="goToLogin()">تسجيل الدخول</button>
         </li>

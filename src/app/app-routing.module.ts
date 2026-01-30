@@ -21,6 +21,7 @@ import { PublicViolationsManagementComponent } from './pages/dashboard/public-vi
 import { MyPrivateViolationsComponent } from './pages/dashboard/my-private-violations/my-private-violations.component';
 import { PrivateViolationsManagementComponent } from './pages/dashboard/private-violations-management/private-violations-management.component';
 import { SettingsManagementComponent } from './pages/dashboard/settings-management/settings-management.component';
+import { WebsiteContentManagementComponent } from './pages/dashboard/website-content-management/website-content-management.component';
 import { EducationLevelsManagementComponent } from './pages/dashboard/education-levels-management/education-levels-management.component';
 
 const routes: Routes = [
@@ -107,6 +108,12 @@ const routes: Routes = [
         path: 'settings',
         component: SettingsManagementComponent,
         canActivate: [AuthGuard] // Authenticated users only, permissions checked inside component
+      },
+      {
+        path: 'website-content',
+        component: WebsiteContentManagementComponent,
+        canActivate: [PermissionGuard],
+        data: { permission: 'WebsiteContent.Edit' }
       },
       {
         path: 'education-levels',

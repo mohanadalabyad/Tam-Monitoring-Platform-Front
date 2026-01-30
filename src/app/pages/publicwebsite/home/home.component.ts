@@ -1,9 +1,11 @@
 import { Component, OnInit, OnDestroy, AfterViewInit } from '@angular/core';
 import { PublishedViolationService } from '../../../services/published-violation.service';
 import { StatisticsService } from '../../../services/statistics.service';
+import { WebsiteContentService } from '../../../services/website-content.service';
 import { PublishedViolationDto, PublishedAttachmentDto } from '../../../models/published-violation.model';
 import { ViolationStatisticsDto, CityStatisticsItemDto } from '../../../models/statistics.model';
 import { environment } from '../../../../environments/environment';
+import { WebsiteContentMap } from '../../../models/website-content.model';
 
 @Component({
   selector: 'app-home',
@@ -16,6 +18,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   pendingReports = 0;
   loadingStatistics = false;
   cityStatistics: CityStatisticsItemDto[] = [];
+  content: WebsiteContentMap = {};
 
   // Map properties
   map: any = null;
@@ -31,10 +34,12 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   constructor(
     private publishedViolationService: PublishedViolationService,
-    private statisticsService: StatisticsService
+    private statisticsService: StatisticsService,
+    private websiteContentService: WebsiteContentService
   ) {}
 
   ngOnInit(): void {
+    this.websiteContentService.getPublicContent().subscribe(c => (this.content = c));
     this.loadStatistics();
     this.loadLatestViolations();
   }
@@ -272,6 +277,31 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         this.loadingIncidents = false;
       }
     });
+  }
+
+  get homeHero(): any {
+    return this.content['HomeHero'] ?? {};
+  }
+  get homeStats(): any {
+    return this.content['HomeStats'] ?? {};
+  }
+  get homeFeatures(): any {
+    return this.content['HomeFeatures'] ?? {};
+  }
+  get homeIncidents(): any {
+    return this.content['HomeIncidents'] ?? {};
+  }
+  get homeHowItWorks(): any {
+    return this.content['HomeHowItWorks'] ?? {};
+  }
+  get homeAbout(): any {
+    return this.content['HomeAbout'] ?? {};
+  }
+  get homeMap(): any {
+    return this.content['HomeMap'] ?? {};
+  }
+  get homeCta(): any {
+    return this.content['HomeCta'] ?? {};
   }
 
   getLocation(violation: PublishedViolationDto): string {

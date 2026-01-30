@@ -2,30 +2,35 @@
   <div class="container">
     <div class="footer-content">
       <div class="footer-section">
-        <h3>منظمة تام</h3>
-        <p>منصة رصد الانتهاكات والشكاوى</p>
+        <h3>{{ footerContent?.orgName || 'منظمة تام' }}</h3>
+        <p>{{ footerContent?.tagline || 'منصة رصد الانتهاكات والشكاوى' }}</p>
         <p class="website">
-          <a href="https://tam.ps" target="_blank" rel="noopener">tam.ps</a>
+          <a [href]="footerContent?.websiteUrl || 'https://tam.ps'" target="_blank" rel="noopener">tam.ps</a>
         </p>
       </div>
       <div class="footer-section">
         <h4>روابط سريعة</h4>
-        <ul>
-          <li><a routerLink="/">الرئيسية</a></li>
-          <li><a routerLink="/report">الإبلاغ عن حادثة</a></li>
-          <li><a routerLink="/violations">الحوادث المنشورة</a></li>
-          <li><a routerLink="/about">عن المنصة</a></li>
+        <ul *ngIf="footerContent?.quickLinks?.length; else defaultQuickLinks">
+          <li *ngFor="let link of footerContent!.quickLinks"><a [routerLink]="link.route">{{ link.label }}</a></li>
         </ul>
+        <ng-template #defaultQuickLinks>
+          <ul>
+            <li><a routerLink="/">الرئيسية</a></li>
+            <li><a routerLink="/report">الإبلاغ عن حادثة</a></li>
+            <li><a routerLink="/violations">الحوادث المنشورة</a></li>
+            <li><a routerLink="/about">عن المنصة</a></li>
+          </ul>
+        </ng-template>
       </div>
       <div class="footer-section">
         <h4>تواصل معنا</h4>
-        <p>البريد الإلكتروني: info&#64;tam.ps</p>
-        <p>الهاتف: +970-XXX-XXXX</p>
-        <p>العنوان: فلسطين</p>
+        <p>البريد الإلكتروني: {{ footerContent?.email || 'info@tam.ps' }}</p>
+        <p>الهاتف: {{ footerContent?.phone || '+970-XXX-XXXX' }}</p>
+        <p>العنوان: {{ footerContent?.address || 'فلسطين' }}</p>
       </div>
     </div>
     <div class="footer-bottom">
-      <p>&copy; {{ currentYear }} منظمة تام - TAM Organization - <a href="https://tam.ps" target="_blank" rel="noopener">tam.ps</a></p>
+      <p>&copy; {{ currentYear }} {{ footerContent?.copyrightText || 'منظمة تام - TAM Organization' }} - <a [href]="footerContent?.websiteUrl || 'https://tam.ps'" target="_blank" rel="noopener">tam.ps</a></p>
     </div>
   </div>
 </footer>
