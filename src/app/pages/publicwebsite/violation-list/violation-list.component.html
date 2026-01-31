@@ -68,10 +68,10 @@
         <div class="incident-badge">{{ violation.categoryName || 'غير محدد' }}</div>
         <div class="incident-header-details">
           <span class="incident-id">حادثة #{{ violation.id }}</span>
-          <span class="incident-date">{{ violation.violationDate | date:'medium' }}</span>
+          <span class="incident-date">{{ violation.violationDate | date:'mediumDate' }}</span>
         </div>
         <h3 class="incident-title">{{ violation.subCategoryName || 'غير محدد' }}</h3>
-        <p class="incident-desc">{{ violation.description }}</p>
+        <p class="incident-desc">{{ violation.publishDescription || violation.description }}</p>
         
         <div class="incident-meta">
           <span class="meta-item">
@@ -85,7 +85,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
             </svg>
-            {{ violation.creationDate | date:'medium' }}
+            {{ violation.creationDate | date:'mediumDate' }}
           </span>
         </div>
       </div>

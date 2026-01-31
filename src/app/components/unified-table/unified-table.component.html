@@ -90,15 +90,28 @@
             <span *ngIf="col.type === 'badge'" class="badge" [ngClass]="'badge-' + getCellValue(row, col.key)">
               {{ getCellDisplay(row, col) }}
             </span>
-            <span *ngIf="col.type === 'date'">{{ getCellValue(row, col.key) | date:'short' }}</span>
+            <span *ngIf="col.type === 'date'">{{ getCellValue(row, col.key) | date:'mediumDate' }}</span>
             <span *ngIf="col.type === 'chip'" class="chip">{{ getCellDisplay(row, col) }}</span>
-            <div *ngIf="col.type === 'icon' && getCellValue(row, col.key)" class="icon-cell">
-              <lucide-icon 
-                *ngIf="col.iconRenderer"
-                [img]="col.iconRenderer(getCellValue(row, col.key), row)" 
-                [size]="20"
-                [title]="col.label"
-              ></lucide-icon>
+            <div *ngIf="col.type === 'icon'" class="icon-cell-wrapper" (click)="$event.stopPropagation()">
+              <div *ngIf="getInlineActions(col, row).length > 0" class="inline-action-buttons">
+                <button
+                  *ngFor="let action of getInlineActions(col, row)"
+                  type="button"
+                  class="action-btn action-btn-inline"
+                  [ngClass]="[action.class, 'btn-' + (action.variant || 'default')]"
+                  (click)="onActionClick(action, row, $event)"
+                  [title]="action.label"
+                >
+                  <lucide-icon [img]="getDefaultIcon(action)" [size]="14"></lucide-icon>
+                </button>
+              </div>
+              <div *ngIf="getInlineActions(col, row).length === 0 && getCellValue(row, col.key) && col.iconRenderer" class="icon-cell">
+                <lucide-icon 
+                  [img]="col.iconRenderer(getCellValue(row, col.key), row)" 
+                  [size]="20"
+                  [title]="col.render ? getCellDisplay(row, col) : col.label"
+                ></lucide-icon>
+              </div>
             </div>
             <button 
               *ngIf="col.type === 'toggle' && col.toggleAction" 
@@ -186,7 +199,7 @@
             <span *ngIf="col.type === 'badge'" class="badge" [ngClass]="'badge-' + getCellValue(row, col.key)">
               {{ getCellDisplay(row, col) }}
             </span>
-            <span *ngIf="col.type === 'date'">{{ getCellValue(row, col.key) | date:'short' }}</span>
+            <span *ngIf="col.type === 'date'">{{ getCellValue(row, col.key) | date:'mediumDate' }}</span>
             <span *ngIf="col.type !== 'badge' && col.type !== 'date'">{{ getCellDisplay(row, col) }}</span>
           </div>
         </div>

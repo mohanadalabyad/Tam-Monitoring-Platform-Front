@@ -16,6 +16,8 @@ export interface PublishedViolationDto {
   subCategoryName?: string;
   violationDate: Date;
   description: string;
+  /** When present, show this on the public site instead of description */
+  publishDescription?: string;
   
   // Public Violation specific fields
   publicViolationType?: PublicViolationType;

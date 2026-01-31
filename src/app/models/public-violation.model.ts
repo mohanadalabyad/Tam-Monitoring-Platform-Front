@@ -35,16 +35,27 @@ export interface PublicViolationAttachmentDto {
   createdBy?: string;
 }
 
+// Gender enum for public violation (optional)
+export enum Gender {
+  Male = 1,
+  Female = 2
+}
+
 export interface AddPublicViolationDto {
   cityId: number;
   categoryId: number;
   subCategoryId: number;
+  perpetratorTypeId?: number;
   violationType: PublicViolationType; // Victim=1, Witness=2
+  gender?: Gender;
   violationDate: Date | string;
   address: string;
   description: string;
+  publishDescription?: string;
   canContact: boolean;
   email?: string;
+  phoneNumber?: string;
+  preferredContactMethod?: 'email' | 'phone';
   attachments: PublicViolationAttachmentInputDto[];
 }
 
@@ -53,6 +64,7 @@ export interface UpdatePublicViolationDto {
   cityId: number;
   categoryId: number;
   subCategoryId: number;
+  perpetratorTypeId?: number;
   violationType: PublicViolationType;
   violationDate: Date | string;
   address: string;
@@ -70,12 +82,18 @@ export interface PublicViolationDto {
   categoryName?: string;
   subCategoryId: number;
   subCategoryName?: string;
+  perpetratorTypeId?: number;
+  perpetratorTypeName?: string;
   violationType: PublicViolationType;
+  gender?: Gender;
   violationDate: Date;
   address: string;
   description: string;
+  publishDescription?: string;
   canContact: boolean;
   email?: string;
+  phoneNumber?: string;
+  preferredContactMethod?: string;
   verificationStatus: ViolationVerificationStatus;
   publishStatus: ViolationPublishStatus;
   isActive: boolean;
@@ -91,6 +109,7 @@ export interface PublicViolationFilter {
   cityId?: number;
   categoryId?: number;
   subCategoryId?: number;
+  perpetratorTypeId?: number;
 }
 
 // Helper functions

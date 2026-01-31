@@ -29,27 +29,46 @@ export class PublicViolationService {
     categoryId: number,
     subCategoryId: number,
     violationType: number,
+    gender: number | undefined,
     violationDate: string,
     address: string,
     description: string,
+    publishDescription: string | undefined,
     canContact: boolean,
     email: string | undefined,
-    files: File[]
+    phoneNumber: string | undefined,
+    preferredContactMethod: string | undefined,
+    files: File[],
+    perpetratorTypeId?: number
   ): Observable<PublicViolationDto> {
     const formData = new FormData();
     
-    // Append all form fields
     formData.append('CityId', cityId.toString());
     formData.append('CategoryId', categoryId.toString());
     formData.append('SubCategoryId', subCategoryId.toString());
     formData.append('ViolationType', violationType.toString());
+    if (perpetratorTypeId != null && perpetratorTypeId !== undefined) {
+      formData.append('PerpetratorTypeId', perpetratorTypeId.toString());
+    }
+    if (gender != null && gender !== undefined) {
+      formData.append('Gender', gender.toString());
+    }
     formData.append('ViolationDate', violationDate);
     formData.append('Address', address);
     formData.append('Description', description);
+    if (publishDescription) {
+      formData.append('PublishDescription', publishDescription);
+    }
     formData.append('CanContact', canContact.toString());
     
     if (email) {
       formData.append('Email', email);
+    }
+    if (phoneNumber) {
+      formData.append('PhoneNumber', phoneNumber);
+    }
+    if (preferredContactMethod) {
+      formData.append('PreferredContactMethod', preferredContactMethod);
     }
     
     // Append files (backend expects Files array)
@@ -130,12 +149,14 @@ export class PublicViolationService {
   }
 
   /**
-   * Update description
+   * Update description and optional publish description
    */
-  updateDescription(id: number, description: string): Observable<PublicViolationDto> {
+  updateDescription(id: number, description: string, publishDescription?: string): Observable<PublicViolationDto> {
+    const body: { description: string; publishDescription?: string } = { description };
+    if (publishDescription !== undefined) body.publishDescription = publishDescription;
     return this.http.put<ApiResponse<PublicViolationDto>>(
       `${this.apiUrl}/${id}/description`,
-      { description }
+      body
     )
       .pipe(
         map(response => {

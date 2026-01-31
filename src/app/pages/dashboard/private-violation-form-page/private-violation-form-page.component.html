@@ -1,0 +1,12 @@
+<div class="private-violation-form-page">
+  <div class="page-header">
+    <button type="button" class="btn-back" (click)="goBack()">← رجوع</button>
+    <h1>{{ pageTitle }}</h1>
+  </div>
+  <app-my-private-violations
+    [formOnlyMode]="true"
+    [initialViolationId]="violationId"
+    (saved)="onSaved()"
+    (cancel)="onCancel()"
+  ></app-my-private-violations>
+</div>

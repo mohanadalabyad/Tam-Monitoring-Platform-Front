@@ -74,6 +74,14 @@
               <option *ngFor="let subCategory of subCategories" [value]="subCategory.id">{{ subCategory.name }}</option>
             </select>
           </div>
+
+          <div class="filter-group">
+            <label for="perpetratorTypeId">مرتكب الانتهاك:</label>
+            <select id="perpetratorTypeId" formControlName="perpetratorTypeId" [disabled]="loadingPerpetratorTypes || !filterForm.get('categoryId')?.value">
+              <option [value]="null">الكل</option>
+              <option *ngFor="let pt of perpetratorTypes" [value]="pt.id">{{ pt.name }}</option>
+            </select>
+          </div>
         </div>
 
         <div class="filters-actions">
@@ -236,12 +244,16 @@
             <span class="field-value">{{ violation.subCategoryName || 'غير محدد' }}</span>
           </div>
           <div class="card-field">
+            <span class="field-label">مرتكب الانتهاك:</span>
+            <span class="field-value">{{ violation.perpetratorTypeName || 'غير محدد' }}</span>
+          </div>
+          <div class="card-field">
             <span class="field-label">صفة المبلغ:</span>
             <span class="field-value">{{ getViolationTypeLabel(violation.violationType) }}</span>
           </div>
           <div class="card-field">
             <span class="field-label">تاريخ الحادثة:</span>
-            <span class="field-value">{{ violation.violationDate | date:'medium' }}</span>
+            <span class="field-value">{{ violation.violationDate | date:'mediumDate' }}</span>
           </div>
           <div class="card-field">
             <span class="field-label">العنوان:</span>
@@ -276,6 +288,15 @@
         <div class="error-message" *ngIf="isFieldInvalid('description')">
           الوصف مطلوب
         </div>
+      </div>
+      <div class="form-group">
+        <label for="publishDescription">وصف النشر</label>
+        <textarea
+          id="publishDescription"
+          formControlName="publishDescription"
+          placeholder="وصف يُعرض عند النشر (اختياري)"
+          rows="4"
+        ></textarea>
       </div>
     </form>
     
@@ -317,12 +338,16 @@
             <span class="detail-value">{{ selectedViolation.subCategoryName || 'غير محدد' }}</span>
           </div>
           <div class="detail-item">
+            <span class="detail-label">مرتكب الانتهاك:</span>
+            <span class="detail-value">{{ selectedViolation.perpetratorTypeName || 'غير محدد' }}</span>
+          </div>
+          <div class="detail-item">
             <span class="detail-label">صفة المبلغ:</span>
             <span class="detail-value">{{ getViolationTypeLabel(selectedViolation.violationType) }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">تاريخ الحادثة:</span>
-            <span class="detail-value">{{ selectedViolation.violationDate | date:'medium' }}</span>
+            <span class="detail-value">{{ selectedViolation.violationDate | date:'mediumDate' }}</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">العنوان:</span>
@@ -331,6 +356,10 @@
           <div class="detail-item full-width">
             <span class="detail-label">الوصف:</span>
             <span class="detail-value">{{ selectedViolation.description || 'لا يوجد وصف' }}</span>
+          </div>
+          <div class="detail-item full-width" *ngIf="selectedViolation.publishDescription">
+            <span class="detail-label">وصف النشر:</span>
+            <span class="detail-value">{{ selectedViolation.publishDescription }}</span>
           </div>
         </div>
       </div>
@@ -359,12 +388,20 @@
         </div>
       </div>
 
-      <div class="details-section" *ngIf="selectedViolation.canContact && selectedViolation.email">
+      <div class="details-section" *ngIf="selectedViolation.canContact && (selectedViolation.email || selectedViolation.phoneNumber)">
         <h3 class="section-title">معلومات الاتصال</h3>
         <div class="details-grid">
-          <div class="detail-item">
+          <div class="detail-item" *ngIf="selectedViolation.email">
             <span class="detail-label">البريد الإلكتروني:</span>
             <span class="detail-value">{{ selectedViolation.email }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.phoneNumber">
+            <span class="detail-label">رقم الهاتف:</span>
+            <span class="detail-value">{{ selectedViolation.phoneNumber }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedViolation.preferredContactMethod">
+            <span class="detail-label">الطريقة المفضلة:</span>
+            <span class="detail-value">{{ getPreferredContactLabel(selectedViolation.preferredContactMethod) }}</span>
           </div>
         </div>
       </div>
@@ -409,7 +446,7 @@
         <div class="details-grid">
           <div class="detail-item">
             <span class="detail-label">تاريخ الإنشاء:</span>
-            <span class="detail-value">{{ selectedViolation.creationDate | date:'medium' }}</span>
+            <span class="detail-value">{{ selectedViolation.creationDate | date:'mediumDate' }}</span>
           </div>
           <div class="detail-item" *ngIf="selectedViolation.createdBy">
             <span class="detail-label">أنشئ بواسطة:</span>
@@ -449,9 +486,22 @@
           <div *ngFor="let followUp of followUps" class="history-item">
             <div class="history-header">
               <span class="history-status">{{ followUp.followUpStatusName }}</span>
-              <span class="history-date">{{ followUp.creationDate | date:'medium' }}</span>
+              <span class="history-date">{{ followUp.creationDate | date:'mediumDate' }}</span>
             </div>
             <div class="history-note">{{ followUp.note }}</div>
+            <div class="history-attachments" *ngIf="followUp.attachments && followUp.attachments.length > 0">
+              <span class="history-attachments-label">المرفقات:</span>
+              <div class="history-attachments-grid">
+                <div *ngFor="let att of followUp.attachments" class="history-attachment-item">
+                  <a (click)="openAttachment(att.filePath)" href="javascript:void(0)" target="_blank" rel="noopener noreferrer">
+                    <img *ngIf="isImage(att.fileType)" class="history-attachment-image" [src]="getAttachmentUrl(att.filePath)" [alt]="att.fileName" />
+                    <div *ngIf="!isImage(att.fileType)" class="history-attachment-file">
+                      <span>{{ att.fileName }}</span>
+                    </div>
+                  </a>
+                </div>
+              </div>
+            </div>
             <div class="history-user">بواسطة: {{ followUp.createdByUserName || 'غير معروف' }}</div>
           </div>
         </div>
@@ -495,6 +545,27 @@
             ></textarea>
             <div class="error-message" *ngIf="followUpForm.get('note')?.invalid && followUpForm.get('note')?.touched">
               الملاحظة مطلوبة
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>مرفقات (اختياري، حد أقصى 100 ميجابايت للملف)</label>
+            <input
+              type="file"
+              #followUpFileInput
+              multiple
+              accept="image/*,video/*,.pdf,.doc,.docx"
+              (change)="onFollowUpFileSelected($event)"
+              style="display: none;"
+            />
+            <button type="button" class="btn-secondary" (click)="followUpFileInput.click()">
+              إضافة مرفقات
+            </button>
+            <div class="follow-up-attachments-list" *ngIf="followUpAttachments.length > 0">
+              <span *ngFor="let f of followUpAttachments; let i = index" class="follow-up-attachment-tag">
+                {{ f.name }}
+                <button type="button" class="remove-follow-up-attachment" (click)="removeFollowUpAttachment(i)" title="إزالة">×</button>
+              </span>
             </div>
           </div>
         </form>

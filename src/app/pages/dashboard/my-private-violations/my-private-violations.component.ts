@@ -1,4 +1,5 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, Input, Output, EventEmitter, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { PrivateViolationService } from '../../../services/private-violation.service';
 import { ViolationFollowUpService } from '../../../services/violation-follow-up.service';
@@ -21,10 +22,12 @@ import {
   PublishStatus,
   QuestionAnswerDto,
   PrivateViolationAttachmentInputDto,
+  PrivateViolationKind,
   getAcceptanceStatusLabel,
-  getPublishStatusLabel
+  getPublishStatusLabel,
+  getPrivateViolationKindLabel
 } from '../../../models/violation.model';
-import { ViolationFollowUpDto, AddViolationFollowUpDto } from '../../../models/violation-follow-up.model';
+import { ViolationFollowUpDto, ViolationFollowUpAttachmentDto, AddViolationFollowUpDto, ViolationFollowUpAttachmentInputDto } from '../../../models/violation-follow-up.model';
 import { FollowUpStatusDto } from '../../../models/follow-up-status.model';
 import { QuestionDto, QuestionFilter, QuestionType } from '../../../models/question.model';
 import { CityDto } from '../../../models/city.model';
@@ -67,7 +70,15 @@ interface DraftData {
   templateUrl: './my-private-violations.component.html',
   styleUrls: ['./my-private-violations.component.scss']
 })
-export class MyPrivateViolationsComponent implements OnInit {
+export class MyPrivateViolationsComponent implements OnInit, OnDestroy, AfterViewChecked {
+  @Input() formOnlyMode = false;
+  @Input() initialViolationId: number | null = null;
+  @Output() saved = new EventEmitter<void>();
+  @Output() cancel = new EventEmitter<void>();
+  @ViewChild('testimonyStepRef', { read: ElementRef }) testimonyStepRef?: ElementRef<HTMLElement>;
+
+  private shouldScrollToTestimony = false;
+
   violations: PrivateViolationDto[] = [];
   filteredViolations: PrivateViolationDto[] = [];
   loading = false;
@@ -86,11 +97,16 @@ export class MyPrivateViolationsComponent implements OnInit {
   followUps: ViolationFollowUpDto[] = [];
   followUpStatuses: FollowUpStatusDto[] = [];
   loadingFollowUps = false;
+  followUpAttachments: File[] = [];
   searchTerm: string = '';
-
-  // Step management
+  // Step management: 7 steps for إفادة (مرفقات الإفادة + مرفقات), 6 for استبيان.
   currentStep = 1;
-  totalSteps = 6; // Basic Info, Personal Info, Contact, Questions, Attachments, Review
+  get totalSteps(): number {
+    return this.isTestimonyKind ? 7 : 6;
+  }
+  get isTestimonyKind(): boolean {
+    return this.violationForm?.get('kind')?.value === PrivateViolationKind.Testimony;
+  }
 
   // Lookup data
   cities: CityDto[] = [];
@@ -101,9 +117,12 @@ export class MyPrivateViolationsComponent implements OnInit {
   sortedQuestions: QuestionDto[] = [];
   loadingQuestions = false;
 
-  // File upload
+  // File upload: مرفقات (step 6 إفادة, step 5 استبيان)
   attachments: File[] = [];
   attachmentPreviews: AttachmentPreview[] = [];
+  // مرفقات الإفادة (step 5 إفادة only, required)
+  testimonyAttachments: File[] = [];
+  testimonyAttachmentPreviews: AttachmentPreview[] = [];
 
   // Draft management
   hasDraft: boolean = false;
@@ -119,9 +138,11 @@ export class MyPrivateViolationsComponent implements OnInit {
   // Enums
   AcceptanceStatus = AcceptanceStatus;
   PublishStatus = PublishStatus;
+  PrivateViolationKind = PrivateViolationKind;
   PrivateViolationRole = PrivateViolationRole;
   Gender = Gender;
   PreferredContactMethod = PreferredContactMethod;
+  getPrivateViolationKindLabel = getPrivateViolationKindLabel;
 
   columns: TableColumn[] = [
     { key: 'id', label: 'ID', sortable: true, filterable: false },
@@ -183,27 +204,151 @@ export class MyPrivateViolationsComponent implements OnInit {
     private fileUploadService: FileUploadService,
     private authService: AuthService,
     private fb: FormBuilder,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
-    const savedView = localStorage.getItem('my-private-violations-view-mode');
-    if (savedView === 'table' || savedView === 'cards') {
-      this.viewMode = savedView;
-    }
     this.initForms();
     this.loadLookupData();
-    this.loadFollowUpStatuses();
-    this.loadViolations();
-    this.checkDraft();
-    setTimeout(() => {
-      this.setupActions();
-    }, 0);
-    this.filteredViolations = [];
+    if (this.formOnlyMode) {
+      this.checkDraft();
+      if (this.initialViolationId != null) {
+        this.loadViolationForEdit(this.initialViolationId);
+      } else {
+        this.modalTitle = 'إضافة بلاغ خاص جديد';
+        this.editingViolation = null;
+        this.originalViolationData = null;
+        this.currentStep = 1;
+        this.draftExplicitlySaved = false;
+        this.violationForm.reset({
+          kind: PrivateViolationKind.Questionnaire,
+          testimonyContent: '',
+          role: PrivateViolationRole.Witness,
+          showPersonalInfoInPublish: false,
+          hasDisability: false
+        });
+        this.questionsForm.reset();
+        this.clearQuestionControls();
+        this.filteredQuestions = [];
+        this.sortedQuestions = [];
+        this.loadingQuestions = false;
+        this.attachments = [];
+        this.attachmentPreviews = [];
+        this.testimonyAttachments = [];
+        this.testimonyAttachmentPreviews = [];
+        this.showModal = true;
+      }
+    } else {
+      const savedView = localStorage.getItem('my-private-violations-view-mode');
+      if (savedView === 'table' || savedView === 'cards') {
+        this.viewMode = savedView;
+      }
+      this.loadFollowUpStatuses();
+      this.loadViolations();
+      this.checkDraft();
+      setTimeout(() => this.setupActions(), 0);
+      this.filteredViolations = [];
+    }
+  }
+
+  ngOnDestroy(): void {}
+
+  ngAfterViewChecked(): void {
+    if (this.shouldScrollToTestimony && this.testimonyStepRef?.nativeElement) {
+      this.shouldScrollToTestimony = false;
+      this.testimonyStepRef.nativeElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  loadViolationForEdit(id: number): void {
+    this.modalTitle = 'تعديل بلاغ خاص';
+    this.currentStep = 1;
+    this.privateViolationService.getPrivateViolationById(id).subscribe({
+      next: (fullViolation) => {
+        this.editingViolation = { ...fullViolation, id: fullViolation.id };
+        this.originalViolationData = { ...fullViolation };
+        this.violationForm.patchValue({
+          kind: fullViolation.kind ?? PrivateViolationKind.Questionnaire,
+          testimonyContent: fullViolation.testimonyContent || '',
+          cityId: fullViolation.cityId,
+          categoryId: fullViolation.categoryId,
+          violationDate: new Date(fullViolation.violationDate).toISOString().split('T')[0],
+          location: fullViolation.location,
+          description: fullViolation.description,
+          personalName: fullViolation.personalName || '',
+          personalCityId: fullViolation.personalCityId || null,
+          personalAddress: fullViolation.personalAddress || '',
+          personalAge: fullViolation.personalAge || null,
+          personalDateOfBirth: fullViolation.personalDateOfBirth ? new Date(fullViolation.personalDateOfBirth).toISOString().split('T')[0] : '',
+          personalEducationId: fullViolation.personalEducationId || null,
+          hasDisability: fullViolation.hasDisability || false,
+          disabilityType: fullViolation.disabilityType || '',
+          gender: fullViolation.gender || null,
+          maritalStatus: fullViolation.maritalStatus || null,
+          work: fullViolation.work || '',
+          canBeContacted: fullViolation.canBeContacted || false,
+          contactName: fullViolation.contactName || '',
+          contactAddress: fullViolation.contactAddress || '',
+          contactEmail: fullViolation.contactEmail || '',
+          contactPhone: fullViolation.contactPhone || '',
+          preferredContactMethod: fullViolation.preferredContactMethod || null,
+          role: fullViolation.role,
+          otherRoleText: fullViolation.otherRoleText || '',
+          showPersonalInfoInPublish: fullViolation.showPersonalInfoInPublish || false
+        }, { emitEvent: false });
+        this.loadSubCategories(fullViolation.categoryId, true);
+        this.loadQuestions(fullViolation.categoryId, false);
+        setTimeout(() => {
+          const subCategoryControl = this.violationForm.get('subCategoryId');
+          if (subCategoryControl && fullViolation.subCategoryId) {
+            subCategoryControl.enable();
+            subCategoryControl.setValue(fullViolation.subCategoryId, { emitEvent: false });
+          }
+        }, 300);
+        this.attachments = [];
+        this.attachmentPreviews = [];
+        this.testimonyAttachments = [];
+        this.testimonyAttachmentPreviews = [];
+        if (fullViolation.attachments?.length) {
+          const previews = fullViolation.attachments.map(att => ({
+            file: null as File | null,
+            preview: this.getAttachmentUrl(att.filePath),
+            uploaded: true,
+            filePath: att.filePath
+          }));
+          if (fullViolation.kind === PrivateViolationKind.Testimony) {
+            this.testimonyAttachmentPreviews = previews;
+          } else {
+            this.attachmentPreviews = previews;
+          }
+        }
+        const loadAnswers = () => {
+          if (fullViolation.questionAnswers?.length) {
+            const allReady = fullViolation.questionAnswers.every(a => this.questionsForm.get(`question_${a.questionId}`)) && this.sortedQuestions.length > 0;
+            if (allReady && this.currentStep === 4) {
+              const answersToSet: { [key: string]: any } = {};
+              fullViolation.questionAnswers.forEach(answer => {
+                if (answer.answerValue?.trim()) answersToSet[`question_${answer.questionId}`] = answer.answerValue.trim();
+              });
+              this.questionsForm.patchValue(answersToSet, { emitEvent: true });
+              this.cdr.detectChanges();
+            } else {
+              setTimeout(loadAnswers, 300);
+            }
+          }
+        };
+        setTimeout(loadAnswers, 1500);
+        this.showModal = true;
+      },
+      error: () => this.toasterService.showError('حدث خطأ أثناء تحميل تفاصيل البلاغ')
+    });
   }
 
   initForms(): void {
     this.violationForm = this.fb.group({
+      kind: [PrivateViolationKind.Questionnaire, Validators.required],
+      testimonyContent: [''],
       cityId: ['', Validators.required],
       categoryId: ['', Validators.required],
       subCategoryId: [{ value: '', disabled: true }, Validators.required],
@@ -259,10 +404,8 @@ export class MyPrivateViolationsComponent implements OnInit {
       if (categoryId && categoryId !== '' && categoryId !== null) {
         const categoryIdNum = Number(categoryId);
         if (!isNaN(categoryIdNum)) {
-          // Don't preserve value when user changes category (only preserve when editing)
           this.loadSubCategories(categoryIdNum, false);
           this.loadQuestions(categoryIdNum);
-          // Enable subcategory control when category is selected
           subCategoryControl?.enable();
         }
       } else {
@@ -271,9 +414,26 @@ export class MyPrivateViolationsComponent implements OnInit {
         this.sortedQuestions = [];
         this.clearQuestionControls();
         this.loadingQuestions = false;
-        // Disable subcategory control when no category is selected
         subCategoryControl?.disable();
         subCategoryControl?.setValue('', { emitEvent: false });
+      }
+    });
+
+    // Watch kind changes: for Testimony require testimonyContent; reset step if needed
+    this.violationForm.get('kind')?.valueChanges.subscribe(kind => {
+      const testimonyControl = this.violationForm.get('testimonyContent');
+      if (kind === PrivateViolationKind.Testimony) {
+        testimonyControl?.setValidators([Validators.required]);
+      } else {
+        testimonyControl?.clearValidators();
+        testimonyControl?.setValue('');
+      }
+      testimonyControl?.updateValueAndValidity();
+      if (kind === PrivateViolationKind.Testimony && this.currentStep === 6) {
+        this.currentStep = 5;
+      }
+      if (kind !== PrivateViolationKind.Testimony && this.currentStep === 7) {
+        this.currentStep = 6;
       }
     });
 
@@ -475,6 +635,7 @@ export class MyPrivateViolationsComponent implements OnInit {
 
     this.selectedViolationForFollowUp = violation;
     this.followUpForm.reset();
+    this.followUpAttachments = [];
     this.loadFollowUps(violation.id);
     this.showFollowUpModal = true;
   }
@@ -484,6 +645,39 @@ export class MyPrivateViolationsComponent implements OnInit {
     this.selectedViolationForFollowUp = null;
     this.followUps = [];
     this.followUpForm.reset();
+    this.followUpAttachments = [];
+  }
+
+  onFollowUpFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      Array.from(input.files).forEach(file => {
+        if (file.size > 100 * 1024 * 1024) {
+          this.toasterService.showWarning('حجم الملف يجب أن يكون أقل من 100 ميجابايت');
+          return;
+        }
+        this.followUpAttachments.push(file);
+      });
+      input.value = '';
+    }
+  }
+
+  removeFollowUpAttachment(index: number): void {
+    this.followUpAttachments.splice(index, 1);
+  }
+
+  /** Deduplicate attachments by file identity (filePath+fileName) then id to avoid duplicate display */
+  private deduplicateFollowUpAttachments(attachments?: ViolationFollowUpAttachmentDto[]): ViolationFollowUpAttachmentDto[] {
+    if (!attachments || attachments.length === 0) return [];
+    const seen = new Set<string>();
+    return attachments.filter(att => {
+      const path = (att.filePath || '').trim().toLowerCase();
+      const name = (att.fileName || '').trim().toLowerCase();
+      const key = path && name ? `${path}|${name}` : (path || name || (att.id ? `id:${att.id}` : ''));
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 
   loadFollowUps(violationId: number): void {
@@ -491,7 +685,10 @@ export class MyPrivateViolationsComponent implements OnInit {
     this.violationFollowUpService.getByViolationId(violationId, 'Private').subscribe({
       next: (response: any) => {
         if (response.success && response.data) {
-          this.followUps = response.data;
+          this.followUps = (response.data as ViolationFollowUpDto[]).map(fu => ({
+            ...fu,
+            attachments: this.deduplicateFollowUpAttachments(fu.attachments)
+          }));
         }
         this.loadingFollowUps = false;
       },
@@ -508,18 +705,46 @@ export class MyPrivateViolationsComponent implements OnInit {
       return;
     }
 
+    if (this.followUpAttachments.length > 0) {
+      this.loading = true;
+      this.fileUploadService.uploadFiles(this.followUpAttachments).subscribe({
+        next: (uploadResponses) => {
+          const attachmentInputs: ViolationFollowUpAttachmentInputDto[] = uploadResponses.map((response, index) => {
+            const file = this.followUpAttachments[index];
+            return {
+              fileName: response.fileName,
+              filePath: response.url,
+              fileType: file.type || 'application/octet-stream',
+              fileSize: file.size
+            };
+          });
+          this.saveFollowUpWithAttachments(attachmentInputs);
+        },
+        error: (error: any) => {
+          this.loading = false;
+          this.toasterService.showError(error.message || 'حدث خطأ أثناء رفع الملفات');
+        }
+      });
+    } else {
+      this.saveFollowUpWithAttachments([]);
+    }
+  }
+
+  private saveFollowUpWithAttachments(attachments: ViolationFollowUpAttachmentInputDto[]): void {
+    if (!this.selectedViolationForFollowUp) return;
     const dto: AddViolationFollowUpDto = {
       violationId: this.selectedViolationForFollowUp.id,
       violationType: 'Private',
       followUpStatusId: this.followUpForm.get('followUpStatusId')?.value,
-      note: this.followUpForm.get('note')?.value
+      note: this.followUpForm.get('note')?.value,
+      attachments
     };
-
     this.loading = true;
     this.violationFollowUpService.addFollowUp(dto).subscribe({
       next: () => {
         this.toasterService.showSuccess('تم إضافة Follow-up بنجاح');
         this.followUpForm.reset();
+        this.followUpAttachments = [];
         this.loadFollowUps(this.selectedViolationForFollowUp!.id);
         this.loading = false;
       },
@@ -663,198 +888,24 @@ export class MyPrivateViolationsComponent implements OnInit {
       this.toasterService.showWarning('ليس لديك صلاحية لإضافة بلاغ خاص', 'صلاحية مرفوضة');
       return;
     }
-
-    this.modalTitle = 'إضافة بلاغ خاص جديد';
-    this.editingViolation = null;
-    this.originalViolationData = null;
-    this.currentStep = 1;
-    this.draftExplicitlySaved = false;
-    
-    // Check for existing draft
-    this.checkDraft();
-    
-    this.violationForm.reset({
-      role: PrivateViolationRole.Witness,
-      showPersonalInfoInPublish: false,
-      hasDisability: false
-    });
-    this.questionsForm.reset();
-    this.clearQuestionControls();
-    this.filteredQuestions = [];
-    this.sortedQuestions = [];
-    this.loadingQuestions = false;
-    this.attachments = [];
-    this.attachmentPreviews = [];
-    this.showModal = true;
+    this.router.navigate(['/dashboard/my-private-violations/add']);
   }
 
   editViolation(violation: PrivateViolationDto): void {
-    // Check if violation can be edited (must be Pending)
     if (violation.acceptanceStatus !== AcceptanceStatus.Pending) {
       this.toasterService.showWarning('لا يمكن تعديل البلاغ بعد الموافقة عليه أو رفضه', 'تنبيه');
       return;
     }
-
-    // Check if user is the creator
     const currentUser = this.authService.getCurrentUser();
     if (currentUser && violation.createdByUserId && currentUser.id !== violation.createdByUserId && !this.permissionService.isSuperAdmin()) {
       this.toasterService.showWarning('يمكنك فقط تعديل البلاغات التي أنشأتها', 'تنبيه');
       return;
     }
-
-    this.modalTitle = 'تعديل بلاغ خاص';
-    this.editingViolation = violation;
-    this.currentStep = 1;
-    
-    // Load full violation details with question answers
-    this.privateViolationService.getPrivateViolationById(violation.id).subscribe({
-      next: (fullViolation) => {
-        // Save original data for comparison
-        this.originalViolationData = { ...fullViolation };
-        
-        // Patch form values first (especially categoryId to trigger loading)
-        this.violationForm.patchValue({
-          cityId: fullViolation.cityId,
-          categoryId: fullViolation.categoryId,
-          violationDate: new Date(fullViolation.violationDate).toISOString().split('T')[0],
-          location: fullViolation.location,
-          description: fullViolation.description,
-          personalName: fullViolation.personalName || '',
-          personalCityId: fullViolation.personalCityId || null,
-          personalAddress: fullViolation.personalAddress || '',
-          personalAge: fullViolation.personalAge || null,
-          personalDateOfBirth: fullViolation.personalDateOfBirth ? new Date(fullViolation.personalDateOfBirth).toISOString().split('T')[0] : '',
-          personalEducationId: fullViolation.personalEducationId || null,
-          hasDisability: fullViolation.hasDisability || false,
-          disabilityType: fullViolation.disabilityType || '',
-          gender: fullViolation.gender || null,
-          maritalStatus: fullViolation.maritalStatus || '',
-          work: fullViolation.work || '',
-          canBeContacted: fullViolation.canBeContacted || false,
-          contactName: fullViolation.contactName || '',
-          contactAddress: fullViolation.contactAddress || '',
-          contactEmail: fullViolation.contactEmail || '',
-          contactPhone: fullViolation.contactPhone || '',
-          preferredContactMethod: fullViolation.preferredContactMethod || null,
-          role: fullViolation.role,
-          otherRoleText: fullViolation.otherRoleText || '',
-          showPersonalInfoInPublish: fullViolation.showPersonalInfoInPublish || false
-        }, { emitEvent: false });
-
-        // Load subcategories and questions, then set values
-        this.loadSubCategories(fullViolation.categoryId, true);
-        // Load questions without preserving answers (we'll set them manually after)
-        this.loadQuestions(fullViolation.categoryId, false);
-        
-        // Set subCategoryId after subcategories are loaded
-        setTimeout(() => {
-          const subCategoryControl = this.violationForm.get('subCategoryId');
-          if (subCategoryControl && fullViolation.subCategoryId) {
-            subCategoryControl.enable();
-            subCategoryControl.setValue(fullViolation.subCategoryId, { emitEvent: false });
-          }
-        }, 300);
-
-        // Load attachments
-        this.attachments = [];
-        this.attachmentPreviews = [];
-        if (fullViolation.attachments && fullViolation.attachments.length > 0) {
-          fullViolation.attachments.forEach(att => {
-            this.attachmentPreviews.push({
-              file: null as any,
-              preview: this.getAttachmentUrl(att.filePath),
-              uploaded: true,
-              filePath: att.filePath
-            });
-          });
-        }
-
-        // Populate question answers after questions are loaded
-        // We need to wait for both: form controls to be created AND components to be rendered in DOM
-        const loadAnswers = () => {
-          if (fullViolation.questionAnswers && fullViolation.questionAnswers.length > 0) {
-            let allControlsReady = true;
-            let allQuestionsReady = true;
-            
-            // Check if all controls exist
-            fullViolation.questionAnswers.forEach(answer => {
-              const control = this.questionsForm.get(`question_${answer.questionId}`);
-              if (!control) {
-                allControlsReady = false;
-              }
-              
-              // Check if question exists in sortedQuestions
-              const question = this.sortedQuestions.find(q => q.id === answer.questionId);
-              if (!question) {
-                allQuestionsReady = false;
-              }
-            });
-            
-            // Also check if we're on the questions step (step 4) to ensure components are rendered
-            const isOnQuestionsStep = this.currentStep === 4;
-            
-            if (allControlsReady && allQuestionsReady && isOnQuestionsStep) {
-              // Use patchValue with emitEvent: true first to trigger writeValue
-              // Then update without emitEvent to avoid triggering validation multiple times
-              const answersToSet: { [key: string]: any } = {};
-              fullViolation.questionAnswers.forEach(answer => {
-                if (answer.answerValue) {
-                  // For multiple selection, answerValue is already a JSON string
-                  // For single selection, it's a plain string
-                  // Keep it as is to preserve JSON format for multiple selections
-                  const normalizedValue = answer.answerValue.trim();
-                  if (normalizedValue) {
-                    answersToSet[`question_${answer.questionId}`] = normalizedValue;
-                  }
-                }
-              });
-              
-              // Patch all values at once to trigger writeValue for all components
-              this.questionsForm.patchValue(answersToSet, { emitEvent: true });
-              
-              // Mark controls as touched and dirty
-              Object.keys(answersToSet).forEach(key => {
-                const control = this.questionsForm.get(key);
-                if (control) {
-                  control.markAsTouched();
-                  control.markAsDirty();
-                }
-              });
-              
-              // Trigger change detection to update the view
-              this.cdr.detectChanges();
-            } else {
-              // Retry after a short delay if controls, questions, or step is not ready
-              setTimeout(loadAnswers, 300);
-            }
-          }
-        };
-        
-        // Start loading answers after questions are loaded
-        // Use a longer timeout to ensure components are rendered in DOM
-        setTimeout(loadAnswers, 1500);
-        
-        this.showModal = true;
-      },
-      error: (error) => {
-        console.error('Error loading violation details:', error);
-        this.toasterService.showError('حدث خطأ أثناء تحميل تفاصيل البلاغ');
-      }
-    });
+    this.router.navigate(['/dashboard/my-private-violations/edit', violation.id]);
   }
 
   viewDetails(violation: PrivateViolationDto): void {
-    // Load full violation details
-    this.privateViolationService.getPrivateViolationById(violation.id).subscribe({
-      next: (fullViolation) => {
-        this.selectedViolation = fullViolation;
-        this.showDetailsModal = true;
-      },
-      error: (error) => {
-        console.error('Error loading violation details:', error);
-        this.toasterService.showError('حدث خطأ أثناء تحميل تفاصيل البلاغ');
-      }
-    });
+    this.router.navigate(['/dashboard/my-private-violations/view', violation.id]);
   }
 
   closeDetailsModal(): void {
@@ -873,9 +924,9 @@ export class MyPrivateViolationsComponent implements OnInit {
           return;
         }
         
-        // Validate file size (max 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-          this.toasterService.showWarning('حجم الملف يجب أن يكون أقل من 10 ميجابايت');
+        // Validate file size (max 100MB)
+        if (file.size > 100 * 1024 * 1024) {
+          this.toasterService.showWarning('حجم الملف يجب أن يكون أقل من 100 ميجابايت');
           return;
         }
         
@@ -933,6 +984,57 @@ export class MyPrivateViolationsComponent implements OnInit {
     }
   }
 
+  onTestimonyFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    Array.from(input.files).forEach(file => {
+      if (file.size > 100 * 1024 * 1024) {
+        this.toasterService.showWarning('حجم الملف يجب أن يكون أقل من 100 ميجابايت');
+        return;
+      }
+      this.testimonyAttachments.push(file);
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e: any) => {
+          this.testimonyAttachmentPreviews.push({
+            file: file,
+            preview: e.target.result,
+            uploaded: false
+          });
+        };
+        reader.readAsDataURL(file);
+      } else if (file.type.startsWith('video/')) {
+        const videoUrl = URL.createObjectURL(file);
+        this.testimonyAttachmentPreviews.push({
+          file: file,
+          preview: videoUrl,
+          uploaded: false
+        });
+      } else {
+        this.testimonyAttachmentPreviews.push({
+          file: file,
+          preview: '',
+          uploaded: false
+        });
+      }
+    });
+    input.value = '';
+  }
+
+  removeTestimonyAttachment(index: number): void {
+    const preview = this.testimonyAttachmentPreviews[index];
+    if (preview?.preview && preview?.file?.type.startsWith('video/') && preview.preview.startsWith('blob:')) {
+      URL.revokeObjectURL(preview.preview);
+    }
+    if (preview?.uploaded && preview?.filePath) {
+      this.testimonyAttachmentPreviews.splice(index, 1);
+    } else {
+      const fileIndex = this.testimonyAttachments.findIndex(f => f === preview?.file);
+      if (fileIndex !== -1) this.testimonyAttachments.splice(fileIndex, 1);
+      this.testimonyAttachmentPreviews.splice(index, 1);
+    }
+  }
+
   saveViolation(): void {
     // Mark all form controls as touched to show validation errors
     Object.keys(this.violationForm.controls).forEach(key => {
@@ -950,29 +1052,50 @@ export class MyPrivateViolationsComponent implements OnInit {
       }
     });
 
-    // Validate all steps
-    if (!this.validateStep(1) || !this.validateStep(3) || !this.validateStep(4)) {
+    // Validate: step 4 = testimony content or questions; step 5 = مرفقات الإفادة (إفادة) or N/A
+    const step4Valid = this.validateStep(4);
+    const step5Valid = !this.isTestimonyKind || this.validateStep(5);
+    if (!this.validateStep(1) || !this.validateStep(3) || !step4Valid || !step5Valid) {
       this.toasterService.showWarning('يرجى إكمال جميع الحقول المطلوبة');
-      // Go to first invalid step
-      if (!this.validateStep(1)) {
-        this.currentStep = 1;
-      } else if (!this.validateStep(3)) {
-        this.currentStep = 3;
-      } else if (!this.validateStep(4)) {
-        this.currentStep = 4;
-      }
+      if (!this.validateStep(1)) this.currentStep = 1;
+      else if (!this.validateStep(3)) this.currentStep = 3;
+      else if (!step4Valid) this.currentStep = 4;
+      else this.currentStep = 5;
       return;
     }
 
-    // Upload files first
-    if (this.attachments.length > 0) {
+    const hasNewNormalFiles = this.attachments.length > 0;
+    const hasNewTestimonyFiles = this.isTestimonyKind && this.testimonyAttachments.length > 0;
+    if (hasNewTestimonyFiles || hasNewNormalFiles) {
       this.uploadFilesAndSave();
     } else {
-      // Even if no new attachments, preserve existing ones
       const existingAttachments: PrivateViolationAttachmentInputDto[] = [];
-      this.attachmentPreviews.forEach(preview => {
-        if (preview.uploaded && preview.filePath) {
+      const pushPreview = (p: AttachmentPreview) => {
+        if (p.uploaded && p.filePath) {
           existingAttachments.push({
+            fileName: p.filePath.split('/').pop() || 'file',
+            filePath: p.filePath,
+            fileType: 'application/octet-stream',
+            fileSize: 0
+          });
+        }
+      };
+      if (this.isTestimonyKind) {
+        this.testimonyAttachmentPreviews.forEach(pushPreview);
+        this.attachmentPreviews.forEach(pushPreview);
+      } else {
+        this.attachmentPreviews.forEach(pushPreview);
+      }
+      this.saveViolationWithAttachments(existingAttachments);
+    }
+  }
+
+  uploadFilesAndSave(): void {
+    this.loading = true;
+    const pushFromPreviews = (list: PrivateViolationAttachmentInputDto[], previews: AttachmentPreview[]) => {
+      previews.forEach(preview => {
+        if (preview.uploaded && preview.filePath) {
+          list.push({
             fileName: preview.filePath.split('/').pop() || 'file',
             filePath: preview.filePath,
             fileType: 'application/octet-stream',
@@ -980,44 +1103,79 @@ export class MyPrivateViolationsComponent implements OnInit {
           });
         }
       });
-      this.saveViolationWithAttachments(existingAttachments);
-    }
-  }
+    };
 
-  uploadFilesAndSave(): void {
-    this.loading = true;
-    this.fileUploadService.uploadFiles(this.attachments).subscribe({
-      next: (uploadResponses) => {
-        const attachmentInputs: PrivateViolationAttachmentInputDto[] = uploadResponses.map((response, index) => {
-          const file = this.attachments[index];
-          return {
-            fileName: response.fileName,
-            filePath: response.url,
-            fileType: file.type || 'application/octet-stream',
-            fileSize: file.size
-          };
-        });
-
-        // Add existing attachments
-        this.attachmentPreviews.forEach(preview => {
-          if (preview.uploaded && preview.filePath) {
-            attachmentInputs.push({
-              fileName: preview.filePath.split('/').pop() || 'file',
-              filePath: preview.filePath,
-              fileType: 'application/octet-stream',
-              fileSize: 0
-            });
-          }
-        });
-
-        this.saveViolationWithAttachments(attachmentInputs);
-      },
-      error: (error) => {
-        console.error('Error uploading files:', error);
-        this.loading = false;
-        this.toasterService.showError('حدث خطأ أثناء رفع الملفات');
+    const doSave = (allInputs: PrivateViolationAttachmentInputDto[]) => {
+      if (this.isTestimonyKind) {
+        pushFromPreviews(allInputs, this.testimonyAttachmentPreviews);
+        pushFromPreviews(allInputs, this.attachmentPreviews);
+      } else {
+        pushFromPreviews(allInputs, this.attachmentPreviews);
       }
-    });
+      this.saveViolationWithAttachments(allInputs);
+    };
+
+    if (this.isTestimonyKind && this.testimonyAttachments.length > 0) {
+      this.fileUploadService.uploadFiles(this.testimonyAttachments).subscribe({
+        next: (testimonyResponses) => {
+          const testimonyInputs: PrivateViolationAttachmentInputDto[] = testimonyResponses.map((response, index) => {
+            const file = this.testimonyAttachments[index];
+            return {
+              fileName: response.fileName,
+              filePath: response.url,
+              fileType: file.type || 'application/octet-stream',
+              fileSize: file.size
+            };
+          });
+          if (this.attachments.length > 0) {
+            this.fileUploadService.uploadFiles(this.attachments).subscribe({
+              next: (normalResponses) => {
+                const normalInputs = normalResponses.map((response, index) => {
+                  const file = this.attachments[index];
+                  return {
+                    fileName: response.fileName,
+                    filePath: response.url,
+                    fileType: file.type || 'application/octet-stream',
+                    fileSize: file.size
+                  };
+                });
+                doSave([...testimonyInputs, ...normalInputs]);
+              },
+              error: (err) => {
+                this.loading = false;
+                this.toasterService.showError(err.message || 'حدث خطأ أثناء رفع الملفات');
+              }
+            });
+          } else {
+            doSave(testimonyInputs);
+          }
+        },
+        error: (err) => {
+          this.loading = false;
+          this.toasterService.showError(err.message || 'حدث خطأ أثناء رفع الملفات');
+        }
+      });
+    } else {
+      this.fileUploadService.uploadFiles(this.attachments).subscribe({
+        next: (uploadResponses) => {
+          const attachmentInputs: PrivateViolationAttachmentInputDto[] = uploadResponses.map((response, index) => {
+            const file = this.attachments[index];
+            return {
+              fileName: response.fileName,
+              filePath: response.url,
+              fileType: file.type || 'application/octet-stream',
+              fileSize: file.size
+            };
+          });
+          doSave(attachmentInputs);
+        },
+        error: (error) => {
+          console.error('Error uploading files:', error);
+          this.loading = false;
+          this.toasterService.showError(error.message || 'حدث خطأ أثناء رفع الملفات');
+        }
+      });
+    }
   }
 
   saveViolationWithAttachments(attachments: PrivateViolationAttachmentInputDto[]): void {
@@ -1029,17 +1187,19 @@ export class MyPrivateViolationsComponent implements OnInit {
     
     const formValue = this.violationForm.value;
     
-    // Build question answers
+    // Build question answers (only for استبيان)
     const questionAnswers: QuestionAnswerDto[] = [];
-    this.sortedQuestions.forEach(question => {
-      const control = this.questionsForm.get(`question_${question.id}`);
-      if (control && control.value) {
-        questionAnswers.push({
-          questionId: question.id,
-          answerValue: control.value
-        });
-      }
-    });
+    if (!this.isTestimonyKind) {
+      this.sortedQuestions.forEach(question => {
+        const control = this.questionsForm.get(`question_${question.id}`);
+        if (control && control.value) {
+          questionAnswers.push({
+            questionId: question.id,
+            answerValue: control.value
+          });
+        }
+      });
+    }
 
     if (this.editingViolation) {
       // Update existing violation
@@ -1048,6 +1208,8 @@ export class MyPrivateViolationsComponent implements OnInit {
         cityId: Number(formValue.cityId),
         categoryId: Number(formValue.categoryId),
         subCategoryId: Number(formValue.subCategoryId),
+        kind: Number(formValue.kind) as PrivateViolationKind,
+        testimonyContent: this.getTestimonyContentAsHtml() || undefined,
         violationDate: formValue.violationDate,
         location: formValue.location,
         description: formValue.description,
@@ -1078,10 +1240,14 @@ export class MyPrivateViolationsComponent implements OnInit {
       this.privateViolationService.updatePrivateViolation(updateDto).subscribe({
         next: () => {
           this.toasterService.showSuccess('تم تحديث البلاغ بنجاح');
-          this.clearDraft(); // Clear draft after successful save
+          this.clearDraft();
           this.draftExplicitlySaved = false;
-          this.closeModalInternal();
-          this.loadViolations();
+          if (this.formOnlyMode) {
+            this.saved.emit();
+          } else {
+            this.closeModalInternal();
+            this.loadViolations();
+          }
         },
         error: (error) => {
           console.error('Error updating violation:', error);
@@ -1095,6 +1261,8 @@ export class MyPrivateViolationsComponent implements OnInit {
         cityId: Number(formValue.cityId),
         categoryId: Number(formValue.categoryId),
         subCategoryId: Number(formValue.subCategoryId),
+        kind: Number(formValue.kind) as PrivateViolationKind,
+        testimonyContent: this.getTestimonyContentAsHtml() || undefined,
         violationDate: formValue.violationDate,
         location: formValue.location,
         description: formValue.description,
@@ -1125,9 +1293,13 @@ export class MyPrivateViolationsComponent implements OnInit {
       this.privateViolationService.createPrivateViolation(addDto).subscribe({
         next: () => {
           this.toasterService.showSuccess('تم إضافة البلاغ بنجاح');
-          this.clearDraft(); // Clear draft after successful save
-          this.closeModalInternal();
-          this.loadViolations();
+          this.clearDraft();
+          if (this.formOnlyMode) {
+            this.saved.emit();
+          } else {
+            this.closeModalInternal();
+            this.loadViolations();
+          }
         },
         error: (error) => {
           console.error('Error creating violation:', error);
@@ -1180,18 +1352,25 @@ export class MyPrivateViolationsComponent implements OnInit {
   }
 
   closeModal(): void {
-    // Don't prompt when editing existing violation (only for new violations)
+    if (this.formOnlyMode) {
+      if (this.editingViolation) {
+        this.cancel.emit();
+        return;
+      }
+      if (this.hasFormData() && !this.draftExplicitlySaved) {
+        this.promptSaveDraftOnClose();
+        return;
+      }
+      this.cancel.emit();
+      return;
+    }
     if (this.editingViolation) {
       this.closeModalInternal();
       return;
     }
-
-    // Check if form has any data entered
     if (this.hasFormData() && !this.draftExplicitlySaved) {
-      // Show confirmation dialog
       this.promptSaveDraftOnClose();
     } else {
-      // No data or draft was already saved, just close
       this.closeModalInternal();
     }
   }
@@ -1202,9 +1381,20 @@ export class MyPrivateViolationsComponent implements OnInit {
       // Validate current step before moving forward
       if (this.validateCurrentStep()) {
         this.currentStep++;
-        // If navigating to questions step (step 4), ensure questions are loaded
-        if (this.currentStep === 4) {
+        // If navigating to questions step (step 4 for استبيان), ensure questions are loaded
+        if (this.currentStep === 4 && !this.isTestimonyKind) {
           this.ensureQuestionsLoaded();
+        }
+        // If navigating to testimony step (step 4 for إفادة) in edit mode, re-patch so editor displays HTML
+        if (this.currentStep === 4 && this.isTestimonyKind && this.originalViolationData?.testimonyContent) {
+          const html = this.originalViolationData.testimonyContent;
+          setTimeout(() => {
+            this.violationForm.get('testimonyContent')?.setValue(html, { emitEvent: false });
+            this.cdr.detectChanges();
+          }, 150);
+        }
+        if (this.currentStep === 4 && this.isTestimonyKind) {
+          this.shouldScrollToTestimony = true;
         }
       } else {
         // Show error message if validation fails
@@ -1216,8 +1406,7 @@ export class MyPrivateViolationsComponent implements OnInit {
   previousStep(): void {
     if (this.currentStep > 1) {
       this.currentStep--;
-      // If navigating to questions step (step 4), ensure questions are loaded
-      if (this.currentStep === 4) {
+      if (this.currentStep === 4 && !this.isTestimonyKind) {
         this.ensureQuestionsLoaded();
       }
     }
@@ -1226,9 +1415,18 @@ export class MyPrivateViolationsComponent implements OnInit {
   goToStep(step: number): void {
     if (this.canGoToStep(step)) {
       this.currentStep = step;
-      // If navigating to questions step (step 4), ensure questions are loaded
-      if (step === 4) {
+      if (step === 4 && !this.isTestimonyKind) {
         this.ensureQuestionsLoaded();
+      }
+      if (step === 4 && this.isTestimonyKind && this.originalViolationData?.testimonyContent) {
+        const html = this.originalViolationData.testimonyContent;
+        setTimeout(() => {
+          this.violationForm.get('testimonyContent')?.setValue(html, { emitEvent: false });
+          this.cdr.detectChanges();
+        }, 150);
+      }
+      if (step === 4 && this.isTestimonyKind) {
+        this.shouldScrollToTestimony = true;
       }
     }
   }
@@ -1375,8 +1573,7 @@ export class MyPrivateViolationsComponent implements OnInit {
 
   validateStep(step: number): boolean {
     switch (step) {
-      case 1: // Basic Information
-        // Mark all fields as touched to show errors
+      case 1: // Basic Information (testimony content is validated in step 4 for Testimony)
         const basicFields = ['cityId', 'categoryId', 'subCategoryId', 'violationDate', 'location', 'description', 'role'];
         basicFields.forEach(field => {
           const control = this.violationForm.get(field);
@@ -1384,7 +1581,7 @@ export class MyPrivateViolationsComponent implements OnInit {
             control.markAsTouched();
           }
         });
-        
+
         // Check if role is Other, then otherRoleText is required
         const role = this.violationForm.get('role')?.value;
         if (role === PrivateViolationRole.Other) {
@@ -1396,10 +1593,13 @@ export class MyPrivateViolationsComponent implements OnInit {
             }
           }
         }
-        
+
+        // Only require enabled controls to be valid; disabled controls (e.g. subCategoryId until category is selected) are skipped
         return basicFields.every(field => {
           const control = this.violationForm.get(field);
-          return control && control.valid;
+          if (!control) return false;
+          if (control.disabled) return true;
+          return control.valid;
         });
       case 2: // Personal Information - all optional
         return true;
@@ -1410,7 +1610,19 @@ export class MyPrivateViolationsComponent implements OnInit {
           return emailControl.valid;
         }
         return true;
-      case 4: // Questions
+      case 4: // محتوى الإفادة (افادات) or Questions (استبيان)
+        if (this.isTestimonyKind) {
+          const testimonyControl = this.violationForm.get('testimonyContent');
+          testimonyControl?.markAsTouched();
+          const raw = testimonyControl?.value;
+          let content = '';
+          if (typeof raw === 'string') {
+            content = raw.trim();
+          } else if (raw && typeof raw === 'object') {
+            content = ''; // Legacy ProseMirror JSON; textarea stores string only
+          }
+          return content.length > 0;
+        }
         // Mark all question controls as touched
         this.sortedQuestions.forEach(question => {
           const control = this.questionsForm.get(`question_${question.id}`);
@@ -1418,8 +1630,6 @@ export class MyPrivateViolationsComponent implements OnInit {
             control.markAsTouched();
           }
         });
-        
-        // Check if all required questions are answered
         for (const question of this.sortedQuestions) {
           if (question.isRequired) {
             const control = this.questionsForm.get(`question_${question.id}`);
@@ -1429,9 +1639,15 @@ export class MyPrivateViolationsComponent implements OnInit {
           }
         }
         return true;
-      case 5: // Attachments - optional
+      case 5: // مرفقات الإفادة (إفادة: required) or المرفقات (استبيان: optional)
+        if (this.isTestimonyKind) {
+          return this.testimonyAttachmentPreviews.length >= 1;
+        }
         return true;
-      case 6: // Review - no validation needed
+      case 6: // مرفقات (إفادة: optional) or Review (استبيان)
+        if (this.isTestimonyKind) return true;
+        return true;
+      case 7: // المراجعة (إفادة only)
         return true;
       default:
         return true;
@@ -1523,6 +1739,36 @@ export class MyPrivateViolationsComponent implements OnInit {
 
   getDescriptionValue(): string {
     return this.violationForm.get('description')?.value || '';
+  }
+
+  getKindValue(): string {
+    const kind = this.violationForm.get('kind')?.value;
+    return kind !== null && kind !== undefined ? getPrivateViolationKindLabel(kind) : '';
+  }
+
+  /** Returns testimony content as HTML string for display (handles ProseMirror JSON). */
+  getTestimonyContentValue(): string {
+    return this.getTestimonyContentAsHtml();
+  }
+
+  /** Normalizes testimony form value to string for API (textarea stores plain text/HTML). */
+  private getTestimonyContentAsHtml(): string {
+    const raw = this.violationForm.get('testimonyContent')?.value;
+    return raw != null && typeof raw === 'string' ? raw : '';
+  }
+
+  /** Step label. إفادة: 5=مرفقات الإفادة, 6=مرفقات, 7=المراجعة; استبيان: 4=الأسئلة, 5=المرفقات, 6=المراجعة */
+  getStepLabel(step: number): string {
+    if (this.isTestimonyKind) {
+      const labels: { [key: number]: string } = { 1: 'المعلومات الأساسية', 2: 'معلومات الضحية', 3: 'معلومات الاتصال', 4: 'محتوى الإفادة', 5: 'مرفقات الإفادة', 6: 'مرفقات', 7: 'المراجعة' };
+      return labels[step] || '';
+    }
+    const labels: { [key: number]: string } = { 1: 'المعلومات الأساسية', 2: 'معلومات الضحية', 3: 'معلومات الاتصال', 4: 'الأسئلة', 5: 'المرفقات', 6: 'المراجعة' };
+    return labels[step] || '';
+  }
+
+  get stepNumbers(): number[] {
+    return Array.from({ length: this.totalSteps }, (_, i) => i + 1);
   }
 
   getRoleValue(): string {
@@ -1683,6 +1929,10 @@ export class MyPrivateViolationsComponent implements OnInit {
     const formValue = this.violationForm.value;
     const original = this.originalViolationData;
     
+    if ((formValue.kind ?? PrivateViolationKind.Questionnaire) !== (original.kind ?? PrivateViolationKind.Questionnaire) ||
+        (formValue.testimonyContent || '') !== (original.testimonyContent || '')) {
+      return true;
+    }
     // Check basic fields
     if (formValue.cityId !== original.cityId ||
         formValue.categoryId !== original.categoryId ||
@@ -1748,8 +1998,10 @@ export class MyPrivateViolationsComponent implements OnInit {
       }
     }
     
-    // Check attachments count
-    const currentAttachmentCount = this.attachmentPreviews.length;
+    // Check attachments count (إفادة: testimony + normal; استبيان: normal only)
+    const currentAttachmentCount = this.isTestimonyKind
+      ? this.testimonyAttachmentPreviews.length + this.attachmentPreviews.length
+      : this.attachmentPreviews.length;
     const originalAttachmentCount = original.attachments?.length || 0;
     if (currentAttachmentCount !== originalAttachmentCount) {
       return true;
@@ -1787,6 +2039,8 @@ export class MyPrivateViolationsComponent implements OnInit {
     // Check violationForm for any non-empty values (excluding defaults)
     const formValue = this.violationForm.value;
     const defaultValues = {
+      kind: PrivateViolationKind.Questionnaire,
+      testimonyContent: '',
       role: PrivateViolationRole.Witness,
       showPersonalInfoInPublish: false,
       hasDisability: false
@@ -1814,15 +2068,16 @@ export class MyPrivateViolationsComponent implements OnInit {
       return control && control.value && String(control.value).trim() !== '';
     });
 
-    // Check if attachments or attachmentPreviews have items
-    const hasAttachments = this.attachments.length > 0 || this.attachmentPreviews.length > 0;
+    // Check if attachments or attachmentPreviews have items (إفادة: testimony + normal)
+    const hasAttachments = this.attachments.length > 0 || this.attachmentPreviews.length > 0 ||
+      this.testimonyAttachments.length > 0 || this.testimonyAttachmentPreviews.length > 0;
 
     return hasViolationFormData || hasQuestionAnswers || hasAttachments;
   }
 
   saveDraft(): void {
     try {
-      const formValue = this.violationForm.value;
+      const formValue = this.violationForm.getRawValue ? this.violationForm.getRawValue() : this.violationForm.value;
       
       // Collect question answers
       const questionsFormData: { [key: string]: any } = {};
@@ -1890,11 +2145,10 @@ export class MyPrivateViolationsComponent implements OnInit {
         this.loadSubCategories(draft.categoryId, true);
         this.loadQuestions(draft.categoryId, false);
         
-        // Set subCategoryId after subcategories are loaded
         if (draft.subCategoryId) {
           setTimeout(() => {
             const subCategoryControl = this.violationForm.get('subCategoryId');
-            if (subCategoryControl) {
+            if (subCategoryControl && draft.subCategoryId) {
               subCategoryControl.enable();
               subCategoryControl.setValue(draft.subCategoryId, { emitEvent: false });
             }
@@ -1976,6 +2230,8 @@ export class MyPrivateViolationsComponent implements OnInit {
     this.clearDraft();
     this.checkDraft();
     this.violationForm.reset({
+      kind: PrivateViolationKind.Questionnaire,
+      testimonyContent: '',
       role: PrivateViolationRole.Witness,
       showPersonalInfoInPublish: false,
       hasDisability: false
@@ -1984,6 +2240,8 @@ export class MyPrivateViolationsComponent implements OnInit {
     this.clearQuestionControls();
     this.attachments = [];
     this.attachmentPreviews = [];
+    this.testimonyAttachments = [];
+    this.testimonyAttachmentPreviews = [];
     this.currentStep = 1;
     this.filteredQuestions = [];
     this.sortedQuestions = [];
@@ -2000,7 +2258,9 @@ export class MyPrivateViolationsComponent implements OnInit {
     }).then(confirmed => {
       if (confirmed) {
         this.saveDraft();
-        this.closeModalInternal();
+      }
+      if (this.formOnlyMode) {
+        this.cancel.emit();
       } else {
         this.closeModalInternal();
       }
@@ -2008,11 +2268,17 @@ export class MyPrivateViolationsComponent implements OnInit {
   }
 
   private closeModalInternal(): void {
+    if (this.formOnlyMode) {
+      this.cancel.emit();
+      return;
+    }
     this.showModal = false;
     this.editingViolation = null;
     this.originalViolationData = null;
     this.currentStep = 1;
     this.violationForm.reset({
+      kind: PrivateViolationKind.Questionnaire,
+      testimonyContent: '',
       role: PrivateViolationRole.Witness,
       showPersonalInfoInPublish: false,
       hasDisability: false
@@ -2021,6 +2287,8 @@ export class MyPrivateViolationsComponent implements OnInit {
     this.clearQuestionControls();
     this.attachments = [];
     this.attachmentPreviews = [];
+    this.testimonyAttachments = [];
+    this.testimonyAttachmentPreviews = [];
     this.filteredQuestions = [];
     this.sortedQuestions = [];
     this.loading = false;

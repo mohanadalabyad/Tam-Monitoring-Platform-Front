@@ -349,6 +349,15 @@
     color: var(--text-secondary);
     margin-bottom: var(--spacing-xl);
   }
+
+  &.form-step-testimony {
+    overflow: visible;
+    scroll-margin-top: 100px;
+
+    .form-section-testimony-editor {
+      overflow: visible;
+    }
+  }
 }
 
 // Form Sections
@@ -458,6 +467,41 @@
   textarea {
     resize: vertical;
     min-height: 120px;
+  }
+
+  .testimony-editor {
+    width: 100%;
+    min-height: 200px;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border: 2px solid var(--border-light);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-base);
+    font-family: var(--font-family-primary);
+    background: var(--white);
+    outline: none;
+    overflow-y: auto;
+    text-align: right;
+    direction: rtl;
+
+    &:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(91, 56, 114, 0.1);
+    }
+
+    &.invalid {
+      border-color: var(--danger-color);
+    }
+  }
+
+  .testimony-editor-wrapper {
+    overflow: visible;
+    padding-top: var(--spacing-md);
+  }
+
+  .testimony-editor-container {
+    overflow: visible;
+    min-height: 280px;
+    display: block;
   }
 }
 
@@ -1220,6 +1264,68 @@
       color: var(--text-primary);
       line-height: 1.6;
       font-size: var(--font-size-base);
+    }
+
+    .history-attachments {
+      margin-bottom: var(--spacing-sm);
+
+      .history-attachments-label {
+        display: block;
+        font-size: var(--font-size-sm);
+        font-weight: var(--font-weight-semibold);
+        color: var(--text-secondary);
+        margin-bottom: var(--spacing-xs);
+      }
+
+      .history-attachments-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        gap: var(--spacing-sm);
+      }
+
+      .history-attachment-item {
+        a {
+          display: block;
+          text-decoration: none;
+          border-radius: var(--radius-md);
+          overflow: hidden;
+          border: 1px solid var(--border-light);
+          transition: all var(--transition-base) var(--transition-timing);
+
+          &:hover {
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-sm);
+          }
+        }
+
+        .history-attachment-image {
+          width: 100%;
+          height: 80px;
+          object-fit: cover;
+          display: block;
+        }
+
+        .history-attachment-file {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: var(--spacing-sm);
+          min-height: 80px;
+          background: var(--light-bg);
+
+          span {
+            font-size: 10px;
+            color: var(--text-primary);
+            text-align: center;
+            word-break: break-word;
+            line-clamp: 2;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+        }
+      }
     }
 
     .history-user {

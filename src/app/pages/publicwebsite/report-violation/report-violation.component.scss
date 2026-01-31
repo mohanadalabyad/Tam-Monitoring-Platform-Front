@@ -345,6 +345,13 @@
           object-fit: cover;
           display: block;
         }
+
+        video.attachment-video {
+          width: 100%;
+          max-height: 240px;
+          object-fit: contain;
+          display: block;
+        }
         
         .video-placeholder {
           width: 100%;
@@ -491,7 +498,7 @@
           opacity: 0.6;
         }
 
-        // Custom styling for datetime-local input (WebKit browsers)
+        // Custom styling for date input (WebKit browsers)
         &::-webkit-calendar-picker-indicator {
           position: absolute;
           left: var(--spacing-md);

@@ -1,3 +1,12 @@
+export interface ViolationFollowUpAttachmentDto {
+  id: number;
+  violationFollowUpId: number;
+  fileName: string;
+  filePath: string;
+  fileType: string;
+  fileSize?: number;
+}
+
 export interface ViolationFollowUpDto {
   id: number;
   violationId: number;
@@ -9,6 +18,14 @@ export interface ViolationFollowUpDto {
   createdByUserName?: string;
   creationDate: Date | string;
   isActive: boolean;
+  attachments?: ViolationFollowUpAttachmentDto[];
+}
+
+export interface ViolationFollowUpAttachmentInputDto {
+  fileName: string;
+  filePath: string;
+  fileType: string;
+  fileSize?: number;
 }
 
 export interface AddViolationFollowUpDto {
@@ -16,6 +33,7 @@ export interface AddViolationFollowUpDto {
   violationType: string; // "Private" or "Public"
   followUpStatusId: number;
   note: string;
+  attachments?: ViolationFollowUpAttachmentInputDto[];
 }
 
 export interface UpdateViolationFollowUpDto {

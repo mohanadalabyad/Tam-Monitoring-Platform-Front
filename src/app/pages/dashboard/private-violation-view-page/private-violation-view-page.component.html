@@ -1,0 +1,110 @@
+<div class="private-violation-view-page">
+  <div class="page-header">
+    <button type="button" class="btn-back" (click)="goBack()">رجوع</button>
+    <h1>عرض بلاغ خاص</h1>
+  </div>
+
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>جاري تحميل البلاغ...</p>
+  </div>
+
+  <div *ngIf="!loading && error" class="error-state">
+    <p>{{ error }}</p>
+    <button type="button" class="btn-back" (click)="goBack()">رجوع</button>
+  </div>
+
+  <div *ngIf="!loading && !error && violation" class="violation-details">
+    <div class="details-section">
+      <h2 class="section-title">الحالة</h2>
+      <div class="details-grid">
+        <div class="detail-item">
+          <span class="detail-label">حالة القبول</span>
+          <span class="detail-value">
+            <span class="detail-badge"
+                  [class.badge-pending]="violation.acceptanceStatus === 1"
+                  [class.badge-approved]="violation.acceptanceStatus === 2"
+                  [class.badge-rejected]="violation.acceptanceStatus === 3">
+              {{ getAcceptanceStatusLabel(violation.acceptanceStatus) }}
+            </span>
+          </span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">حالة النشر</span>
+          <span class="detail-value">
+            <span class="detail-badge"
+                  [class.badge-published]="violation.publishStatus === 2"
+                  [class.badge-unpublished]="violation.publishStatus === 1">
+              {{ getPublishStatusLabel(violation.publishStatus) }}
+            </span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="details-section">
+      <h2 class="section-title">معلومات البلاغ</h2>
+      <div class="details-grid">
+        <div class="detail-item">
+          <span class="detail-label">نوع البلاغ</span>
+          <span class="detail-value">{{ violation.kind != null ? getPrivateViolationKindLabel(violation.kind) : '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">المدينة</span>
+          <span class="detail-value">{{ violation.cityName || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">الفئة</span>
+          <span class="detail-value">{{ violation.categoryName || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">الفئة الفرعية</span>
+          <span class="detail-value">{{ violation.subCategoryName || '—' }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">تاريخ البلاغ</span>
+          <span class="detail-value">{{ violation.violationDate | date:'mediumDate' }}</span>
+        </div>
+        <div class="detail-item full-width">
+          <span class="detail-label">الموقع</span>
+          <span class="detail-value">{{ violation.location || '—' }}</span>
+        </div>
+        <div class="detail-item full-width" *ngIf="violation.description">
+          <span class="detail-label">الوصف</span>
+          <span class="detail-value">{{ violation.description }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="details-section" *ngIf="violation.testimonyContent">
+      <h2 class="section-title">محتوى الشهادة</h2>
+      <div class="detail-item full-width">
+        <div class="detail-value testimony-content-html" [innerHTML]="violation.testimonyContent"></div>
+      </div>
+    </div>
+
+    <div class="details-section" *ngIf="violation.questionAnswers?.length">
+      <h2 class="section-title">إجابات الأسئلة</h2>
+      <div class="question-answers-list">
+        <div class="question-answer-item" *ngFor="let qa of violation.questionAnswers">
+          <div class="question-text">{{ qa.questionText }}</div>
+          <div class="answer-value">{{ qa.answerValue || '—' }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="details-section" *ngIf="violation.attachments?.length">
+      <h2 class="section-title">المرفقات</h2>
+      <div class="attachments-grid">
+        <div class="attachment-item" *ngFor="let att of violation.attachments">
+          <a [href]="getAttachmentUrl(att.filePath)" target="_blank" rel="noopener noreferrer">
+            <img *ngIf="isImageFile(att.fileType)" class="attachment-image" [src]="getAttachmentUrl(att.filePath)" [alt]="att.fileName" />
+            <div *ngIf="!isImageFile(att.fileType)" class="attachment-file">
+              <span>{{ att.fileName }}</span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

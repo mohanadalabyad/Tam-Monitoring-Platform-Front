@@ -14,6 +14,8 @@ export interface TableColumn {
   toggleAction?: (row: any, event: Event) => void; // Custom toggle action
   isToggling?: (row: any) => boolean; // Check if toggling
   iconRenderer?: (value: any, row: any) => any; // Custom icon renderer
+  /** Optional actions to show inside this cell (e.g. accept/refuse in status column). When empty, only icon/content is shown. */
+  inlineActions?: (row: any) => TableAction[];
 }
 
 export interface TableAction {
@@ -286,5 +288,11 @@ export class UnifiedTableComponent implements OnInit, OnChanges {
       return Trash2;
     }
     return MoreVertical;
+  }
+
+  getInlineActions(col: TableColumn, row: any): TableAction[] {
+    if (!col.inlineActions) return [];
+    const actions = col.inlineActions(row);
+    return Array.isArray(actions) ? actions.filter(a => !a.condition || a.condition(row)) : [];
   }
 }

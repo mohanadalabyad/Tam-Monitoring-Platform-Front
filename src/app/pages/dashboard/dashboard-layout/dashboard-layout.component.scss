@@ -20,6 +20,8 @@
   flex: 1;
   padding: var(--spacing-lg);
   min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .dashboard-footer {

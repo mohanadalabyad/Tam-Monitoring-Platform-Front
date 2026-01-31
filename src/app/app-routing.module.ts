@@ -20,9 +20,12 @@ import { FollowUpStatusesManagementComponent } from './pages/dashboard/follow-up
 import { PublicViolationsManagementComponent } from './pages/dashboard/public-violations-management/public-violations-management.component';
 import { MyPrivateViolationsComponent } from './pages/dashboard/my-private-violations/my-private-violations.component';
 import { PrivateViolationsManagementComponent } from './pages/dashboard/private-violations-management/private-violations-management.component';
+import { PrivateViolationFormPageComponent } from './pages/dashboard/private-violation-form-page/private-violation-form-page.component';
+import { PrivateViolationViewPageComponent } from './pages/dashboard/private-violation-view-page/private-violation-view-page.component';
 import { SettingsManagementComponent } from './pages/dashboard/settings-management/settings-management.component';
 import { WebsiteContentManagementComponent } from './pages/dashboard/website-content-management/website-content-management.component';
 import { EducationLevelsManagementComponent } from './pages/dashboard/education-levels-management/education-levels-management.component';
+import { PerpetratorTypesManagementComponent } from './pages/dashboard/perpetrator-types-management/perpetrator-types-management.component';
 
 const routes: Routes = [
   // Public routes
@@ -50,6 +53,12 @@ const routes: Routes = [
         component: SubCategoriesManagementComponent,
         canActivate: [PermissionGuard],
         data: { permission: 'SubCategory.Read' }
+      },
+      {
+        path: 'perpetrator-types',
+        component: PerpetratorTypesManagementComponent,
+        canActivate: [PermissionGuard],
+        data: { permission: 'PerpetratorType.Read' }
       },
       {
         path: 'questions',
@@ -99,8 +108,29 @@ const routes: Routes = [
         canActivate: [AuthGuard] // Authenticated users only
       },
       {
+        path: 'my-private-violations/add',
+        component: PrivateViolationFormPageComponent,
+        canActivate: [AuthGuard]
+      },
+      {
+        path: 'my-private-violations/edit/:id',
+        component: PrivateViolationFormPageComponent,
+        canActivate: [AuthGuard]
+      },
+      {
+        path: 'my-private-violations/view/:id',
+        component: PrivateViolationViewPageComponent,
+        canActivate: [AuthGuard]
+      },
+      {
         path: 'private-violations',
         component: PrivateViolationsManagementComponent,
+        canActivate: [PermissionGuard],
+        data: { permission: 'PrivateViolation.Read' }
+      },
+      {
+        path: 'private-violations/view/:id',
+        component: PrivateViolationViewPageComponent,
         canActivate: [PermissionGuard],
         data: { permission: 'PrivateViolation.Read' }
       },

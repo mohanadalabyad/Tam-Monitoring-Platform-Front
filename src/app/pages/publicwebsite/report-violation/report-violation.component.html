@@ -97,26 +97,40 @@
           </div>
 
           <div class="form-group">
-            <label for="violationDate">تاريخ ووقت الحادثة *</label>
+            <label for="perpetratorTypeId">مرتكب الانتهاك (اختياري)</label>
+            <select
+              id="perpetratorTypeId"
+              formControlName="perpetratorTypeId"
+              [disabled]="loadingPerpetratorTypes || perpetratorTypes.length === 0"
+            >
+              <option [ngValue]="null">غير محدد</option>
+              <option *ngFor="let pt of perpetratorTypes" [value]="pt.id">{{ pt.name }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="violationDate">تاريخ الحادثة *</label>
             <div class="datetime-input-wrapper">
               <div class="datetime-input-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polyline points="12 6 12 12 16 14"/>
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                  <line x1="16" y1="2" x2="16" y2="6"/>
+                  <line x1="8" y1="2" x2="8" y2="6"/>
+                  <line x1="3" y1="10" x2="21" y2="10"/>
                 </svg>
               </div>
               <input
-                type="datetime-local"
+                type="date"
                 id="violationDate"
                 formControlName="violationDate"
                 [class.invalid]="isFieldInvalid(violationForm, 'violationDate')"
                 [max]="maxDate"
                 class="datetime-input"
-                placeholder="اختر التاريخ والوقت"
+                placeholder="اختر التاريخ"
               />
             </div>
             <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'violationDate')">
-              تاريخ ووقت الحادثة مطلوب
+              تاريخ الحادثة مطلوب
             </div>
           </div>
         </div>
@@ -150,6 +164,15 @@
         </div>
 
         <div class="form-group">
+          <label for="gender">الجنس (اختياري)</label>
+          <select id="gender" formControlName="gender">
+            <option [ngValue]="null">غير محدد</option>
+            <option [ngValue]="GenderOption.Male">ذكر</option>
+            <option [ngValue]="GenderOption.Female">أنثى</option>
+          </select>
+        </div>
+
+        <div class="form-group">
           <label for="violationType">صفة المبلغ *</label>
           <select
             id="violationType"
@@ -180,17 +203,48 @@
           </label>
         </div>
 
-        <div class="form-group" *ngIf="violationForm.get('canContact')?.value">
-          <label for="email">البريد الإلكتروني *</label>
-          <input
-            type="email"
-            id="email"
-            formControlName="email"
-            placeholder="example@email.com"
-            [class.invalid]="isFieldInvalid(violationForm, 'email')"
-          />
-          <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'email')">
-            بريد إلكتروني صحيح مطلوب
+        <div *ngIf="violationForm.get('canContact')?.value" class="contact-fields">
+          <div class="form-group">
+            <label for="email">البريد الإلكتروني</label>
+            <input
+              type="email"
+              id="email"
+              formControlName="email"
+              placeholder="example@email.com"
+              [class.invalid]="isFieldInvalid(violationForm, 'email')"
+            />
+            <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'email')">
+              بريد إلكتروني صحيح
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="phoneNumber">رقم الهاتف</label>
+            <input
+              type="tel"
+              id="phoneNumber"
+              formControlName="phoneNumber"
+              placeholder="05xxxxxxxx"
+              [class.invalid]="isFieldInvalid(violationForm, 'phoneNumber')"
+            />
+          </div>
+          <div class="error-message" *ngIf="isContactInfoRequiredError()">
+            يرجى إدخال البريد الإلكتروني أو رقم الهاتف على الأقل
+          </div>
+          <div class="form-group">
+            <label>الطريقة المفضلة للتواصل *</label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" formControlName="preferredContactMethod" value="email" />
+                <span>البريد الإلكتروني</span>
+              </label>
+              <label class="radio-label">
+                <input type="radio" formControlName="preferredContactMethod" value="phone" />
+                <span>الهاتف</span>
+              </label>
+            </div>
+            <div class="error-message" *ngIf="isFieldInvalid(violationForm, 'preferredContactMethod')">
+              يرجى اختيار الطريقة المفضلة للتواصل
+            </div>
           </div>
         </div>
       </div>
@@ -223,7 +277,7 @@
               <span class="file-input-text">
                 {{ attachments.length > 0 ? 'تم اختيار ' + attachments.length + ' ملف' : 'انقر أو اسحب الملفات هنا' }}
               </span>
-              <span class="file-input-hint">يمكن رفع صور أو فيديوهات (حد أقصى 10 ميجابايت لكل ملف)</span>
+              <span class="file-input-hint">يمكن رفع صور أو فيديوهات (حد أقصى 100 ميجابايت لكل ملف)</span>
             </label>
           </div>
         </div>
@@ -291,13 +345,19 @@
                 </div>
                 <div class="review-value">{{ getSelectedSubCategoryName() }}</div>
               </div>
+              <div class="review-item" *ngIf="violationForm.get('perpetratorTypeId')?.value">
+                <div class="review-label">
+                  <strong>مرتكب الانتهاك:</strong>
+                </div>
+                <div class="review-value">{{ getSelectedPerpetratorTypeName() }}</div>
+              </div>
               <div class="review-item">
                 <div class="review-label">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="12" r="10"/>
                     <polyline points="12 6 12 12 16 14"/>
                   </svg>
-                  <strong>تاريخ ووقت الحادثة:</strong>
+                  <strong>تاريخ الحادثة:</strong>
                 </div>
                 <div class="review-value">{{ getViolationDateValue() }}</div>
               </div>
@@ -346,7 +406,7 @@
 
           <div class="review-card" *ngIf="getCanContactValue()">
             <h3 class="review-card-title">معلومات الاتصال</h3>
-            <div class="review-item">
+            <div class="review-item" *ngIf="getEmailValue()">
               <div class="review-label">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
@@ -355,6 +415,21 @@
                 <strong>البريد الإلكتروني:</strong>
               </div>
               <div class="review-value">{{ getEmailValue() }}</div>
+            </div>
+            <div class="review-item" *ngIf="getPhoneValue()">
+              <div class="review-label">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+                <strong>رقم الهاتف:</strong>
+              </div>
+              <div class="review-value">{{ getPhoneValue() }}</div>
+            </div>
+            <div class="review-item" *ngIf="getPreferredContactLabel()">
+              <div class="review-label">
+                <strong>الطريقة المفضلة:</strong>
+              </div>
+              <div class="review-value">{{ getPreferredContactLabel() }}</div>
             </div>
           </div>
 

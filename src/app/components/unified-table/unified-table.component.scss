@@ -352,6 +352,13 @@ td {
   color: var(--danger-dark);
 }
 
+.icon-cell-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .icon-cell {
   display: inline-flex;
   align-items: center;
@@ -359,6 +366,24 @@ td {
   
   lucide-icon {
     color: var(--primary-color);
+  }
+}
+
+.inline-action-buttons {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-btn-inline {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+
+  lucide-icon {
+    width: 12px;
+    height: 12px;
   }
 }
 

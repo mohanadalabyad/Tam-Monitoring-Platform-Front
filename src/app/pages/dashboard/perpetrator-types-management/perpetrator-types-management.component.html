@@ -1,0 +1,160 @@
+<div class="perpetrator-types-management-page">
+  <div class="page-header">
+    <div>
+      <h1>مرتكب الانتهاك</h1>
+      <p>إدارة وعرض أنواع مرتكب الانتهاك</p>
+    </div>
+    <div class="header-actions">
+      <app-view-toggle
+        [storageKey]="'perpetrator-types-view-mode'"
+        [defaultView]="'table'"
+        (viewChange)="onViewChange($event)"
+      ></app-view-toggle>
+      <button class="btn-primary" (click)="openAddModal()" *hasPermission="'PerpetratorType.Create'">
+        <lucide-icon [img]="UserX" [size]="18"></lucide-icon>
+        إضافة نوع جديد
+      </button>
+    </div>
+  </div>
+
+  <div class="toolbar" *ngIf="!loading">
+    <div class="toolbar-left">
+      <div class="results-info">
+        <span class="results-count">
+          <strong>{{ perpetratorTypes.length }}</strong> نوع
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="viewMode === 'table'">
+    <app-unified-table
+      [columns]="columns"
+      [data]="perpetratorTypes"
+      [loading]="loading"
+      [actions]="actions"
+      [pageSize]="10"
+      emptyMessage="لا توجد أنواع"
+      (rowClick)="edit($event)"
+    ></app-unified-table>
+  </div>
+
+  <div *ngIf="viewMode === 'cards'" class="cards-view">
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>جاري التحميل...</p>
+    </div>
+    <div *ngIf="!loading && perpetratorTypes.length === 0" class="empty-state">
+      <p>لا توجد أنواع</p>
+    </div>
+    <div *ngIf="!loading && perpetratorTypes.length > 0" class="cards-grid">
+      <div *ngFor="let item of perpetratorTypes" class="card">
+        <div class="card-header">
+          <div class="card-title-section">
+            <h3 class="card-title">{{ item.name }}</h3>
+            <span class="card-badge" *ngIf="item.categoryName">{{ item.categoryName }}</span>
+          </div>
+          <div class="card-actions-header" (click)="$event.stopPropagation()">
+            <button
+              *ngIf="permissionService.hasPermission('PerpetratorType.Update') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-edit"
+              (click)="edit(item); $event.stopPropagation()"
+              title="تعديل"
+            >
+              <lucide-icon [img]="Pencil" [size]="16"></lucide-icon>
+            </button>
+            <button
+              *ngIf="permissionService.hasPermission('PerpetratorType.Delete') || permissionService.isSuperAdmin()"
+              type="button"
+              class="card-action-icon btn-delete"
+              (click)="delete(item); $event.stopPropagation()"
+              title="حذف"
+            >
+              <lucide-icon [img]="Trash2" [size]="16"></lucide-icon>
+            </button>
+          </div>
+        </div>
+        <div class="card-content">
+          <div class="card-field">
+            <span class="field-label">الفئة:</span>
+            <span class="field-value">{{ item.categoryName || getCategoryName(item.categoryId) }}</span>
+          </div>
+          <div class="card-field">
+            <span class="field-label">الوصف:</span>
+            <span class="field-value">{{ item.description || 'لا يوجد وصف' }}</span>
+          </div>
+        </div>
+        <div class="card-footer">
+          <div class="status-toggle">
+            <span class="status-label">الحالة:</span>
+            <button
+              *ngIf="permissionService.hasPermission('PerpetratorType.ToggleActivity') || permissionService.isSuperAdmin()"
+              type="button"
+              class="toggle-btn-card"
+              [class.active]="item.isActive"
+              [class.toggling]="isToggling(item.id)"
+              [disabled]="isToggling(item.id)"
+              (click)="toggleActivity(item, $event)"
+              [title]="item.isActive ? 'إلغاء التفعيل' : 'تفعيل'"
+            >
+              <lucide-icon [img]="item.isActive ? Power : PowerOff" [size]="16"></lucide-icon>
+              <span>{{ item.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </button>
+            <span
+              *ngIf="!(permissionService.hasPermission('PerpetratorType.ToggleActivity') || permissionService.isSuperAdmin())"
+              class="status-readonly"
+              [class.active]="item.isActive"
+            >
+              <lucide-icon [img]="item.isActive ? Power : PowerOff" [size]="16"></lucide-icon>
+              <span>{{ item.isActive ? 'نشط' : 'غير نشط' }}</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <app-modal [show]="showModal" [title]="modalTitle" size="md" (close)="closeModal()">
+    <form [formGroup]="form">
+      <div class="form-group">
+        <label for="categoryId">الفئة *</label>
+        <select
+          id="categoryId"
+          formControlName="categoryId"
+          [class.invalid]="isFieldInvalid('categoryId')"
+        >
+          <option value="">اختر الفئة</option>
+          <option *ngFor="let c of categories" [value]="c.id">{{ c.name }}</option>
+        </select>
+        <div class="error-message" *ngIf="isFieldInvalid('categoryId')">الفئة مطلوبة</div>
+      </div>
+      <div class="form-group">
+        <label for="name">الاسم *</label>
+        <input
+          type="text"
+          id="name"
+          formControlName="name"
+          [class.invalid]="isFieldInvalid('name')"
+          placeholder="اسم نوع مرتكب الانتهاك"
+        />
+        <div class="error-message" *ngIf="isFieldInvalid('name')">الاسم مطلوب</div>
+      </div>
+      <div class="form-group">
+        <label for="description">الوصف</label>
+        <textarea
+          id="description"
+          formControlName="description"
+          placeholder="الوصف (اختياري)"
+          rows="3"
+        ></textarea>
+      </div>
+    </form>
+    <div footer>
+      <button type="button" class="btn-secondary" (click)="closeModal()">إلغاء</button>
+      <button type="button" class="btn-primary" (click)="save()">
+        {{ editingItem ? 'حفظ التغييرات' : 'إضافة' }}
+      </button>
+    </div>
+  </app-modal>
+</div>

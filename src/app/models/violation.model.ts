@@ -32,6 +32,20 @@ export enum MaritalStatus {
   Single = 4      // عازب/عزباء
 }
 
+// Private violation kind: استبيان vs افادات
+export enum PrivateViolationKind {
+  Questionnaire = 1,  // استبيان
+  Testimony = 2       // افادات
+}
+
+export function getPrivateViolationKindLabel(kind: PrivateViolationKind): string {
+  const labels: { [key: number]: string } = {
+    1: 'استبيان',
+    2: 'افادات'
+  };
+  return labels[kind] || 'غير محدد';
+}
+
 // Helper function to get marital status label
 export function getMaritalStatusLabel(status: MaritalStatus): string {
   const labels: { [key: number]: string } = {
@@ -112,6 +126,8 @@ export interface AddPrivateViolationDto {
   cityId: number;
   categoryId: number;
   subCategoryId: number;
+  kind: PrivateViolationKind;
+  testimonyContent?: string;
   violationDate: Date | string;
   location: string;
   description?: string;
@@ -168,6 +184,8 @@ export interface UpdatePrivateViolationDto {
   cityId: number;
   categoryId: number;
   subCategoryId: number;
+  kind: PrivateViolationKind;
+  testimonyContent?: string;
   violationDate: Date | string;
   location: string;
   description?: string;
@@ -214,6 +232,8 @@ export interface PrivateViolationDto {
   categoryName?: string;
   subCategoryId: number;
   subCategoryName?: string;
+  kind?: PrivateViolationKind;
+  testimonyContent?: string;
   violationDate: Date | string;
   location: string;
   description?: string;
@@ -289,6 +309,10 @@ export interface PrivateViolationFilter {
   categoryId?: number;
   subCategoryId?: number;
   createdByUserId?: string;
+  kind?: PrivateViolationKind;
+  gender?: number; // Gender enum from published-violation
+  ageMin?: number;
+  ageMax?: number;
 }
 
 export interface ViolationFilter {

@@ -4,11 +4,13 @@ import { PublicViolationService } from '../../../services/public-violation.servi
 import { CityService } from '../../../services/city.service';
 import { CategoryService } from '../../../services/category.service';
 import { SubCategoryService } from '../../../services/subcategory.service';
+import { PerpetratorTypeService } from '../../../services/perpetrator-type.service';
 import { ToasterService } from '../../../services/toaster.service';
-import { PublicViolationType } from '../../../models/public-violation.model';
+import { PublicViolationType, Gender } from '../../../models/public-violation.model';
 import { CityDto } from '../../../models/city.model';
 import { CategoryDto } from '../../../models/category.model';
 import { SubCategoryDto } from '../../../models/subcategory.model';
+import { PerpetratorTypeDto } from '../../../models/perpetrator-type.model';
 
 @Component({
   selector: 'app-report-violation',
@@ -24,6 +26,8 @@ export class ReportViolationComponent implements OnInit {
   cities: CityDto[] = [];
   categories: CategoryDto[] = [];
   filteredSubCategories: SubCategoryDto[] = [];
+  perpetratorTypes: PerpetratorTypeDto[] = [];
+  loadingPerpetratorTypes = false;
   
   // File upload
   attachments: File[] = [];
@@ -34,10 +38,11 @@ export class ReportViolationComponent implements OnInit {
   submitting = false;
   submitted = false;
   submittedViolationId: number | null = null;
-  maxDate: string = new Date().toISOString().slice(0, 16); // For datetime-local picker (YYYY-MM-DDTHH:mm)
+  maxDate: string = new Date().toISOString().slice(0, 10); // For date picker (YYYY-MM-DD)
 
-  // PublicViolationType enum for template
+  // Enums for template (use distinct name to avoid TS2663 self-reference)
   PublicViolationType = PublicViolationType;
+  GenderOption = Gender;
 
   constructor(
     private fb: FormBuilder,
@@ -45,6 +50,7 @@ export class ReportViolationComponent implements OnInit {
     private cityService: CityService,
     private categoryService: CategoryService,
     private subCategoryService: SubCategoryService,
+    private perpetratorTypeService: PerpetratorTypeService,
     private toasterService: ToasterService
   ) {}
 
@@ -60,22 +66,25 @@ export class ReportViolationComponent implements OnInit {
       cityId: ['', Validators.required],
       categoryId: ['', Validators.required],
       subCategoryId: ['', Validators.required],
+      perpetratorTypeId: [null as number | null],
       violationDate: ['', Validators.required],
       address: ['', Validators.required], // Changed from location
       description: ['', Validators.required],
       violationType: [PublicViolationType.Victim, Validators.required], // Changed from isWitness
       canContact: [false], // Changed from contactPreference
-      email: ['']
+      email: [''],
+      phoneNumber: [''],
+      preferredContactMethod: ['']
     });
 
-    // Watch category changes
+    // Watch category changes (onCategoryChange loads subcategories and perpetrator types)
     this.violationForm.get('categoryId')?.valueChanges.subscribe(categoryId => {
       this.onCategoryChange(categoryId);
     });
 
-    // Watch canContact changes to validate email
+    // Watch canContact changes to validate contact fields
     this.violationForm.get('canContact')?.valueChanges.subscribe(canContact => {
-      this.updateEmailField(canContact);
+      this.updateContactFields(canContact);
     });
   }
 
@@ -138,7 +147,8 @@ export class ReportViolationComponent implements OnInit {
     // Handle empty string, null, or undefined
     if (!categoryId || categoryId === '' || categoryId === null) {
       this.filteredSubCategories = [];
-      this.violationForm.patchValue({ subCategoryId: '' });
+      this.perpetratorTypes = [];
+      this.violationForm.patchValue({ subCategoryId: '', perpetratorTypeId: null }, { emitEvent: false });
       return;
     }
 
@@ -148,23 +158,59 @@ export class ReportViolationComponent implements OnInit {
     // Check if it's a valid number (not NaN and greater than 0)
     if (categoryIdNum && !isNaN(categoryIdNum) && categoryIdNum > 0) {
       this.loadSubCategories(categoryIdNum);
+      this.loadPerpetratorTypes(categoryIdNum);
     } else {
       this.filteredSubCategories = [];
-      this.violationForm.patchValue({ subCategoryId: '' });
+      this.perpetratorTypes = [];
+      this.violationForm.patchValue({ subCategoryId: '', perpetratorTypeId: null }, { emitEvent: false });
     }
   }
 
-  updateEmailField(canContact: boolean): void {
+  /** Load perpetrator types by categoryId (same pattern as subcategory – public lookup by category). */
+  loadPerpetratorTypes(categoryId?: number): void {
+    if (categoryId && categoryId > 0) {
+      this.loadingPerpetratorTypes = true;
+      this.perpetratorTypeService.getPublicLookup(Number(categoryId)).subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            this.perpetratorTypes = Array.isArray(response.data) ? response.data : [];
+          } else {
+            this.perpetratorTypes = [];
+          }
+          this.violationForm.patchValue({ perpetratorTypeId: null }, { emitEvent: false });
+          this.loadingPerpetratorTypes = false;
+        },
+        error: (error) => {
+          console.error('Error loading perpetrator types:', error);
+          this.perpetratorTypes = [];
+          this.loadingPerpetratorTypes = false;
+        }
+      });
+    } else {
+      this.perpetratorTypes = [];
+      this.violationForm.patchValue({ perpetratorTypeId: null }, { emitEvent: false });
+    }
+  }
+
+  updateContactFields(canContact: boolean): void {
     const emailControl = this.violationForm.get('email');
-    
+    const phoneControl = this.violationForm.get('phoneNumber');
+    const preferredControl = this.violationForm.get('preferredContactMethod');
+
     if (canContact) {
-      emailControl?.setValidators([Validators.required, Validators.email]);
+      // Email: optional but must be valid if provided
+      emailControl?.setValidators([Validators.email]);
+      preferredControl?.setValidators([Validators.required]);
     } else {
       emailControl?.clearValidators();
       emailControl?.setValue('');
+      phoneControl?.setValue('');
+      preferredControl?.clearValidators();
+      preferredControl?.setValue('');
     }
-    
     emailControl?.updateValueAndValidity();
+    phoneControl?.updateValueAndValidity();
+    preferredControl?.updateValueAndValidity();
   }
 
   onFileSelected(event: Event): void {
@@ -177,9 +223,9 @@ export class ReportViolationComponent implements OnInit {
           return;
         }
         
-        // Validate file size (max 10MB)
-        if (file.size > 10 * 1024 * 1024) {
-          this.toasterService.showWarning('حجم الملف يجب أن يكون أقل من 10 ميجابايت');
+        // Validate file size (max 100MB)
+        if (file.size > 100 * 1024 * 1024) {
+          this.toasterService.showWarning('حجم الملف يجب أن يكون أقل من 100 ميجابايت');
           return;
         }
         
@@ -261,8 +307,21 @@ export class ReportViolationComponent implements OnInit {
         const canContact = this.violationForm.get('canContact')?.value;
         if (canContact) {
           const emailControl = this.violationForm.get('email');
+          const phoneControl = this.violationForm.get('phoneNumber');
+          const preferredControl = this.violationForm.get('preferredContactMethod');
+          const hasEmail = (emailControl?.value ?? '').toString().trim().length > 0;
+          const hasPhone = (phoneControl?.value ?? '').toString().trim().length > 0;
+          if (!hasEmail && !hasPhone) {
+            emailControl?.markAsTouched();
+            phoneControl?.markAsTouched();
+            isValid = false;
+          }
           if (emailControl && emailControl.invalid) {
             emailControl.markAsTouched();
+            isValid = false;
+          }
+          if (preferredControl && preferredControl.invalid) {
+            preferredControl.markAsTouched();
             isValid = false;
           }
         }
@@ -291,10 +350,16 @@ export class ReportViolationComponent implements OnInit {
 
     this.submitting = true;
 
-    // Format violation date for backend (DateTime format)
+    // Format violation date for backend (date only, send at midnight UTC)
     const violationDate = this.violationForm.value.violationDate;
-    // If datetime-local, convert to ISO string format
-    const formattedDate = violationDate ? new Date(violationDate).toISOString() : new Date().toISOString();
+    const formattedDate = violationDate ? new Date(violationDate + 'T00:00:00').toISOString() : new Date().toISOString();
+
+    const canContact = Boolean(this.violationForm.value.canContact);
+    const emailVal = (this.violationForm.value.email ?? '').toString().trim();
+    const phoneVal = (this.violationForm.value.phoneNumber ?? '').toString().trim();
+    const preferredVal = (this.violationForm.value.preferredContactMethod ?? '').toString().trim();
+    const perpetratorTypeIdVal = this.violationForm.value.perpetratorTypeId;
+    const perpetratorTypeId = perpetratorTypeIdVal != null && perpetratorTypeIdVal !== '' ? Number(perpetratorTypeIdVal) : undefined;
 
     // Call service with FormData (backend handles file upload)
     this.publicViolationService.createPublicViolation(
@@ -302,14 +367,17 @@ export class ReportViolationComponent implements OnInit {
       Number(this.violationForm.value.categoryId),
       Number(this.violationForm.value.subCategoryId),
       Number(this.violationForm.value.violationType),
+      this.violationForm.value.gender != null && this.violationForm.value.gender !== '' ? Number(this.violationForm.value.gender) : undefined,
       formattedDate,
       this.violationForm.value.address,
       this.violationForm.value.description,
-      Boolean(this.violationForm.value.canContact),
-      this.violationForm.value.canContact && this.violationForm.value.email 
-        ? this.violationForm.value.email 
-        : undefined,
-      this.attachments
+      undefined, // publish description is set in edit only
+      canContact,
+      canContact && emailVal ? emailVal : undefined,
+      canContact && phoneVal ? phoneVal : undefined,
+      canContact && preferredVal ? preferredVal : undefined,
+      this.attachments,
+      perpetratorTypeId
     ).subscribe({
       next: (violation) => {
         this.submitted = true;
@@ -336,7 +404,7 @@ export class ReportViolationComponent implements OnInit {
     this.submittedViolationId = null;
     this.currentStep = 1;
     this.violationForm.reset();
-    this.violationForm.patchValue({ violationType: PublicViolationType.Victim });
+    this.violationForm.patchValue({ violationType: PublicViolationType.Victim, perpetratorTypeId: null });
     this.attachments = [];
     this.attachmentPreviews = [];
   }
@@ -374,19 +442,25 @@ export class ReportViolationComponent implements OnInit {
     return subCategory?.name || 'غير محدد';
   }
 
+  getSelectedPerpetratorTypeName(): string {
+    const perpetratorTypeId = this.violationForm.get('perpetratorTypeId')?.value;
+    if (perpetratorTypeId == null || perpetratorTypeId === '') return 'غير محدد';
+    const idNum = Number(perpetratorTypeId);
+    const pt = this.perpetratorTypes.find(p => p.id === idNum);
+    return pt?.name || 'غير محدد';
+  }
+
   getViolationDateValue(): string {
     const date = this.violationForm.get('violationDate')?.value;
     if (!date) return 'غير محدد';
     try {
-      // Handle datetime-local format (YYYY-MM-DDTHH:mm)
-      const dateObj = new Date(date);
+      // Handle date format (YYYY-MM-DD)
+      const dateObj = new Date(date + 'T00:00:00');
       if (isNaN(dateObj.getTime())) return 'غير محدد';
-      return dateObj.toLocaleString('ar-EG', {
+      return dateObj.toLocaleDateString('ar-EG', {
         year: 'numeric',
         month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+        day: 'numeric'
       });
     } catch {
       return 'غير محدد';
@@ -410,7 +484,27 @@ export class ReportViolationComponent implements OnInit {
     return this.violationForm.get('email')?.value || '';
   }
 
+  getPhoneValue(): string {
+    return this.violationForm.get('phoneNumber')?.value || '';
+  }
+
+  getPreferredContactLabel(): string {
+    const method = this.violationForm.get('preferredContactMethod')?.value;
+    if (method === 'email') return 'البريد الإلكتروني';
+    if (method === 'phone') return 'الهاتف';
+    return '';
+  }
+
   getCanContactValue(): boolean {
     return this.violationForm.get('canContact')?.value || false;
+  }
+
+  /** True when canContact is checked but neither email nor phone is provided */
+  isContactInfoRequiredError(): boolean {
+    const canContact = this.violationForm.get('canContact')?.value;
+    if (!canContact) return false;
+    const email = (this.violationForm.get('email')?.value ?? '').toString().trim();
+    const phone = (this.violationForm.get('phoneNumber')?.value ?? '').toString().trim();
+    return email.length === 0 && phone.length === 0;
   }
 }

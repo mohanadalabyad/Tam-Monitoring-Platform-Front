@@ -1,4 +1,6 @@
 <div class="my-private-violations-page">
+  <!-- List view (header, table, cards) - hidden when form-only mode (form page) -->
+  <ng-container *ngIf="!formOnlyMode">
   <div class="page-header">
     <div>
       <h1>بلاغاتي الخاصة</h1>
@@ -127,7 +129,7 @@
           </div>
           <div class="card-field">
             <span class="field-label">تاريخ الحادثة:</span>
-            <span class="field-value">{{ violation.violationDate | date:'medium' }}</span>
+            <span class="field-value">{{ violation.violationDate | date:'mediumDate' }}</span>
           </div>
           <div class="card-field">
             <span class="field-label">الموقع:</span>
@@ -141,15 +143,11 @@
       </div>
     </div>
   </div>
+  </ng-container>
 
-  <!-- Add/Edit Modal -->
-  <app-modal
-    [show]="showModal"
-    [title]="modalTitle"
-    size="lg"
-    (close)="closeModal()"
-  >
-    <form [formGroup]="violationForm" *ngIf="showModal">
+  <!-- Form only (used on form page) -->
+  <ng-container *ngIf="formOnlyMode">
+  <form [formGroup]="violationForm">
       <!-- Draft Restoration Banner -->
       <div class="draft-banner" *ngIf="hasDraft && !editingViolation">
         <div class="draft-banner-content">
@@ -163,7 +161,7 @@
             <div class="draft-text">
               <strong>لديك مسودة محفوظة</strong>
               <span class="draft-timestamp" *ngIf="draftTimestamp">
-                من {{ draftTimestamp | date:'short' }}
+                من {{ draftTimestamp | date:'mediumDate' }}
               </span>
             </div>
           </div>
@@ -178,24 +176,17 @@
         </div>
       </div>
 
-      <!-- Steps Indicator -->
+      <!-- Steps Indicator (5 steps for افادات, 6 for استبيان) -->
       <div class="steps-indicator">
         <div 
-          *ngFor="let step of [1,2,3,4,5,6]; let i = index" 
+          *ngFor="let step of stepNumbers" 
           class="step-item"
           [class.active]="currentStep === step"
           [class.completed]="currentStep > step"
           (click)="goToStep(step)"
         >
           <div class="step-number">{{ step }}</div>
-          <div class="step-label">
-            <span *ngIf="step === 1">المعلومات الأساسية</span>
-            <span *ngIf="step === 2">معلومات الضحية</span>
-            <span *ngIf="step === 3">معلومات الاتصال</span>
-            <span *ngIf="step === 4">الأسئلة</span>
-            <span *ngIf="step === 5">المرفقات</span>
-            <span *ngIf="step === 6">المراجعة</span>
-          </div>
+          <div class="step-label">{{ getStepLabel(step) }}</div>
         </div>
       </div>
 
@@ -203,6 +194,19 @@
       <div *ngIf="currentStep === 1" class="form-step">
         <h2 class="step-title">المعلومات الأساسية</h2>
         <div class="form-section">
+        <div class="form-row">
+          <div class="form-group col-6">
+            <label for="kind">نوع البلاغ *</label>
+            <select id="kind" formControlName="kind" [class.invalid]="isFieldInvalid('kind')">
+              <option [ngValue]="PrivateViolationKind.Questionnaire">استبيان</option>
+              <option [ngValue]="PrivateViolationKind.Testimony">افادات</option>
+            </select>
+            <div class="error-message" *ngIf="isFieldInvalid('kind')">
+              نوع البلاغ مطلوب
+            </div>
+          </div>
+        </div>
+
         <div class="form-row">
           <div class="form-group col-6">
             <label for="cityId">المدينة *</label>
@@ -539,8 +543,32 @@
         </div>
       </div>
 
-      <!-- Step 4: Questions -->
-      <div *ngIf="currentStep === 4" class="form-step">
+      <!-- Step 4: محتوى الإفادة (افادات only - HTML rich text editor) -->
+      <div *ngIf="currentStep === 4 && isTestimonyKind" class="form-step form-step-testimony" #testimonyStepRef>
+        <h2 class="step-title">محتوى الإفادة</h2>
+        <p class="step-description">أدخل نص الإفادة. يمكنك استخدام التنسيق (عريض، قوائم، عناوين، إلخ).</p>
+        <div class="form-section form-section-testimony-editor">
+          <div class="form-group col-12 testimony-editor-wrapper">
+            <label for="testimonyContent">محتوى الإفادة *</label>
+            <div class="testimony-editor-container">
+              <textarea
+                formControlName="testimonyContent"
+                class="form-control testimony-textarea"
+                dir="rtl"
+                placeholder="أدخل محتوى الإفادة..."
+                rows="10"
+                [class.is-invalid]="isFieldInvalid('testimonyContent')"
+              ></textarea>
+            </div>
+            <div class="error-message" *ngIf="isFieldInvalid('testimonyContent')">
+              محتوى الإفادة مطلوب
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 4: Questions (استبيان) -->
+      <div *ngIf="currentStep === 4 && !isTestimonyKind" class="form-step">
         <h2 class="step-title">الأسئلة</h2>
         <div class="form-section" *ngIf="loadingQuestions">
           <div class="loading-questions">
@@ -572,9 +600,124 @@
         </div>
       </div>
 
-      <!-- Step 5: Attachments -->
-      <div *ngIf="currentStep === 5" class="form-step">
-        <h2 class="step-title">المرفقات</h2>
+      <!-- Step 5: مرفقات الإفادة (افادات only - required) -->
+      <div *ngIf="currentStep === 5 && isTestimonyKind" class="form-step">
+        <h2 class="step-title">مرفقات الإفادة <span class="required-badge">* مطلوب</span></h2>
+        <p class="step-description">مرفق واحد على الأقل مطلوب لنوع إفادة. يرجى إضافة مرفق (صورة، فيديو، أو مستند) قبل المتابعة.</p>
+        <div class="error-message step-error" *ngIf="testimonyAttachmentPreviews.length === 0">
+          مرفق واحد على الأقل مطلوب لنوع افادات. يرجى إضافة مرفق للمتابعة.
+        </div>
+        <div class="form-section">
+        <div class="file-upload-area">
+          <input
+            type="file"
+            id="fileInputTestimony"
+            multiple
+            accept="image/*,video/*,.pdf,.doc,.docx"
+            (change)="onTestimonyFileSelected($event)"
+            style="display: none;"
+            #fileInputTestimony
+          />
+          <button type="button" class="btn-secondary" (click)="fileInputTestimony.click()">
+            <lucide-icon [img]="Plus" [size]="16"></lucide-icon>
+            إضافة مرفقات الإفادة
+          </button>
+        </div>
+
+        <div class="attachments-preview" *ngIf="testimonyAttachmentPreviews.length > 0">
+          <div *ngFor="let preview of testimonyAttachmentPreviews; let i = index" class="attachment-preview-item">
+            <img
+              *ngIf="isImage(preview.file?.type || '')"
+              [src]="preview.preview"
+              [alt]="preview.file?.name || 'attachment'"
+              class="attachment-image"
+            />
+            <video
+              *ngIf="isVideo(preview.file?.type || '')"
+              [src]="preview.preview"
+              controls
+              class="attachment-video"
+              (click)="$event.stopPropagation()"
+            ></video>
+            <div *ngIf="!isImage(preview.file?.type || '') && !isVideo(preview.file?.type || '')" class="attachment-file-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              <span>{{ preview.file?.name || 'ملف' }}</span>
+            </div>
+            <button
+              type="button"
+              class="remove-attachment"
+              (click)="removeTestimonyAttachment(i)"
+              title="إزالة"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <!-- Step 6: مرفقات (افادات only - optional) -->
+      <div *ngIf="currentStep === 6 && isTestimonyKind" class="form-step">
+        <h2 class="step-title">مرفقات (اختياري)</h2>
+        <p class="step-description">يمكنك إضافة مرفقات إضافية أو تخطي هذه الخطوة.</p>
+        <div class="form-section">
+        <div class="file-upload-area">
+          <input
+            type="file"
+            id="fileInputNormalTestimony"
+            multiple
+            accept="image/*,video/*,.pdf,.doc,.docx"
+            (change)="onFileSelected($event)"
+            style="display: none;"
+            #fileInputNormalTestimony
+          />
+          <button type="button" class="btn-secondary" (click)="fileInputNormalTestimony.click()">
+            <lucide-icon [img]="Plus" [size]="16"></lucide-icon>
+            إضافة مرفقات
+          </button>
+        </div>
+
+        <div class="attachments-preview" *ngIf="attachmentPreviews.length > 0">
+          <div *ngFor="let preview of attachmentPreviews; let i = index" class="attachment-preview-item">
+            <img
+              *ngIf="isImage(preview.file?.type || '')"
+              [src]="preview.preview"
+              [alt]="preview.file?.name || 'attachment'"
+              class="attachment-image"
+            />
+            <video
+              *ngIf="isVideo(preview.file?.type || '')"
+              [src]="preview.preview"
+              controls
+              class="attachment-video"
+              (click)="$event.stopPropagation()"
+            ></video>
+            <div *ngIf="!isImage(preview.file?.type || '') && !isVideo(preview.file?.type || '')" class="attachment-file-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              <span>{{ preview.file?.name || 'ملف' }}</span>
+            </div>
+            <button
+              type="button"
+              class="remove-attachment"
+              (click)="removeAttachment(i)"
+              title="إزالة"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      <!-- Step 5: Attachments (استبيان only) -->
+      <div *ngIf="currentStep === 5 && !isTestimonyKind" class="form-step">
+        <h2 class="step-title">المرفقات (اختياري)</h2>
         <div class="form-section">
         <div class="file-upload-area">
           <input
@@ -627,8 +770,8 @@
         </div>
       </div>
 
-      <!-- Step 6: Review -->
-      <div *ngIf="currentStep === 6" class="form-step">
+      <!-- Step 7: Review (افادات); Step 6: Review (استبيان) -->
+      <div *ngIf="(currentStep === 7 && isTestimonyKind) || (currentStep === 6 && !isTestimonyKind)" class="form-step">
         <h2 class="step-title">المراجعة والإرسال</h2>
         <p class="step-description">يرجى مراجعة المعلومات قبل الإرسال</p>
         
@@ -636,6 +779,18 @@
         <div class="review-section">
           <h3 class="review-card-title">البيانات الحالية</h3>
           <div class="review-grid">
+            <div class="review-item">
+              <div class="review-label">
+                <strong>نوع البلاغ:</strong>
+              </div>
+              <div class="review-value">{{ getKindValue() }}</div>
+            </div>
+            <div class="review-item" *ngIf="isTestimonyKind && getTestimonyContentValue()">
+              <div class="review-label">
+                <strong>محتوى الإفادة:</strong>
+              </div>
+              <div class="review-value testimony-content-preview" [innerHTML]="getTestimonyContentValue()"></div>
+            </div>
             <div class="review-item">
               <div class="review-label">
                 <strong>المدينة:</strong>
@@ -788,8 +943,8 @@
               </div>
               <div class="review-value">{{ getPreferredContactMethodLabel(violationForm.get('preferredContactMethod')?.value) }}</div>
             </div>
-            <!-- Question Answers -->
-            <div class="review-item review-item-full" *ngIf="sortedQuestions.length > 0">
+            <!-- Question Answers (استبيان only; إفادة has testimony content, no questions) -->
+            <div class="review-item review-item-full" *ngIf="!isTestimonyKind && sortedQuestions.length > 0">
               <div class="review-label">
                 <strong>الإجابات على الأسئلة:</strong>
               </div>
@@ -813,7 +968,19 @@
               </div>
               <div class="review-value">{{ (violationForm.get('showPersonalInfoInPublish')?.value) ? 'نعم' : 'لا' }}</div>
             </div>
-            <div class="review-item" *ngIf="attachmentPreviews.length > 0">
+            <div class="review-item" *ngIf="isTestimonyKind && (testimonyAttachmentPreviews.length > 0 || attachmentPreviews.length > 0)">
+              <div class="review-label">
+                <strong>مرفقات الإفادة:</strong>
+              </div>
+              <div class="review-value">{{ testimonyAttachmentPreviews.length }}</div>
+            </div>
+            <div class="review-item" *ngIf="isTestimonyKind && attachmentPreviews.length > 0">
+              <div class="review-label">
+                <strong>مرفقات:</strong>
+              </div>
+              <div class="review-value">{{ attachmentPreviews.length }}</div>
+            </div>
+            <div class="review-item" *ngIf="!isTestimonyKind && attachmentPreviews.length > 0">
               <div class="review-label">
                 <strong>عدد المرفقات:</strong>
               </div>
@@ -848,7 +1015,7 @@
               <div class="review-label">
                 <strong>تاريخ الحادثة:</strong>
               </div>
-              <div class="review-value">{{ originalViolationData.violationDate | date:'medium' }}</div>
+              <div class="review-value">{{ originalViolationData.violationDate | date:'mediumDate' }}</div>
             </div>
             <div class="review-item">
               <div class="review-label">
@@ -910,7 +1077,7 @@
               <div class="review-label">
                 <strong>تاريخ الميلاد:</strong>
               </div>
-              <div class="review-value">{{ originalViolationData.personalDateOfBirth | date:'medium' }}</div>
+              <div class="review-value">{{ originalViolationData.personalDateOfBirth | date:'mediumDate' }}</div>
             </div>
             <div class="review-item" *ngIf="originalViolationData.personalEducationId">
               <div class="review-label">
@@ -985,8 +1152,8 @@
               </div>
               <div class="review-value">{{ getPreferredContactMethodLabel(originalViolationData.preferredContactMethod) }}</div>
             </div>
-            <!-- Question Answers -->
-            <div class="review-item review-item-full" *ngIf="originalViolationData.questionAnswers && originalViolationData.questionAnswers.length > 0">
+            <!-- Question Answers (استبيان only) -->
+            <div class="review-item review-item-full" *ngIf="originalViolationData.kind !== PrivateViolationKind.Testimony && originalViolationData.questionAnswers && originalViolationData.questionAnswers.length > 0">
               <div class="review-label">
                 <strong>الإجابات على الأسئلة:</strong>
               </div>
@@ -1059,239 +1226,10 @@
         </button>
       </div>
     </form>
-  </app-modal>
+  </ng-container>
 
-  <!-- Details Modal -->
-  <app-modal
-    [show]="showDetailsModal"
-    title="تفاصيل البلاغ"
-    size="lg"
-    (close)="closeDetailsModal()"
-  >
-    <div *ngIf="selectedViolation" class="violation-details">
-      <div class="details-section">
-        <h3 class="section-title">المعلومات الأساسية</h3>
-        <div class="details-grid">
-          <div class="detail-item">
-            <span class="detail-label">رقم البلاغ:</span>
-            <span class="detail-value">#{{ selectedViolation.id }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">المدينة:</span>
-            <span class="detail-value">{{ selectedViolation.cityName || 'غير محدد' }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">الفئة:</span>
-            <span class="detail-value">{{ selectedViolation.categoryName || 'غير محدد' }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">الفئة الفرعية:</span>
-            <span class="detail-value">{{ selectedViolation.subCategoryName || 'غير محدد' }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">تاريخ الحادثة:</span>
-            <span class="detail-value">{{ selectedViolation.violationDate | date:'medium' }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">الموقع:</span>
-            <span class="detail-value">{{ selectedViolation.location || 'غير محدد' }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">الصفة:</span>
-            <span class="detail-value">{{ getPrivateViolationRoleLabel(selectedViolation.role) }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.otherRoleText">
-            <span class="detail-label">تحديد الصفة:</span>
-            <span class="detail-value">{{ selectedViolation.otherRoleText }}</span>
-          </div>
-          <div class="detail-item full-width">
-            <span class="detail-label">الوصف:</span>
-            <span class="detail-value">{{ selectedViolation.description || 'لا يوجد وصف' }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Personal Information -->
-      <div class="details-section" *ngIf="selectedViolation.personalName || selectedViolation.personalCityId || selectedViolation.personalCity">
-        <h3 class="section-title">معلومات الضحية/الشخص</h3>
-        <div class="details-grid">
-          <div class="detail-item" *ngIf="selectedViolation.personalName">
-            <span class="detail-label">الاسم:</span>
-            <span class="detail-value">{{ selectedViolation.personalName }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.personalCityId || selectedViolation.personalCity">
-            <span class="detail-label">مدينة الإقامة:</span>
-            <span class="detail-value">
-              <span *ngIf="selectedViolation.personalCityId">
-                {{ getCityNameById(selectedViolation.personalCityId) }}
-              </span>
-              <span *ngIf="!selectedViolation.personalCityId && selectedViolation.personalCity">
-                {{ selectedViolation.personalCity }}
-              </span>
-            </span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.personalAddress">
-            <span class="detail-label">العنوان:</span>
-            <span class="detail-value">{{ selectedViolation.personalAddress }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.personalAge">
-            <span class="detail-label">العمر:</span>
-            <span class="detail-value">{{ selectedViolation.personalAge }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.personalDateOfBirth">
-            <span class="detail-label">تاريخ الميلاد:</span>
-            <span class="detail-value">{{ selectedViolation.personalDateOfBirth | date:'medium' }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.personalEducationId">
-            <span class="detail-label">المستوى التعليمي:</span>
-            <span class="detail-value">{{ selectedViolation.personalEducationName || 'غير محدد' }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.gender">
-            <span class="detail-label">الجنس:</span>
-            <span class="detail-value">{{ getGenderLabel(selectedViolation.gender) }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.maritalStatus">
-            <span class="detail-label">الحالة الاجتماعية:</span>
-            <span class="detail-value">{{ selectedViolation.maritalStatus ? getMaritalStatusLabel(selectedViolation.maritalStatus) : '' }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.work">
-            <span class="detail-label">العمل:</span>
-            <span class="detail-value">{{ selectedViolation.work }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.hasDisability">
-            <span class="detail-label">لديه إعاقة:</span>
-            <span class="detail-value">{{ selectedViolation.hasDisability ? 'نعم' : 'لا' }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.disabilityType">
-            <span class="detail-label">نوع الإعاقة:</span>
-            <span class="detail-value">{{ selectedViolation.disabilityType }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Contact Information -->
-      <div class="details-section" *ngIf="selectedViolation.canBeContacted || selectedViolation.contactName || selectedViolation.contactAddress || selectedViolation.contactEmail || selectedViolation.contactPhone || selectedViolation.preferredContactMethod">
-        <h3 class="section-title">معلومات الاتصال</h3>
-        <div class="details-grid">
-          <div class="detail-item" *ngIf="selectedViolation.canBeContacted">
-            <span class="detail-label">يمكن الاتصال به:</span>
-            <span class="detail-value">نعم</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.contactName">
-            <span class="detail-label">اسم جهة الاتصال:</span>
-            <span class="detail-value">{{ selectedViolation.contactName }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.contactAddress">
-            <span class="detail-label">عنوان جهة الاتصال:</span>
-            <span class="detail-value">{{ selectedViolation.contactAddress }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.contactEmail">
-            <span class="detail-label">البريد الإلكتروني:</span>
-            <span class="detail-value">{{ selectedViolation.contactEmail }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.contactPhone">
-            <span class="detail-label">رقم الهاتف:</span>
-            <span class="detail-value">{{ selectedViolation.contactPhone }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.preferredContactMethod">
-            <span class="detail-label">طريقة الاتصال المفضلة:</span>
-            <span class="detail-value">{{ getPreferredContactMethodLabel(selectedViolation.preferredContactMethod) }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Question Answers -->
-      <div class="details-section" *ngIf="selectedViolation.questionAnswers && selectedViolation.questionAnswers.length > 0">
-        <h3 class="section-title">الإجابات على الأسئلة</h3>
-        <div class="question-answers-list">
-          <div *ngFor="let answer of selectedViolation.questionAnswers" class="question-answer-item">
-            <div class="question-text">{{ answer.questionText || 'سؤال #' + answer.questionId }}</div>
-            <div class="answer-value">{{ answer.answerValue || 'لا توجد إجابة' }}</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Attachments -->
-      <div class="details-section" *ngIf="selectedViolation.attachments && selectedViolation.attachments.length > 0">
-        <h3 class="section-title">المرفقات</h3>
-        <div class="attachments-grid">
-          <div *ngFor="let attachment of selectedViolation.attachments" class="attachment-item">
-            <img 
-              *ngIf="isImage(attachment.fileType)" 
-              [src]="getAttachmentUrl(attachment.filePath)" 
-              [alt]="attachment.fileName"
-              (click)="openAttachment(attachment.filePath)"
-              class="attachment-image"
-            />
-            <div 
-              *ngIf="!isImage(attachment.fileType)" 
-              class="attachment-file"
-              (click)="openAttachment(attachment.filePath)"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <line x1="16" y1="13" x2="8" y2="13"/>
-                <line x1="16" y1="17" x2="8" y2="17"/>
-              </svg>
-              <span>{{ attachment.fileName }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Status Information -->
-      <div class="details-section">
-        <h3 class="section-title">حالة البلاغ</h3>
-        <div class="details-grid">
-          <div class="detail-item">
-            <span class="detail-label">حالة الموافقة:</span>
-            <span class="detail-badge" 
-              [class.badge-pending]="selectedViolation.acceptanceStatus === AcceptanceStatus.Pending" 
-              [class.badge-approved]="selectedViolation.acceptanceStatus === AcceptanceStatus.Approved" 
-              [class.badge-rejected]="selectedViolation.acceptanceStatus === AcceptanceStatus.Rejected">
-              {{ getAcceptanceStatusLabel(selectedViolation.acceptanceStatus) }}
-            </span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">حالة النشر:</span>
-            <span class="detail-badge" 
-              [class.badge-published]="selectedViolation.publishStatus === PublishStatus.Publish" 
-              [class.badge-unpublished]="selectedViolation.publishStatus === PublishStatus.NotPublish">
-              {{ getPublishStatusLabel(selectedViolation.publishStatus) }}
-            </span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">عرض المعلومات الشخصية عند النشر:</span>
-            <span class="detail-value">{{ selectedViolation.showPersonalInfoInPublish ? 'نعم' : 'لا' }}</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Additional Information -->
-      <div class="details-section">
-        <h3 class="section-title">معلومات إضافية</h3>
-        <div class="details-grid">
-          <div class="detail-item">
-            <span class="detail-label">تاريخ الإنشاء:</span>
-            <span class="detail-value">{{ selectedViolation.creationDate | date:'medium' }}</span>
-          </div>
-          <div class="detail-item" *ngIf="selectedViolation.createdByUserName">
-            <span class="detail-label">أنشئ بواسطة:</span>
-            <span class="detail-value">{{ selectedViolation.createdByUserName }}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <div footer>
-      <button type="button" class="btn-secondary" (click)="closeDetailsModal()">
-        إغلاق
-      </button>
-    </div>
-  </app-modal>
-
-  <!-- Follow-Up Modal -->
+  <!-- Follow-Up Modal (list page only) -->
+  <ng-container *ngIf="!formOnlyMode">
   <app-modal
     [show]="showFollowUpModal"
     title="إضافة Follow-up"
@@ -1306,9 +1244,22 @@
           <div *ngFor="let followUp of followUps" class="history-item">
             <div class="history-header">
               <span class="history-status">{{ followUp.followUpStatusName }}</span>
-              <span class="history-date">{{ followUp.creationDate | date:'medium' }}</span>
+              <span class="history-date">{{ followUp.creationDate | date:'mediumDate' }}</span>
             </div>
             <div class="history-note">{{ followUp.note }}</div>
+            <div class="history-attachments" *ngIf="followUp.attachments && followUp.attachments.length > 0">
+              <span class="history-attachments-label">المرفقات:</span>
+              <div class="history-attachments-grid">
+                <div *ngFor="let att of followUp.attachments" class="history-attachment-item">
+                  <a (click)="openAttachment(att.filePath)" href="javascript:void(0)" target="_blank" rel="noopener noreferrer">
+                    <img *ngIf="isImage(att.fileType)" class="history-attachment-image" [src]="getAttachmentUrl(att.filePath)" [alt]="att.fileName" />
+                    <div *ngIf="!isImage(att.fileType)" class="history-attachment-file">
+                      <span>{{ att.fileName }}</span>
+                    </div>
+                  </a>
+                </div>
+              </div>
+            </div>
             <div class="history-user">بواسطة: {{ followUp.createdByUserName || 'غير معروف' }}</div>
           </div>
         </div>
@@ -1354,6 +1305,28 @@
               الملاحظة مطلوبة
             </div>
           </div>
+
+          <div class="form-group">
+            <label>مرفقات (اختياري، حد أقصى 100 ميجابايت للملف)</label>
+            <input
+              type="file"
+              #followUpFileInput
+              multiple
+              accept="image/*,video/*,.pdf,.doc,.docx"
+              (change)="onFollowUpFileSelected($event)"
+              style="display: none;"
+            />
+            <button type="button" class="btn-secondary" (click)="followUpFileInput.click()">
+              <lucide-icon [img]="Plus" [size]="16"></lucide-icon>
+              إضافة مرفقات
+            </button>
+            <div class="follow-up-attachments-list" *ngIf="followUpAttachments.length > 0">
+              <span *ngFor="let f of followUpAttachments; let i = index" class="follow-up-attachment-tag">
+                {{ f.name }}
+                <button type="button" class="remove-follow-up-attachment" (click)="removeFollowUpAttachment(i)" title="إزالة">×</button>
+              </span>
+            </div>
+          </div>
         </form>
       </div>
     </div>
@@ -1368,4 +1341,5 @@
       </button>
     </div>
   </app-modal>
+  </ng-container>
 </div>

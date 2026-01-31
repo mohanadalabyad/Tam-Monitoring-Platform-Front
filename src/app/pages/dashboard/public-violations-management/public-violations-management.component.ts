@@ -6,6 +6,7 @@ import { FollowUpStatusService } from '../../../services/follow-up-status.servic
 import { CityService } from '../../../services/city.service';
 import { CategoryService } from '../../../services/category.service';
 import { SubCategoryService } from '../../../services/subcategory.service';
+import { PerpetratorTypeService } from '../../../services/perpetrator-type.service';
 import { ToasterService } from '../../../services/toaster.service';
 import { PermissionCheckService } from '../../../services/permission-check.service';
 import { ConfirmationDialogService } from '../../../services/confirmation-dialog.service';
@@ -19,14 +20,16 @@ import {
   getVerificationStatusLabel,
   getPublishStatusLabel
 } from '../../../models/public-violation.model';
-import { ViolationFollowUpDto, AddViolationFollowUpDto } from '../../../models/violation-follow-up.model';
+import { ViolationFollowUpDto, ViolationFollowUpAttachmentDto, AddViolationFollowUpDto, ViolationFollowUpAttachmentInputDto } from '../../../models/violation-follow-up.model';
+import { FileUploadService, FileUploadResponse } from '../../../services/file-upload.service';
 import { FollowUpStatusDto } from '../../../models/follow-up-status.model';
 import { CityDto } from '../../../models/city.model';
 import { CategoryDto } from '../../../models/category.model';
 import { SubCategoryDto } from '../../../models/subcategory.model';
+import { PerpetratorTypeDto } from '../../../models/perpetrator-type.model';
 import { TableColumn, TableAction } from '../../../components/unified-table/unified-table.component';
 import { ViewMode } from '../../../components/view-toggle/view-toggle.component';
-import { Eye, Pencil, Trash2, CheckCircle, XCircle, Upload, Download, ClipboardList } from 'lucide-angular';
+import { Eye, Pencil, Trash2, CheckCircle, XCircle, Upload, Download, ClipboardList, Globe, Lock } from 'lucide-angular';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -51,6 +54,7 @@ export class PublicViolationsManagementComponent implements OnInit {
   followUps: ViolationFollowUpDto[] = [];
   followUpStatuses: FollowUpStatusDto[] = [];
   loadingFollowUps = false;
+  followUpAttachments: File[] = [];
   showFilters = false;
   searchTerm: string = '';
   
@@ -59,9 +63,11 @@ export class PublicViolationsManagementComponent implements OnInit {
   cities: CityDto[] = [];
   categories: CategoryDto[] = [];
   subCategories: SubCategoryDto[] = [];
+  perpetratorTypes: PerpetratorTypeDto[] = [];
   loadingCities = false;
   loadingCategories = false;
   loadingSubCategories = false;
+  loadingPerpetratorTypes = false;
   
   // Pagination
   currentPage = 1;
@@ -70,7 +76,7 @@ export class PublicViolationsManagementComponent implements OnInit {
   totalPages = 0;
 
   columns: TableColumn[] = [
-    { key: 'id', label: 'ID', sortable: true, filterable: false },
+    { key: 'id', label: 'ID', sortable: true, filterable: false, width: '48px' },
     { key: 'cityName', label: 'المدينة', sortable: true, filterable: false },
     { key: 'categoryName', label: 'الفئة', sortable: true, filterable: false },
     { key: 'subCategoryName', label: 'الفئة الفرعية', sortable: true, filterable: false },
@@ -94,16 +100,20 @@ export class PublicViolationsManagementComponent implements OnInit {
       label: 'حالة التوثيق', 
       sortable: true, 
       filterable: false,
-      type: 'badge',
-      render: (value) => getVerificationStatusLabel(value)
+      type: 'icon',
+      width: '44px',
+      render: (value) => getVerificationStatusLabel(value),
+      iconRenderer: (value) => value === ViolationVerificationStatus.Verified ? CheckCircle : XCircle
     },
     { 
       key: 'publishStatus', 
       label: 'حالة النشر', 
       sortable: true, 
       filterable: false,
-      type: 'badge',
-      render: (value) => getPublishStatusLabel(value)
+      type: 'icon',
+      width: '44px',
+      render: (value) => getPublishStatusLabel(value),
+      iconRenderer: (value) => value === ViolationPublishStatus.Publish ? Globe : Lock
     }
   ];
 
@@ -126,10 +136,12 @@ export class PublicViolationsManagementComponent implements OnInit {
     private cityService: CityService,
     private categoryService: CategoryService,
     private subCategoryService: SubCategoryService,
+    private perpetratorTypeService: PerpetratorTypeService,
     private toasterService: ToasterService,
     public permissionService: PermissionCheckService,
     private confirmationService: ConfirmationDialogService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private fileUploadService: FileUploadService
   ) {}
 
   ngOnInit(): void {
@@ -155,11 +167,13 @@ export class PublicViolationsManagementComponent implements OnInit {
       violationType: [null],
       cityId: [null],
       categoryId: [null],
-      subCategoryId: [null]
+      subCategoryId: [null],
+      perpetratorTypeId: [null]
     });
 
     this.descriptionForm = this.fb.group({
-      description: ['', Validators.required]
+      description: ['', Validators.required],
+      publishDescription: ['']
     });
 
     this.followUpForm = this.fb.group({
@@ -167,13 +181,15 @@ export class PublicViolationsManagementComponent implements OnInit {
       note: ['', Validators.required]
     });
 
-    // Watch category changes to reload subcategories
+    // Watch category changes to reload subcategories and perpetrator types
     this.filterForm.get('categoryId')?.valueChanges.subscribe(categoryId => {
       if (categoryId) {
         this.loadSubCategories(categoryId);
+        this.loadPerpetratorTypes(Number(categoryId));
       } else {
         this.subCategories = [];
-        this.filterForm.patchValue({ subCategoryId: null }, { emitEvent: false });
+        this.perpetratorTypes = [];
+        this.filterForm.patchValue({ subCategoryId: null, perpetratorTypeId: null }, { emitEvent: false });
       }
     });
   }
@@ -227,6 +243,25 @@ export class PublicViolationsManagementComponent implements OnInit {
       error: (error) => {
         console.error('Error loading subcategories:', error);
         this.loadingSubCategories = false;
+      }
+    });
+  }
+
+  loadPerpetratorTypes(categoryId: number): void {
+    this.loadingPerpetratorTypes = true;
+    this.perpetratorTypeService.getPublicLookup(categoryId).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.perpetratorTypes = Array.isArray(response.data) ? response.data : [];
+        } else {
+          this.perpetratorTypes = [];
+        }
+        this.loadingPerpetratorTypes = false;
+      },
+      error: (error) => {
+        console.error('Error loading perpetrator types:', error);
+        this.perpetratorTypes = [];
+        this.loadingPerpetratorTypes = false;
       }
     });
   }
@@ -400,12 +435,14 @@ export class PublicViolationsManagementComponent implements OnInit {
         violation.cityName || '',
         violation.categoryName || '',
         violation.subCategoryName || '',
+        violation.perpetratorTypeName || '',
         violation.address || '',
         violation.description || '',
         getPublicViolationTypeLabel(violation.violationType),
         getVerificationStatusLabel(violation.verificationStatus),
         getPublishStatusLabel(violation.publishStatus),
-        violation.email || ''
+        violation.email || '',
+        violation.phoneNumber || ''
       ];
 
       return searchableFields.some(field => 
@@ -442,6 +479,9 @@ export class PublicViolationsManagementComponent implements OnInit {
     if (formValue.subCategoryId !== null && formValue.subCategoryId !== undefined && formValue.subCategoryId !== '') {
       filter.subCategoryId = Number(formValue.subCategoryId);
     }
+    if (formValue.perpetratorTypeId !== null && formValue.perpetratorTypeId !== undefined && formValue.perpetratorTypeId !== '') {
+      filter.perpetratorTypeId = Number(formValue.perpetratorTypeId);
+    }
     
     return filter;
   }
@@ -456,6 +496,7 @@ export class PublicViolationsManagementComponent implements OnInit {
   resetFilters(): void {
     this.filterForm.reset();
     this.subCategories = [];
+    this.perpetratorTypes = [];
     this.currentPage = 1;
     this.searchTerm = ''; // Reset search when resetting filters
     this.filteredViolations = [];
@@ -493,20 +534,35 @@ export class PublicViolationsManagementComponent implements OnInit {
       this.toasterService.showWarning('ليس لديك صلاحية لتعديل الوصف', 'صلاحية مرفوضة');
       return;
     }
-    
     this.modalTitle = 'تعديل الوصف';
     this.editingViolation = violation;
-    this.descriptionForm.patchValue({
-      description: violation.description
+    // Fetch full violation by ID so we always have description and publishDescription from the API
+    this.publicViolationService.getPublicViolationById(violation.id).subscribe({
+      next: (fullViolation) => {
+        this.editingViolation = fullViolation;
+        this.descriptionForm.patchValue({
+          description: fullViolation.description ?? '',
+          publishDescription: fullViolation.publishDescription ?? ''
+        });
+        this.showModal = true;
+      },
+      error: (err) => {
+        console.error('Error loading violation for edit', err);
+        this.descriptionForm.patchValue({
+          description: violation.description ?? '',
+          publishDescription: violation.publishDescription ?? ''
+        });
+        this.showModal = true;
+      }
     });
-    this.showModal = true;
   }
 
   updateDescription(): void {
     if (this.descriptionForm.valid && this.editingViolation) {
       const description = this.descriptionForm.get('description')?.value;
+      const publishDescription = this.descriptionForm.get('publishDescription')?.value ?? undefined;
       
-      this.publicViolationService.updateDescription(this.editingViolation.id, description).subscribe({
+      this.publicViolationService.updateDescription(this.editingViolation.id, description, publishDescription).subscribe({
         next: (updatedViolation) => {
           this.toasterService.showSuccess('تم تحديث الوصف بنجاح');
           this.closeModal();
@@ -689,6 +745,13 @@ export class PublicViolationsManagementComponent implements OnInit {
     return getPublishStatusLabel(status);
   }
 
+  getPreferredContactLabel(method: string | undefined): string {
+    if (!method) return '';
+    if (method === 'email') return 'البريد الإلكتروني';
+    if (method === 'phone') return 'الهاتف';
+    return method;
+  }
+
   getAttachmentUrl(filePath: string): string {
     if (!filePath) return '';
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
@@ -738,6 +801,7 @@ export class PublicViolationsManagementComponent implements OnInit {
 
     this.selectedViolationForFollowUp = violation;
     this.followUpForm.reset();
+    this.followUpAttachments = [];
     this.loadFollowUps(violation.id);
     this.showFollowUpModal = true;
   }
@@ -747,6 +811,39 @@ export class PublicViolationsManagementComponent implements OnInit {
     this.selectedViolationForFollowUp = null;
     this.followUps = [];
     this.followUpForm.reset();
+    this.followUpAttachments = [];
+  }
+
+  onFollowUpFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      Array.from(input.files).forEach(file => {
+        if (file.size > 100 * 1024 * 1024) {
+          this.toasterService.showWarning('حجم الملف يجب أن يكون أقل من 100 ميجابايت');
+          return;
+        }
+        this.followUpAttachments.push(file);
+      });
+      input.value = '';
+    }
+  }
+
+  removeFollowUpAttachment(index: number): void {
+    this.followUpAttachments.splice(index, 1);
+  }
+
+  /** Deduplicate attachments by file identity (filePath+fileName) then id to avoid duplicate display */
+  private deduplicateFollowUpAttachments(attachments?: ViolationFollowUpAttachmentDto[]): ViolationFollowUpAttachmentDto[] {
+    if (!attachments || attachments.length === 0) return [];
+    const seen = new Set<string>();
+    return attachments.filter(att => {
+      const path = (att.filePath || '').trim().toLowerCase();
+      const name = (att.fileName || '').trim().toLowerCase();
+      const key = path && name ? `${path}|${name}` : (path || name || (att.id ? `id:${att.id}` : ''));
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }
 
   loadFollowUps(violationId: number): void {
@@ -754,7 +851,10 @@ export class PublicViolationsManagementComponent implements OnInit {
     this.violationFollowUpService.getByViolationId(violationId, 'Public').subscribe({
       next: (response: any) => {
         if (response.success && response.data) {
-          this.followUps = response.data;
+          this.followUps = (response.data as ViolationFollowUpDto[]).map(fu => ({
+            ...fu,
+            attachments: this.deduplicateFollowUpAttachments(fu.attachments)
+          }));
         }
         this.loadingFollowUps = false;
       },
@@ -771,18 +871,46 @@ export class PublicViolationsManagementComponent implements OnInit {
       return;
     }
 
+    if (this.followUpAttachments.length > 0) {
+      this.loading = true;
+      this.fileUploadService.uploadFiles(this.followUpAttachments).subscribe({
+        next: (uploadResponses: FileUploadResponse[]) => {
+          const attachmentInputs: ViolationFollowUpAttachmentInputDto[] = uploadResponses.map((response: FileUploadResponse, index: number) => {
+            const file = this.followUpAttachments[index];
+            return {
+              fileName: response.fileName,
+              filePath: response.url,
+              fileType: file.type || 'application/octet-stream',
+              fileSize: file.size
+            };
+          });
+          this.saveFollowUpWithAttachments(attachmentInputs);
+        },
+        error: (error: any) => {
+          this.loading = false;
+          this.toasterService.showError(error.message || 'حدث خطأ أثناء رفع الملفات');
+        }
+      });
+    } else {
+      this.saveFollowUpWithAttachments([]);
+    }
+  }
+
+  private saveFollowUpWithAttachments(attachments: ViolationFollowUpAttachmentInputDto[]): void {
+    if (!this.selectedViolationForFollowUp) return;
     const dto: AddViolationFollowUpDto = {
       violationId: this.selectedViolationForFollowUp.id,
       violationType: 'Public',
       followUpStatusId: this.followUpForm.get('followUpStatusId')?.value,
-      note: this.followUpForm.get('note')?.value
+      note: this.followUpForm.get('note')?.value,
+      attachments
     };
-
     this.loading = true;
     this.violationFollowUpService.addFollowUp(dto).subscribe({
       next: () => {
         this.toasterService.showSuccess('تم إضافة Follow-up بنجاح');
         this.followUpForm.reset();
+        this.followUpAttachments = [];
         this.loadFollowUps(this.selectedViolationForFollowUp!.id);
         this.loading = false;
       },
