@@ -53,6 +53,12 @@ export class DashboardSidebarComponent implements OnInit {
       icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
       route: '/dashboard/private-violations',
       permission: 'PrivateViolation.Read'
+    },
+    {
+      label: 'تصدير البيانات',
+      icon: 'M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+      route: '/dashboard/export-violations',
+      permission: 'ExportViolations'
     }
   ];
 
@@ -104,6 +110,14 @@ export class DashboardSidebarComponent implements OnInit {
         'Question.Read',
         'EducationLevel.Read',
         'WebsiteContent.Edit'
+      ]);
+    }
+
+    // Export page: visible if user has PrivateViolation.Export or PublicViolation.Export
+    if (item.permission === 'ExportViolations') {
+      return this.permissionService.hasAnyPermission([
+        'PrivateViolation.Export',
+        'PublicViolation.Export'
       ]);
     }
 

@@ -1,0 +1,223 @@
+.export-violations-page {
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-header {
+  margin-bottom: var(--spacing-xl, 1.5rem);
+
+  h1 {
+    font-size: var(--font-size-2xl, 1.5rem);
+    font-weight: 700;
+    color: var(--secondary-color, #1f2937);
+    margin-bottom: 0.25rem;
+  }
+
+  p {
+    color: var(--text-secondary, #6b7280);
+    font-size: var(--font-size-base, 1rem);
+    margin: 0;
+  }
+}
+
+.export-card {
+  background: var(--card-bg, #fff);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: var(--spacing-lg, 1.25rem);
+}
+
+.section {
+  margin-bottom: var(--spacing-xl, 1.5rem);
+
+  h2 {
+    font-size: var(--font-size-lg, 1.125rem);
+    font-weight: 600;
+    color: var(--secondary-color, #1f2937);
+    margin-bottom: var(--spacing-sm, 0.5rem);
+  }
+
+  .section-desc {
+    color: var(--text-secondary, #6b7280);
+    font-size: 0.875rem;
+    margin-bottom: var(--spacing-md, 0.75rem);
+  }
+}
+
+.section-toggle {
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 0.5rem 0;
+    user-select: none;
+
+    h2 {
+      margin-bottom: 0;
+    }
+  }
+
+  .section-chevron {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+    margin-right: 0.5rem;
+    transition: transform 0.2s ease;
+
+    &.rotated {
+      transform: rotate(180deg);
+    }
+  }
+
+  .section-content {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color, #e5e7eb);
+  }
+}
+
+.loading-section {
+  color: var(--text-secondary);
+}
+
+.violation-type-options {
+  display: flex;
+  gap: var(--spacing-md, 1rem);
+  flex-wrap: wrap;
+}
+
+.radio-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+
+  input {
+    margin: 0;
+  }
+}
+
+.group-box {
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 6px;
+  padding: var(--spacing-md, 0.75rem);
+  margin-bottom: var(--spacing-md, 0.75rem);
+}
+
+.group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm, 0.5rem);
+}
+
+.group-name {
+  font-weight: 600;
+  color: var(--secondary-color);
+}
+
+.group-actions {
+  .btn-link {
+    background: none;
+    border: none;
+    color: var(--primary-color, #3b82f6);
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0 0.25rem;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+  .sep {
+    color: var(--text-secondary);
+    margin: 0 0.25rem;
+  }
+}
+
+.group-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.5rem 1rem;
+}
+
+.checkbox-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.875rem;
+
+  input {
+    margin: 0;
+  }
+}
+
+.options-section .checkbox-option {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--spacing-md, 0.75rem);
+}
+
+.filter-group {
+  label {
+    display: block;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+    color: var(--text-secondary);
+  }
+  select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 4px;
+    font-size: 0.875rem;
+  }
+}
+
+.permission-hint {
+  color: var(--text-warning, #b45309);
+  font-size: 0.875rem;
+  margin-bottom: 0.75rem;
+}
+
+.export-actions {
+  margin-bottom: 0;
+}
+
+.btn-primary {
+  padding: 0.625rem 1.25rem;
+  background: var(--primary-color, #3b82f6);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}

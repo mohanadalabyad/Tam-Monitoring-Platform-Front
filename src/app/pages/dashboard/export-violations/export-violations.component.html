@@ -1,0 +1,197 @@
+<div class="export-violations-page">
+  <div class="page-header">
+    <h1>تصدير البيانات</h1>
+    <p>اختر نوع البلاغات والأعمدة المطلوبة ثم صدّر إلى Excel</p>
+  </div>
+
+  <div class="export-card">
+    <div class="section section-toggle">
+      <div class="section-header" (click)="showViolationType = !showViolationType">
+        <h2>نوع البلاغات</h2>
+        <svg class="section-chevron" [class.rotated]="showViolationType" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 9l6 6 6-6"/>
+        </svg>
+      </div>
+      <div class="section-content" *ngIf="showViolationType">
+        <div class="violation-type-options">
+          <label class="radio-option" *ngIf="canExportPrivate">
+            <input type="radio" name="violationType" value="Private" [(ngModel)]="violationType" (change)="onViolationTypeChange()" />
+            <span>البلاغات الخاصة</span>
+          </label>
+          <label class="radio-option" *ngIf="canExportPublic">
+            <input type="radio" name="violationType" value="Public" [(ngModel)]="violationType" (change)="onViolationTypeChange()" />
+            <span>البلاغات العامة</span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="section section-toggle" *ngIf="!loadingColumns">
+      <div class="section-header" (click)="showColumns = !showColumns">
+        <h2>الأعمدة</h2>
+        <svg class="section-chevron" [class.rotated]="showColumns" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 9l6 6 6-6"/>
+        </svg>
+      </div>
+      <div class="section-content" *ngIf="showColumns">
+        <p class="section-desc">اختر الأعمدة التي تريد تضمينها في الملف. يمكنك اختيار مجموعة كاملة أو أعمدة فردية.</p>
+        <div class="columns-by-group" *ngFor="let group of groups">
+          <div class="group-box">
+            <div class="group-header">
+              <span class="group-name">{{ group }}</span>
+              <div class="group-actions">
+                <button type="button" class="btn-link" (click)="selectAllInGroup(group)">تحديد الكل</button>
+                <span class="sep">|</span>
+                <button type="button" class="btn-link" (click)="deselectAllInGroup(group)">إلغاء الكل</button>
+              </div>
+            </div>
+            <div class="group-checkboxes">
+              <label class="checkbox-option" *ngFor="let col of columnsByGroup(group)">
+                <input type="checkbox" [checked]="isSelected(col.key)" (change)="toggleColumn(col.key)" />
+                <span>{{ col.label }}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="section loading-section" *ngIf="loadingColumns">
+      <p>جاري تحميل الأعمدة...</p>
+    </div>
+
+    <div class="section section-toggle options-section">
+      <div class="section-header" (click)="showOptions = !showOptions">
+        <h2>خيارات إضافية</h2>
+        <svg class="section-chevron" [class.rotated]="showOptions" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 9l6 6 6-6"/>
+        </svg>
+      </div>
+      <div class="section-content" *ngIf="showOptions">
+        <label class="checkbox-option">
+          <input type="checkbox" [(ngModel)]="includeAttachmentsSheet" />
+          <span>تضمين ورقة المرفقات (ملف، نوع، حجم)</span>
+        </label>
+        <label class="checkbox-option">
+          <input type="checkbox" [(ngModel)]="includeFollowUpsSheet" />
+          <span>تضمين ورقة المتابعات</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="section section-toggle filters-section">
+      <div class="section-header" (click)="showFilters = !showFilters">
+        <h2>التصفية (اختياري)</h2>
+        <svg class="section-chevron" [class.rotated]="showFilters" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 9l6 6 6-6"/>
+        </svg>
+      </div>
+      <div class="section-content" *ngIf="showFilters">
+        <div class="filters-grid" *ngIf="violationType === 'Private'">
+          <div class="filter-group">
+            <label>حالة الموافقة</label>
+            <select [(ngModel)]="filterPrivate.acceptanceStatus">
+              <option [ngValue]="null">الكل</option>
+              <option [ngValue]="1">قيد المراجعة</option>
+              <option [ngValue]="2">موافق عليه</option>
+              <option [ngValue]="3">مرفوض</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>حالة النشر</label>
+            <select [(ngModel)]="filterPrivate.publishStatus">
+              <option [ngValue]="null">الكل</option>
+              <option [ngValue]="1">منشور</option>
+              <option [ngValue]="2">غير منشور</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>المدينة</label>
+            <select [(ngModel)]="filterPrivate.cityId" [disabled]="loadingCities">
+              <option [ngValue]="null">الكل</option>
+              <option *ngFor="let c of cities" [ngValue]="c.id">{{ c.name }}</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>الفئة</label>
+            <select [(ngModel)]="filterPrivate.categoryId" (ngModelChange)="onCategoryChange()" [disabled]="loadingCategories">
+              <option [ngValue]="null">الكل</option>
+              <option *ngFor="let c of categories" [ngValue]="c.id">{{ c.name }}</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>الفئة الفرعية</label>
+            <select [(ngModel)]="filterPrivate.subCategoryId" [disabled]="loadingSubCategories || !filterPrivate.categoryId">
+              <option [ngValue]="null">الكل</option>
+              <option *ngFor="let s of subCategories" [ngValue]="s.id">{{ s.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="filters-grid" *ngIf="violationType === 'Public'">
+          <div class="filter-group">
+            <label>نوع البلاغ</label>
+            <select [(ngModel)]="filterPublic.violationType">
+              <option [ngValue]="null">الكل</option>
+              <option [ngValue]="1">المبلغ</option>
+              <option [ngValue]="2">شاهد</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>حالة التحقق</label>
+            <select [(ngModel)]="filterPublic.verificationStatus">
+              <option [ngValue]="null">الكل</option>
+              <option [ngValue]="1">غير موثق</option>
+              <option [ngValue]="2">موثق</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>حالة النشر</label>
+            <select [(ngModel)]="filterPublic.publishStatus">
+              <option [ngValue]="null">الكل</option>
+              <option [ngValue]="1">منشور</option>
+              <option [ngValue]="2">غير منشور</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>المدينة</label>
+            <select [(ngModel)]="filterPublic.cityId" [disabled]="loadingCities">
+              <option [ngValue]="null">الكل</option>
+              <option *ngFor="let c of cities" [ngValue]="c.id">{{ c.name }}</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>الفئة</label>
+            <select [(ngModel)]="filterPublic.categoryId" (ngModelChange)="onCategoryChange()" [disabled]="loadingCategories">
+              <option [ngValue]="null">الكل</option>
+              <option *ngFor="let c of categories" [ngValue]="c.id">{{ c.name }}</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>الفئة الفرعية</label>
+            <select [(ngModel)]="filterPublic.subCategoryId" [disabled]="loadingSubCategories || !filterPublic.categoryId">
+              <option [ngValue]="null">الكل</option>
+              <option *ngFor="let s of subCategories" [ngValue]="s.id">{{ s.name }}</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section section-toggle export-actions">
+      <div class="section-header" (click)="showExportActions = !showExportActions">
+        <h2>التصدير</h2>
+        <svg class="section-chevron" [class.rotated]="showExportActions" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M6 9l6 6 6-6"/>
+        </svg>
+      </div>
+      <div class="section-content" *ngIf="showExportActions">
+        <p class="permission-hint" *ngIf="!canExportCurrentType">
+          ليس لديك صلاحية تصدير هذا النوع من البلاغات. صلاحية التصدير مطلوبة (PrivateViolation.Export أو PublicViolation.Export).
+        </p>
+        <button type="button" class="btn-primary" (click)="export()" [disabled]="exporting || selectedKeys.size === 0 || !canExportCurrentType">
+          <span *ngIf="!exporting">تصدير إلى Excel</span>
+          <span *ngIf="exporting">جاري التصدير...</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

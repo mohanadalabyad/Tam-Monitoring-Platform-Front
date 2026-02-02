@@ -26,6 +26,7 @@ import { SettingsManagementComponent } from './pages/dashboard/settings-manageme
 import { WebsiteContentManagementComponent } from './pages/dashboard/website-content-management/website-content-management.component';
 import { EducationLevelsManagementComponent } from './pages/dashboard/education-levels-management/education-levels-management.component';
 import { PerpetratorTypesManagementComponent } from './pages/dashboard/perpetrator-types-management/perpetrator-types-management.component';
+import { ExportViolationsComponent } from './pages/dashboard/export-violations/export-violations.component';
 
 const routes: Routes = [
   // Public routes
@@ -150,6 +151,15 @@ const routes: Routes = [
         component: EducationLevelsManagementComponent,
         canActivate: [PermissionGuard],
         data: { permission: 'EducationLevel.Read' }
+      },
+      {
+        path: 'export-violations',
+        component: ExportViolationsComponent,
+        canActivate: [PermissionGuard],
+        data: {
+          permissions: ['PrivateViolation.Export', 'PublicViolation.Export'],
+          requireAll: false
+        }
       }
     ]
   },

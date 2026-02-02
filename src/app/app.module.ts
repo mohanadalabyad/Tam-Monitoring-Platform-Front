@@ -41,6 +41,7 @@ import { EducationLevelsManagementComponent } from './pages/dashboard/education-
 import { PerpetratorTypesManagementComponent } from './pages/dashboard/perpetrator-types-management/perpetrator-types-management.component';
 import { PrivateViolationFormPageComponent } from './pages/dashboard/private-violation-form-page/private-violation-form-page.component';
 import { PrivateViolationViewPageComponent } from './pages/dashboard/private-violation-view-page/private-violation-view-page.component';
+import { ExportViolationsComponent } from './pages/dashboard/export-violations/export-violations.component';
 
 // Shared components
 import { UnifiedTableComponent } from './components/unified-table/unified-table.component';
@@ -93,6 +94,7 @@ import { HasPermissionDirective } from './directives/has-permission.directive';
     PerpetratorTypesManagementComponent,
     PrivateViolationFormPageComponent,
     PrivateViolationViewPageComponent,
+    ExportViolationsComponent,
     UnifiedCardComponent,
     ToasterComponent,
     DynamicFormComponent,
