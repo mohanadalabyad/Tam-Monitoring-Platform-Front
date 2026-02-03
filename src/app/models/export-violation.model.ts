@@ -12,6 +12,10 @@ export interface ExportViolationRequest {
   selectedColumnKeys: string[];
   includeAttachmentsSheet: boolean;
   includeFollowUpsSheet: boolean;
+  /** Include question-answer columns for the selected category (Private only; requires category in filter). */
+  includeQuestionAnswers?: boolean;
+  /** Include TestimonyContent and TestimonyFileLinks columns (Private only). */
+  includeTestimonyContent?: boolean;
   privateFilter?: PrivateViolationFilter;
   publicFilter?: PublicViolationFilter;
 }

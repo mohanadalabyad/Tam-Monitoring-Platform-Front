@@ -32,6 +32,8 @@ export class ExportViolationsComponent implements OnInit {
   selectedKeys: Set<string> = new Set();
   includeAttachmentsSheet = false;
   includeFollowUpsSheet = false;
+  /** For Private export: exactly one of 'questions' or 'testimony' must be selected. */
+  privateExportMode: 'questions' | 'testimony' | null = null;
   loadingColumns = false;
   exporting = false;
 
@@ -227,11 +229,23 @@ export class ExportViolationsComponent implements OnInit {
       this.toaster.showError('اختر عموداً واحداً على الأقل');
       return;
     }
+    if (this.violationType === 'Private') {
+      if (this.privateExportMode !== 'questions' && this.privateExportMode !== 'testimony') {
+        this.toaster.showError('يجب اختيار أحد الخيارين: أجوبة الاستبيان أو محتوى الإفادات');
+        return;
+      }
+      if (this.privateExportMode === 'questions' && this.filterPrivate.categoryId == null) {
+        this.toaster.showError('يجب اختيار الفئة عند تضمين أجوبة الاستبيان');
+        return;
+      }
+    }
     const request: ExportViolationRequest = {
       violationType: this.violationType,
       selectedColumnKeys: Array.from(this.selectedKeys),
       includeAttachmentsSheet: this.includeAttachmentsSheet,
-      includeFollowUpsSheet: this.includeFollowUpsSheet
+      includeFollowUpsSheet: this.includeFollowUpsSheet,
+      includeQuestionAnswers: this.violationType === 'Private' ? this.privateExportMode === 'questions' : undefined,
+      includeTestimonyContent: this.violationType === 'Private' ? this.privateExportMode === 'testimony' : undefined
     };
     if (this.violationType === 'Private') {
       request.privateFilter = this.buildPrivateFilter();

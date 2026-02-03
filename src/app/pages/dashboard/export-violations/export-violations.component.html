@@ -75,6 +75,17 @@
           <input type="checkbox" [(ngModel)]="includeFollowUpsSheet" />
           <span>تضمين ورقة المتابعات</span>
         </label>
+        <ng-container *ngIf="violationType === 'Private'">
+          <p class="radio-group-label">نوع التصدير (اختر أحد الخيارين)</p>
+          <label class="radio-option">
+            <input type="radio" name="privateExportMode" value="questions" [(ngModel)]="privateExportMode" />
+            <span>أجوبة الاستبيان (أسئلة الفئة)</span>
+          </label>
+          <label class="radio-option">
+            <input type="radio" name="privateExportMode" value="testimony" [(ngModel)]="privateExportMode" />
+            <span>محتوى الإفادات وروابط الملفات</span>
+          </label>
+        </ng-container>
       </div>
     </div>
 
@@ -112,7 +123,7 @@
             </select>
           </div>
           <div class="filter-group">
-            <label>الفئة</label>
+            <label>الفئة <span *ngIf="privateExportMode === 'questions'" class="required-hint">(مطلوب عند تضمين أجوبة الاستبيان)</span></label>
             <select [(ngModel)]="filterPrivate.categoryId" (ngModelChange)="onCategoryChange()" [disabled]="loadingCategories">
               <option [ngValue]="null">الكل</option>
               <option *ngFor="let c of categories" [ngValue]="c.id">{{ c.name }}</option>
@@ -187,7 +198,7 @@
         <p class="permission-hint" *ngIf="!canExportCurrentType">
           ليس لديك صلاحية تصدير هذا النوع من البلاغات. صلاحية التصدير مطلوبة (PrivateViolation.Export أو PublicViolation.Export).
         </p>
-        <button type="button" class="btn-primary" (click)="export()" [disabled]="exporting || selectedKeys.size === 0 || !canExportCurrentType">
+        <button type="button" class="btn-primary" (click)="export()" [disabled]="exporting || selectedKeys.size === 0 || !canExportCurrentType || (violationType === 'Private' && privateExportMode !== 'questions' && privateExportMode !== 'testimony')">
           <span *ngIf="!exporting">تصدير إلى Excel</span>
           <span *ngIf="exporting">جاري التصدير...</span>
         </button>
