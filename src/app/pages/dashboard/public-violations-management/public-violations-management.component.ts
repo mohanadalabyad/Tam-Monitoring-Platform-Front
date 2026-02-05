@@ -781,10 +781,10 @@ export class PublicViolationsManagementComponent implements OnInit {
   }
 
   loadFollowUpStatuses(): void {
-    this.followUpStatusService.getAllFollowUpStatuses(undefined, undefined, true).subscribe({
-      next: (response: any) => {
+    this.followUpStatusService.getPublicLookup().subscribe({
+      next: (response) => {
         if (response.success && response.data) {
-          this.followUpStatuses = Array.isArray(response.data) ? response.data : response.data.items || [];
+          this.followUpStatuses = Array.isArray(response.data) ? response.data : [];
         }
       },
       error: (error: any) => {

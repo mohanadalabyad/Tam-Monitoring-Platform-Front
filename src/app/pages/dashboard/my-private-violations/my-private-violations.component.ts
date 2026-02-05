@@ -567,15 +567,10 @@ export class MyPrivateViolationsComponent implements OnInit, OnDestroy, AfterVie
     this.sortedQuestions = [];
     this.clearQuestionControls();
 
-    const filter: QuestionFilter = {
-      categoryId: categoryId,
-      isActive: true
-    };
-
-    this.questionService.getAllQuestionsWithFilter(filter, undefined, undefined, undefined).subscribe({
+    this.questionService.getQuestionsByCategory(categoryId).subscribe({
       next: (response) => {
         if (response.success && response.data) {
-          const questions = Array.isArray(response.data) ? response.data : response.data.items || [];
+          const questions = Array.isArray(response.data) ? response.data : [];
           this.filteredQuestions = questions;
           const sorted = [...questions].sort((a, b) => a.order - b.order);
           
@@ -615,10 +610,10 @@ export class MyPrivateViolationsComponent implements OnInit, OnDestroy, AfterVie
   }
 
   loadFollowUpStatuses(): void {
-    this.followUpStatusService.getAllFollowUpStatuses(undefined, undefined, true).subscribe({
-      next: (response: any) => {
+    this.followUpStatusService.getPublicLookup().subscribe({
+      next: (response) => {
         if (response.success && response.data) {
-          this.followUpStatuses = Array.isArray(response.data) ? response.data : response.data.items || [];
+          this.followUpStatuses = Array.isArray(response.data) ? response.data : [];
         }
       },
       error: (error: any) => {
@@ -682,7 +677,7 @@ export class MyPrivateViolationsComponent implements OnInit, OnDestroy, AfterVie
 
   loadFollowUps(violationId: number): void {
     this.loadingFollowUps = true;
-    this.violationFollowUpService.getByViolationId(violationId, 'Private').subscribe({
+    this.violationFollowUpService.getMyFollowUps(violationId).subscribe({
       next: (response: any) => {
         if (response.success && response.data) {
           this.followUps = (response.data as ViolationFollowUpDto[]).map(fu => ({
@@ -854,16 +849,18 @@ export class MyPrivateViolationsComponent implements OnInit, OnDestroy, AfterVie
       condition: (row) => row.acceptanceStatus === AcceptanceStatus.Pending
     });
     
-    // Delete (only if Pending)
-    this.actions.push({
-      label: 'حذف',
-      icon: Trash2,
-      action: (row) => this.deleteViolation(row),
-      class: 'btn-delete',
-      variant: 'danger',
-      showLabel: false,
-      condition: (row) => row.acceptanceStatus === AcceptanceStatus.Pending
-    });
+    // Delete (only if user has permission and violation is Pending)
+    if (this.canDeleteViolation()) {
+      this.actions.push({
+        label: 'حذف',
+        icon: Trash2,
+        action: (row) => this.deleteViolation(row),
+        class: 'btn-delete',
+        variant: 'danger',
+        showLabel: false,
+        condition: (row) => row.acceptanceStatus === AcceptanceStatus.Pending
+      });
+    }
     
     // Follow-Up
     if (this.permissionService.hasPermission('ViolationFollowUp', 'Create') || this.permissionService.isSuperAdmin()) {
@@ -881,6 +878,10 @@ export class MyPrivateViolationsComponent implements OnInit, OnDestroy, AfterVie
   onPageChange(page: number): void {
     this.currentPage = page;
     this.loadViolations();
+  }
+
+  canDeleteViolation(): boolean {
+    return this.permissionService.hasPermission('PrivateViolation', 'Delete') || this.permissionService.isSuperAdmin();
   }
 
   openAddModal(): void {

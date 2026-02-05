@@ -43,6 +43,13 @@ export class QuestionService {
   }
 
   /**
+   * Get active questions by category for the private violation form. Authenticated only; does not require Question.Read.
+   */
+  getQuestionsByCategory(categoryId: number): Observable<ApiResponse<QuestionDto[]>> {
+    return this.http.get<ApiResponse<QuestionDto[]>>(`${this.apiUrl}/by-category/${categoryId}`);
+  }
+
+  /**
    * Get all questions with filter
    */
   getAllQuestionsWithFilter(

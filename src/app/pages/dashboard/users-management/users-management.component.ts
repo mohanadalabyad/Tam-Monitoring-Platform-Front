@@ -107,8 +107,8 @@ export class UsersManagementComponent implements OnInit {
       });
     }
     
-    // Only show role assignment if user is not super admin
-    if ((this.permissionService.hasPermission('User.AssignRole') || this.permissionService.isSuperAdmin())) {
+    // Only show role assignment if user has Role.AssignRoleToUser
+    if ((this.permissionService.hasPermission('Role', 'AssignRoleToUser') || this.permissionService.isSuperAdmin())) {
       // Note: We'll filter this in the template based on row.isSuperAdmin
       this.actions.push({
         label: 'تعيين الأدوار',

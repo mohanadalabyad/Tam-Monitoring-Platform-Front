@@ -54,7 +54,7 @@
           </div>
           <div class="card-actions-header" (click)="$event.stopPropagation()">
             <button
-              *ngIf="permissionService.hasPermission('Role.Update') || permissionService.isSuperAdmin()"
+              *ngIf="permissionService.hasPermission('Role', 'Update') || permissionService.isSuperAdmin()"
               type="button"
               class="card-action-icon btn-edit"
               (click)="editRole(role); $event.stopPropagation()"
@@ -63,7 +63,7 @@
               <lucide-icon [img]="Pencil" [size]="16"></lucide-icon>
             </button>
             <button
-              *ngIf="permissionService.hasPermission('Role.Delete') || permissionService.isSuperAdmin()"
+              *ngIf="permissionService.hasPermission('Role', 'Delete') || permissionService.isSuperAdmin()"
               type="button"
               class="card-action-icon btn-delete"
               (click)="deleteRole(role); $event.stopPropagation()"
@@ -98,7 +98,7 @@
           <div class="status-toggle">
             <span class="status-label">الحالة:</span>
             <button
-              *ngIf="permissionService.hasPermission('Role.ToggleActivity') || permissionService.isSuperAdmin()"
+              *ngIf="permissionService.hasPermission('Role', 'ToggleActivity') || permissionService.isSuperAdmin()"
               type="button"
               class="toggle-btn-card"
               [class.active]="role.isActive"
@@ -114,7 +114,7 @@
               <span>{{ role.isActive ? 'نشط' : 'غير نشط' }}</span>
             </button>
             <span
-              *ngIf="!(permissionService.hasPermission('Role.ToggleActivity') || permissionService.isSuperAdmin())"
+              *ngIf="!(permissionService.hasPermission('Role', 'ToggleActivity') || permissionService.isSuperAdmin())"
               class="status-readonly"
               [class.active]="role.isActive"
             >
@@ -171,12 +171,12 @@
               <label
                 *ngFor="let permission of group.permissions"
                 class="permission-checkbox"
-                [class.disabled]="!(permissionService.hasPermission('Role.Update') || permissionService.isSuperAdmin())"
+                [class.disabled]="!(permissionService.hasPermission('Role', 'AssignToRole') || permissionService.hasPermission('Role', 'UnassignFromRole') || permissionService.isSuperAdmin())"
               >
                 <input 
                   type="checkbox"
                   [checked]="isPermissionAssignedToRole(selectedRole.id, permission.id)"
-                  [disabled]="!(permissionService.hasPermission('Role.Update') || permissionService.isSuperAdmin())"
+                  [disabled]="!(permissionService.hasPermission('Role', 'AssignToRole') || permissionService.hasPermission('Role', 'UnassignFromRole') || permissionService.isSuperAdmin())"
                   (change)="togglePermissionAssignment(selectedRole.id, permission.id, $event)"
                 />
                 <div class="perm-info">

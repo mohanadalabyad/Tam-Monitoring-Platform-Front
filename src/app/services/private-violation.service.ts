@@ -104,6 +104,22 @@ export class PrivateViolationService {
   }
 
   /**
+   * Get private violation by ID for view page. Allowed if user is the creator OR has PrivateViolation.Read.
+   * Use this for both "my violations" view and admin "private-violations" view.
+   */
+  getMyPrivateViolationById(id: number): Observable<PrivateViolationDto> {
+    return this.http.get<ApiResponse<PrivateViolationDto>>(`${this.apiUrl}/my/${id}`)
+      .pipe(
+        map(response => {
+          if (!response.success) {
+            throw new Error(response.message);
+          }
+          return response.data;
+        })
+      );
+  }
+
+  /**
    * Create private violation (requires PrivateViolation.Create permission)
    */
   createPrivateViolation(dto: AddPrivateViolationDto): Observable<PrivateViolationDto> {

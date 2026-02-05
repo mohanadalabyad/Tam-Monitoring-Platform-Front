@@ -140,7 +140,7 @@ export class RoleAssignmentModalComponent implements OnInit, OnChanges {
   }
 
   canAssignRole(): boolean {
-    return this.permissionService.hasPermission('User', 'AssignRole') || 
+    return this.permissionService.hasPermission('Role', 'AssignRoleToUser') || 
            this.permissionService.isSuperAdmin();
   }
 }

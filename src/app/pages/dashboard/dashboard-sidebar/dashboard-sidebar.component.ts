@@ -102,14 +102,15 @@ export class DashboardSidebarComponent implements OnInit {
     if (item.permission === 'Settings') {
       return this.permissionService.hasAnyPermission([
         'City.Read',
+        'FollowUpStatus.Read',
         'User.Read',
         'Role.Read',
         'Permission.Read',
         'Category.Read',
         'SubCategory.Read',
+        'PerpetratorType.Read',
         'Question.Read',
-        'EducationLevel.Read',
-        'WebsiteContent.Edit'
+        'EducationLevel.Read'
       ]);
     }
 

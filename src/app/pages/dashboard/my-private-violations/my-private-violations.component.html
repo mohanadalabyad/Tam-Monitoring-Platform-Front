@@ -104,7 +104,7 @@
               <lucide-icon [img]="Pencil" [size]="16"></lucide-icon>
             </button>
             <button
-              *ngIf="violation.acceptanceStatus === AcceptanceStatus.Pending"
+              *ngIf="violation.acceptanceStatus === AcceptanceStatus.Pending && canDeleteViolation()"
               type="button"
               class="card-action-icon btn-delete"
               (click)="deleteViolation(violation); $event.stopPropagation()"

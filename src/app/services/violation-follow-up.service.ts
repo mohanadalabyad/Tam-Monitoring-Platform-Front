@@ -26,6 +26,18 @@ export class ViolationFollowUpService {
   }
 
   /**
+   * Get follow-ups for the current user's violations (my follow-ups). Optional violationId to filter by one violation.
+   * Use this on "my violations" page so follow-ups load without ViolationFollowUp.Read.
+   */
+  getMyFollowUps(violationId?: number): Observable<ApiResponse<ViolationFollowUpDto[]>> {
+    let params = new HttpParams();
+    if (violationId !== undefined && violationId !== null) {
+      params = params.set('violationId', violationId.toString());
+    }
+    return this.http.get<ApiResponse<ViolationFollowUpDto[]>>(`${this.apiUrl}/my-follow-ups`, { params });
+  }
+
+  /**
    * Get all violation follow-ups with optional pagination
    */
   getAllViolationFollowUps(

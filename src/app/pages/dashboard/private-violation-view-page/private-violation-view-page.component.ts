@@ -39,7 +39,7 @@ export class PrivateViolationViewPageComponent implements OnInit {
       this.loading = false;
       return;
     }
-    this.privateViolationService.getPrivateViolationById(id).subscribe({
+    this.privateViolationService.getMyPrivateViolationById(id).subscribe({
       next: (data) => {
         this.violation = data;
         this.loading = false;
