@@ -1253,7 +1253,8 @@
                 <div *ngFor="let att of followUp.attachments" class="history-attachment-item">
                   <a (click)="openAttachment(att.filePath)" href="javascript:void(0)" target="_blank" rel="noopener noreferrer">
                     <img *ngIf="isImage(att.fileType)" class="history-attachment-image" [src]="getAttachmentUrl(att.filePath)" [alt]="att.fileName" />
-                    <div *ngIf="!isImage(att.fileType)" class="history-attachment-file">
+                    <video *ngIf="isVideo(att.fileType)" class="history-attachment-video" [src]="getAttachmentUrl(att.filePath)" controls (click)="$event.stopPropagation()"></video>
+                    <div *ngIf="!isImage(att.fileType) && !isVideo(att.fileType)" class="history-attachment-file">
                       <span>{{ att.fileName }}</span>
                     </div>
                   </a>

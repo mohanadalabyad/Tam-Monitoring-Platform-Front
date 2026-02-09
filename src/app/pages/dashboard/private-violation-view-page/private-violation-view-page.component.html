@@ -99,7 +99,8 @@
         <div class="attachment-item" *ngFor="let att of violation.attachments">
           <a [href]="getAttachmentUrl(att.filePath)" target="_blank" rel="noopener noreferrer">
             <img *ngIf="isImageFile(att.fileType)" class="attachment-image" [src]="getAttachmentUrl(att.filePath)" [alt]="att.fileName" />
-            <div *ngIf="!isImageFile(att.fileType)" class="attachment-file">
+            <video *ngIf="isVideoFile(att.fileType)" class="attachment-video" [src]="getAttachmentUrl(att.filePath)" controls></video>
+            <div *ngIf="!isImageFile(att.fileType) && !isVideoFile(att.fileType)" class="attachment-file">
               <span>{{ att.fileName }}</span>
             </div>
           </a>

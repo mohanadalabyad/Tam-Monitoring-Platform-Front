@@ -103,4 +103,10 @@ export class PrivateViolationViewPageComponent implements OnInit {
     const t = fileType.toLowerCase();
     return t.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp'].some(ext => t.includes(ext));
   }
+
+  isVideoFile(fileType: string): boolean {
+    if (!fileType) return false;
+    const videoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', '.mp4', '.webm', '.ogg', '.mov', '.avi'];
+    return videoTypes.some(type => fileType.toLowerCase().includes(type.toLowerCase()));
+  }
 }

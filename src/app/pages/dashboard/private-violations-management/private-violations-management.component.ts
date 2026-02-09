@@ -742,6 +742,12 @@ export class PrivateViolationsManagementComponent implements OnInit {
     return imageTypes.some(type => fileType.toLowerCase().includes(type.toLowerCase()));
   }
 
+  isVideo(fileType: string): boolean {
+    if (!fileType) return false;
+    const videoTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime', '.mp4', '.webm', '.ogg', '.mov', '.avi'];
+    return videoTypes.some(type => fileType.toLowerCase().includes(type.toLowerCase()));
+  }
+
   openAttachment(filePath: string): void {
     const url = this.getAttachmentUrl(filePath);
     if (url) {
